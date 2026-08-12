@@ -1,0 +1,22 @@
+{
+  "name": "Cosign",
+  "short_name": "Cosign",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#141618",
+  "theme_color": "#141618",
+  "icons": [
+    {
+      "src": "/app-icon.png",
+      "sizes": "1024x1024",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "/app-icon.png",
+      "sizes": "1024x1024",
+      "type": "image/png",
+      "purpose": "any"
+    }
+  ]
+}
