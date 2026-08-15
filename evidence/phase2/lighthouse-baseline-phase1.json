@@ -1,0 +1,51 @@
+{
+  "url": "http://localhost:8787/s/IofpCInelhr1",
+  "label": "baseline-phase1",
+  "lighthouse": "13.4.1",
+  "throttling": {
+    "rttMs": 150,
+    "throughputKbps": 1638.4,
+    "requestLatencyMs": 562.5,
+    "downloadThroughputKbps": 1474.5600000000002,
+    "uploadThroughputKbps": 607.5,
+    "cpuSlowdownMultiplier": 4
+  },
+  "gate": {
+    "lcpMs": 1000,
+    "perf": 90,
+    "a11y": 95
+  },
+  "runs": [
+    {
+      "run": 1,
+      "perf": 100,
+      "a11y": 100,
+      "bestPractices": 100,
+      "seo": 66,
+      "lcpMs": 916,
+      "fcpMs": 916,
+      "tbtMs": 5,
+      "cls": 0,
+      "siMs": 916,
+      "ttfbMs": 13,
+      "bytes": 74004
+    }
+  ],
+  "median": {
+    "perf": 100,
+    "a11y": 100,
+    "bestPractices": 100,
+    "seo": 66,
+    "lcpMs": 916,
+    "fcpMs": 916,
+    "tbtMs": 5,
+    "cls": 0,
+    "siMs": 916,
+    "ttfbMs": 13,
+    "bytes": 74004
+  },
+  "lcpElement": null,
+  "passed": true,
+  "a11yPassed": true,
+  "generatedAt": "2026-08-15T20:21:10.538Z"
+}
