@@ -14,7 +14,11 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const APP_ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
-const OUT = join(APP_ROOT, "..", "..", "evidence", "phase1");
+// Later phases re-run this to prove the SPA still boots without overwriting
+// the evidence an earlier phase was accepted on.
+const OUT = process.env.COSIGN_EVIDENCE_DIR
+  ? join(APP_ROOT, "..", "..", "evidence", process.env.COSIGN_EVIDENCE_DIR)
+  : join(APP_ROOT, "..", "..", "evidence", "phase1");
 const BASE = process.env.COSIGN_BASE ?? "http://localhost:8787";
 const ORIGIN = new URL(BASE).origin;
 

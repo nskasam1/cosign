@@ -13,6 +13,11 @@ dist
 dist-ssr
 *.local
 
+# Playwright's scratch output. The evidence it produces is written to
+# evidence/<phase>/ and committed; this directory is traces and failure dumps.
+/test-results/
+/playwright-report/
+
 # Secrets — never commit real keys
 .env
 
