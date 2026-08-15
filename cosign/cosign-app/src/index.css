@@ -1,35 +1,11 @@
-/* No remote fonts — zero external services. System stack for now; the
-   committed self-hosted faces land with the Phase 2 design tokens. */
+/* The canonical design tokens (Phase 2). Colour, type, space, radius and
+   motion are decided in exactly one file; nothing below re-decides them.
+   The SSR share page inlines the same file via server/pages/tokens.ts. */
+@import "./design/tokens.css";
 
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
-
-/* ── Design tokens (original warm palette) ── */
-@layer base {
-  :root {
-    --background: 220 10% 8%;
-    --foreground: 35 22% 90%;
-    --card: 220 9% 12%;
-    --card-foreground: 35 22% 90%;
-    --popover: 220 9% 12%;
-    --popover-foreground: 35 22% 90%;
-    --primary: 27 46% 60%;
-    --primary-foreground: 220 10% 8%;
-    --secondary: 36 65% 55%;
-    --secondary-foreground: 220 10% 8%;
-    --muted: 220 7% 17%;
-    --muted-foreground: 25 8% 48%;
-    --accent: 220 7% 17%;
-    --accent-foreground: 35 22% 90%;
-    --destructive: 0 72% 51%;
-    --destructive-foreground: 35 22% 90%;
-    --border: 220 6% 18%;
-    --input: 220 6% 18%;
-    --ring: 27 46% 60%;
-    --radius: 0.875rem;
-  }
-}
 
 @layer base {
   * {
@@ -38,30 +14,40 @@
   body {
     @apply bg-background text-foreground font-sans antialiased;
     -webkit-tap-highlight-color: transparent;
-    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
   }
-  h1, h2, h3, h4, h5, h6 {
-    /* inherits the system stack; the self-hosted display face lands with the
-       Phase 2 design tokens */
-    font-weight: 700;
-    letter-spacing: -0.02em;
+  h1, h2, h3 {
+    font-family: var(--font-display);
+    font-weight: 400;
+    letter-spacing: var(--tracking-display);
+    line-height: var(--leading-snug);
+  }
+  h4, h5, h6 {
+    font-weight: 600;
+    letter-spacing: -0.01em;
+  }
+  /* Small-caps labels are the editorial voice throughout the app. */
+  .label {
+    font-size: var(--text-2xs);
+    font-weight: 600;
+    letter-spacing: var(--tracking-caps);
+    text-transform: uppercase;
+    color: hsl(var(--gold));
   }
 }
 
-/* ── Utility classes ── */
 @layer utilities {
   .glass {
-    background: hsl(220 9% 12% / 0.88);
+    background: hsl(var(--surface) / 0.88);
     backdrop-filter: blur(20px) saturate(160%);
     -webkit-backdrop-filter: blur(20px) saturate(160%);
   }
   .glass-heavy {
-    background: hsl(220 10% 8% / 0.94);
+    background: hsl(var(--bg) / 0.94);
     backdrop-filter: blur(32px) saturate(180%);
     -webkit-backdrop-filter: blur(32px) saturate(180%);
   }
   .gradient-card {
-    background: linear-gradient(145deg, hsl(220 9% 14%) 0%, hsl(220 9% 11%) 100%);
+    background: linear-gradient(145deg, hsl(var(--raise)) 0%, hsl(var(--surface)) 100%);
   }
   .card-shine {
     position: relative;
@@ -71,31 +57,28 @@
     content: '';
     position: absolute;
     inset: 0;
-    background: linear-gradient(135deg, rgba(255,255,255,0.025) 0%, transparent 55%);
+    background: linear-gradient(135deg, hsl(var(--ink) / 0.025) 0%, transparent 55%);
     pointer-events: none;
     border-radius: inherit;
   }
   .gradient-text {
-    background: linear-gradient(135deg, hsl(27 46% 70%) 0%, hsl(36 65% 60%) 100%);
+    background: linear-gradient(135deg, hsl(var(--gold)) 0%, hsl(var(--ember)) 100%);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
   }
   .gradient-accent {
-    background: linear-gradient(135deg, hsl(27 46% 58%) 0%, hsl(36 65% 53%) 100%);
+    background: linear-gradient(135deg, hsl(var(--ember)) 0%, hsl(var(--gold)) 100%);
   }
   .gold-glow {
-    box-shadow: 0 0 24px hsl(27 46% 60% / 0.18), 0 0 48px hsl(36 65% 55% / 0.08);
+    box-shadow: 0 0 24px hsl(var(--gold) / 0.18), 0 0 48px hsl(var(--ember) / 0.08);
   }
   .accent-glow {
-    box-shadow: 0 0 30px hsl(27 46% 60% / 0.2), 0 0 60px hsl(36 65% 55% / 0.1);
+    box-shadow: 0 0 30px hsl(var(--ember) / 0.2), 0 0 60px hsl(var(--gold) / 0.1);
   }
   .nav-shadow {
-    box-shadow: 0 8px 32px rgba(0,0,0,0.55), 0 2px 8px rgba(0,0,0,0.35), inset 0 1px 0 rgba(255,255,255,0.04);
+    box-shadow: 0 8px 32px hsl(var(--bg) / 0.55), 0 2px 8px hsl(var(--bg) / 0.35), inset 0 1px 0 hsl(var(--ink) / 0.04);
   }
+  .no-scrollbar::-webkit-scrollbar { display: none; }
+  .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
 }
-
-/* ── Scrollbar hiding ── */
-.no-scrollbar::-webkit-scrollbar { display: none; }
-.no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
-

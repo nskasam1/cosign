@@ -1,0 +1,203 @@
+/* ─────────────────────────────────────────────────────────────────────────
+   Cosign design tokens — the canonical file (Phase 2).
+
+   One source of truth for colour, type, space, radius and motion. Three
+   consumers, no second opinion allowed:
+     1. Tailwind (`tailwind.config.ts` reads these vars)  → the SPA
+     2. `src/index.css`                                    → the SPA
+     3. `server/pages/tokens.ts` inlines this file         → the SSR share
+        page and public profile, which ship no stylesheet request at all
+
+   Every colour is stored as a bare `H S% L%` triple, never as `hsl(...)`,
+   so both `hsl(var(--ink))` and Tailwind's `hsl(var(--ink) / 0.5)` opacity
+   syntax work off the same token. Rationale and the contrast table live in
+   `tokens.md`; `tokens.test.ts` fails the build if a documented pair drops
+   below its WCAG threshold.
+   ───────────────────────────────────────────────────────────────────────── */
+
+:root {
+  color-scheme: dark;
+
+  /* ── ground ───────────────────────────────────────────────────────────
+     A warm near-black in the same family as the seeded imagery (its six
+     palettes all sit on #13–18 warm grounds), so photographs dissolve into
+     the page instead of floating on a blue-grey slab. */
+  --bg: 20 18% 7%;              /* #14100E  espresso ground */
+  --surface: 20 19% 9%;         /* #1C1613  one step up: plates, chips */
+  --raise: 20 20% 12%;          /* #241C18  two steps up: pressed, wells */
+
+  /* ── ink ──────────────────────────────────────────────────────────────
+     Paper-warm, never pure white — pure white on warm black reads as a
+     screen; this reads as stock. */
+  --ink: 34 49% 91%;            /* #F3E9DC  headlines, names      15.8:1 */
+  --line: 32 28% 73%;           /* #CDBBA6  the honest line       10.1:1 */
+  --muted: 31 15% 54%;          /* #9A8977  metadata, captions     5.6:1 */
+
+  /* ── rules ────────────────────────────────────────────────────────────
+     Hairlines carry the editorial structure. Decorative only — never text. */
+  --rule: 23 16% 15%;           /* #2E2621  between entries */
+  --rule-strong: 24 17% 23%;    /* #453931  section breaks, chip borders */
+
+  /* ── accents ──────────────────────────────────────────────────────────
+     Ember is the ranking signal (numerals, active chip). Deliberately not
+     the reflexive coffee-gold: gold is the *label* voice, ember is the
+     *order* voice, and the two never do each other's job. */
+  --ember: 14 73% 56%;          /* #E0633C  rank, active state     5.4:1 */
+  --ember-ink: 17 82% 66%;      /* #F08A63  ember as body text     7.7:1 */
+  --gold: 39 45% 61%;           /* #C8A96E  small-caps labels      8.4:1 */
+
+  /* ── place palettes ───────────────────────────────────────────────────
+     The six treatments `seed/images/generate.mjs` paints every photograph
+     with. A place's rank numeral and its no-photo plate take the same hue
+     its picture was made from, so the list has a colour rhythm drawn from
+     the places themselves rather than applied on top of them. */
+  --pal-warm: 39 45% 61%;       /* #c8a96e */
+  --pal-amber: 39 67% 55%;      /* #d9a441 */
+  --pal-rose: 12 42% 63%;       /* #c98a7a */
+  --pal-moss: 82 18% 52%;       /* #8a9a6e */
+  --pal-slate: 212 12% 55%;     /* #7d8a99 */
+  --pal-clay: 21 35% 53%;       /* #b07a5c */
+
+  /* Ground for the no-photo plate: its own accent mixed 6% into --surface.
+     Every pair clears 4.5:1, so the initials hold up as *normal* text and
+     the plate does not depend on being read as large text. */
+  --plate-warm: 30 23% 12%;     /* #261f18  accent on plate  7.2:1 */
+  --plate-amber: 32 28% 12%;    /* #271f16                   7.2:1 */
+  --plate-rose: 18 21% 12%;     /* #261d19                   5.8:1 */
+  --plate-moss: 33 19% 12%;     /* #231e18                   5.5:1 */
+  --plate-slate: 17 11% 12%;    /* #221d1b                   4.7:1 */
+  --plate-clay: 21 23% 12%;     /* #251c17                   4.6:1 */
+
+  --danger: 0 62% 58%;          /* #D45B5B  destructive only */
+
+  /* ── type ─────────────────────────────────────────────────────────────
+     Young Serif for display: a warm single-weight slab that reads
+     letterpressed rather than branded, with lining figures heavy enough to
+     carry the rank numerals as architecture. Karla for everything you
+     actually read: a slightly condensed grotesque with flared stems and an
+     odd, human 'a' — it fits a 390 px column and sounds like a person
+     rather than a product. Two families, three files (53 kB), both OFL,
+     both self-hosted in `public/fonts/`. No CDN, ever. */
+  --font-display: "Young Serif", "Iowan Old Style", Georgia, serif;
+  --font-body: Karla, "Helvetica Neue", Arial, sans-serif;
+
+  /* 1.22 ratio, rounded to whole px so hairlines stay crisp */
+  --text-2xs: 0.6875rem;        /* 11px  small-caps labels */
+  --text-xs: 0.8125rem;         /* 13px  metadata */
+  --text-sm: 0.9063rem;         /* 14.5px */
+  --text-base: 1rem;            /* 16px  body minimum on mobile */
+  --text-lg: 1.1875rem;         /* 19px  place names */
+  --text-xl: 1.4375rem;         /* 23px */
+  --text-2xl: 1.75rem;          /* 28px  rank numerals */
+  --text-3xl: 2.125rem;         /* 34px  page title */
+  --text-4xl: 2.75rem;          /* 44px  lead numeral, desktop title */
+
+  --leading-tight: 1.05;        /* display */
+  --leading-snug: 1.2;          /* place names */
+  --leading-body: 1.5;          /* the honest line */
+  --tracking-caps: 0.14em;      /* small-caps labels */
+  --tracking-display: -0.012em;
+
+  /* ── space ── 4 px rhythm ───────────────────────────────────────────── */
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-5: 1.25rem;
+  --space-6: 1.5rem;
+  --space-8: 2rem;
+  --space-10: 2.5rem;
+  --space-12: 3rem;
+  --space-16: 4rem;
+
+  --gutter: 1.125rem;           /* 18px page inset on mobile */
+  --measure: 34rem;             /* 544px reading column on desktop */
+  --tap: 2.75rem;               /* 44px minimum target */
+
+  /* ── radius ── restrained: this is print, not a card deck ───────────── */
+  --radius-xs: 2px;
+  --radius-sm: 3px;
+  --radius-md: 6px;
+  --radius-full: 999px;
+  --radius: 0.875rem;           /* shadcn primitives in the SPA */
+
+  /* ── motion ── one rhythm, and it stops when asked ──────────────────── */
+  --ease-out: cubic-bezier(0.22, 0.61, 0.36, 1);
+  --ease-in: cubic-bezier(0.55, 0.06, 0.68, 0.19);
+  --duration-fast: 120ms;
+  --duration-base: 200ms;
+  --duration-slow: 320ms;
+
+  /* ── shadcn/Tailwind compatibility ────────────────────────────────────
+     Aliases, not new values. Nothing below may introduce a colour that is
+     not already named above. */
+  --background: var(--bg);
+  --foreground: var(--ink);
+  --card: var(--surface);
+  --card-foreground: var(--ink);
+  --popover: var(--surface);
+  --popover-foreground: var(--ink);
+  --primary: var(--ember);
+  --primary-foreground: var(--bg);
+  --secondary: var(--gold);
+  --secondary-foreground: var(--bg);
+  --muted-foreground: var(--muted);
+  --accent: var(--raise);
+  --accent-foreground: var(--ink);
+  --destructive: var(--danger);
+  --destructive-foreground: var(--ink);
+  --border: var(--rule);
+  --input: var(--rule-strong);
+  --ring: var(--ember);
+
+  --sidebar-background: var(--surface);
+  --sidebar-foreground: var(--ink);
+  --sidebar-primary: var(--ember);
+  --sidebar-primary-foreground: var(--bg);
+  --sidebar-accent: var(--raise);
+  --sidebar-accent-foreground: var(--ink);
+  --sidebar-border: var(--rule);
+  --sidebar-ring: var(--ember);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --duration-fast: 0ms;
+    --duration-base: 0ms;
+    --duration-slow: 0ms;
+  }
+}
+
+/* Self-hosted, latin subset, `swap` so text paints in the fallback rather
+   than waiting on the network — the share page's LCP budget is 1.0 s on
+   simulated Slow-4G and a blocked font would spend all of it. */
+@font-face {
+  font-family: "Young Serif";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("/fonts/young-serif-400.woff2") format("woff2");
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA,
+    U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193,
+    U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face {
+  font-family: Karla;
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("/fonts/karla-400.woff2") format("woff2");
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA,
+    U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193,
+    U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face {
+  font-family: Karla;
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url("/fonts/karla-700.woff2") format("woff2");
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA,
+    U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193,
+    U+2212, U+2215, U+FEFF, U+FFFD;
+}

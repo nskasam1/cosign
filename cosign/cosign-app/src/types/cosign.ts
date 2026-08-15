@@ -26,6 +26,7 @@ export const INTENT_TAGS: IntentTag[] = [
   "just_the_coffee",
 ];
 
+/** Full labels — the log flow, where the phrasing is the point. */
 export const INTENT_TAG_LABELS: Record<IntentTag, string> = {
   deep_work: "Deep work",
   group_project: "Group project",
@@ -33,9 +34,20 @@ export const INTENT_TAG_LABELS: Record<IntentTag, string> = {
   meeting_someone: "Meeting someone",
   first_date: "First date",
   quick_grab: "Quick grab",
-  killing_time: "Killing time",
+  killing_time: "Killing time between classes",
   late_night: "Late night",
   just_the_coffee: "Actually here for the coffee",
+};
+
+/**
+ * Compact labels for dense surfaces — filter chips, the share page's
+ * metadata line — where the long forms wrap and break the rhythm. Same
+ * nine tags (decision 5); only the wording is shortened.
+ */
+export const INTENT_TAG_LABELS_SHORT: Record<IntentTag, string> = {
+  ...INTENT_TAG_LABELS,
+  killing_time: "Killing time",
+  just_the_coffee: "Just the coffee",
 };
 
 export type TimeBucket = "morning" | "afternoon" | "evening" | "late_night";
