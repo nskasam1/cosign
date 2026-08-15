@@ -1,41 +1,29 @@
 # Cosign
 
-Ranked recommendations from people you trust, scoped to one campus. Cosign is being
-rebuilt from its previous incarnation as a solo coffee-logging app ("Sip") — see
-`MIGRATION_NOTES.md` for what's changing and why. This README's feature list will be
-rewritten once Phase 3 lands; until then it still describes the pre-rewrite app below.
+Social place-discovery for college students: places near campus, cosigned by the
+people you'd actually ask. One person's ranked list, shared as one link. Rebuilt
+from its previous incarnation as a solo coffee-logging app ("Sip") — see
+`MIGRATION_NOTES.md` for the original migration audit, and `../../PLAN.md` at the
+repo root for the current build plan, architecture decisions, and status.
 
 ## Stack
 
-- React + TypeScript + Vite
+- React + TypeScript + Vite (SPA shell)
 - Tailwind CSS + shadcn/ui
-- Supabase (auth, database, storage, edge functions)
-- Google Maps Places API
+- Local Hono server + SQLite (`node:sqlite`) for persistence, the SSR share
+  pages, and OG images — **zero external services, zero API keys** (no Supabase,
+  no Google APIs; those were removed in the rebuild)
 
 ## Setup
 
-1. Install dependencies:
-   ```
-   bun install
-   ```
-
-2. Copy `.env` and fill in your keys:
-   ```
-   VITE_SUPABASE_URL=
-   VITE_SUPABASE_PUBLISHABLE_KEY=
-   VITE_GOOGLE_MAPS_KEY=
-   ```
-
-3. Run locally:
-   ```
-   bun dev
-   ```
-
-## AI Tasting Notes
-
-To enable AI-generated tasting notes, add your Anthropic API key as a Supabase secret:
+Requires Node ≥ 24 and npm (bun is not used).
 
 ```
-supabase secrets set ANTHROPIC_API_KEY=sk-ant-...
-supabase functions deploy generate-notes
+npm install
+npm run dev      # Vite dev server on :8080
+npm test         # Vitest
+npm run build    # production build
 ```
+
+No `.env` is needed — there are deliberately no keys or remote services to
+configure. See `../../CLAUDE.md` for the full command table and gotchas.

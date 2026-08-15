@@ -8,11 +8,10 @@ import { currentSemesterPhase } from "@/lib/semester";
 import type { Shop } from "@/types/cosign";
 import EmptyState from "@/components/EmptyState";
 
-// Phase 3.5 — "near me, open now, has outlets" answered in zero taps from
-// home. Real open-hours/outlet filtering needs shop_amenities +
-// hours_json joined in; this does the distance half now (Google Maps key
-// already exists in .env from Sip) and stubs the rest until real shop
-// data + amenity fields are seeded.
+// "near me, open now, has outlets" answered in zero taps from home. Real
+// open-hours/outlet filtering needs shop_amenities + hours joined in; this
+// does the distance half now and stubs the rest until real shop data +
+// amenity fields are seeded.
 const useNearestShop = () => {
   const [nearest, setNearest] = useState<Shop | null>(null);
   const [loading, setLoading] = useState(true);
