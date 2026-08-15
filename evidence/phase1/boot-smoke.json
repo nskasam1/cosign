@@ -1,0 +1,66 @@
+{
+  "base": "http://localhost:8787",
+  "routes": [
+    {
+      "route": "/",
+      "auth": false,
+      "chars": 232,
+      "errors": []
+    },
+    {
+      "route": "/onboarding",
+      "auth": false,
+      "chars": 126,
+      "errors": []
+    },
+    {
+      "route": "/onboarding",
+      "auth": true,
+      "chars": 428,
+      "errors": []
+    },
+    {
+      "route": "/",
+      "auth": true,
+      "chars": 914,
+      "errors": []
+    },
+    {
+      "route": "/maya",
+      "auth": true,
+      "chars": 619,
+      "errors": []
+    },
+    {
+      "route": "/shop/oval-grounds",
+      "auth": true,
+      "chars": 515,
+      "errors": []
+    },
+    {
+      "route": "/shop/oval-grounds",
+      "auth": false,
+      "chars": 424,
+      "errors": []
+    },
+    {
+      "route": "/lists/l_our-campus-ranking",
+      "auth": true,
+      "chars": 453,
+      "errors": []
+    },
+    {
+      "route": "/rank",
+      "auth": true,
+      "chars": 395,
+      "errors": []
+    },
+    {
+      "route": "/group/new",
+      "auth": true,
+      "chars": 152,
+      "errors": []
+    }
+  ],
+  "offOriginRequests": []
+}
