@@ -299,14 +299,62 @@ Commit order matters (brief: *first commit is the scoped rename, green build aft
       native surface)
 - [x] CLAUDE.md + PLAN.md written; no product code touched
 
-### Phase 1 — Domain, seed, rename ☐
-- [ ] Scoped rename commit (residual sip refs only); build + tsc green (evidence in
-      commit message)
-- [ ] De-service/cleanup commits; build + tsc green after each
-- [ ] Schema + repos + one-shot `npm run seed`; `npm run prod` works
-- [ ] CSV/JSON import round-trips via exporter (unit test)
-- [ ] SPA boots against local API (incl. stub-signup onboarding); typecheck + tests
-      pass; zero keys anywhere (evidence: `evidence/phase1/`)
+### Phase 1 — Domain, seed, rename ✅
+- [x] Scoped rename commit (residual sip refs only); build + tsc green (`25d0eb7`)
+- [x] De-service/cleanup commits (`938e1a4` hygiene/dead assets; the data-layer
+      swap landed with the server — see "Phase 1 commit split" below)
+- [x] Schema + repos + one-shot `npm run seed`; `npm run prod` works
+      (evidence: `evidence/phase1/commands.txt` — seed from an empty path exits 0
+      and builds a 327 kB DB: 22 shops / 8 users / 95 logs / 173 comparisons /
+      74 ranking entries / 22 lists / 13 friendships / 4 tokens / 204 events)
+- [x] CSV/JSON import round-trips via exporter (`server/import/roundtrip.test.ts`:
+      seed → export → seed → export is a fixpoint). The founder-facing CSV is
+      wired to real commands: `npm run import:shops` / `npm run export:shops`
+- [x] SPA boots against local API (incl. stub-signup onboarding); typecheck + tests
+      pass; zero keys anywhere (evidence: `evidence/phase1/` — 10/10 routes render
+      with no console/page errors, **every request stayed on localhost:8787**,
+      `npx tsc -b` exit 0, 49/49 tests, 0 lint errors)
+
+**Phase 1 commit split (deviation, recorded).** PLAN asked for the de-service
+deletions as their own commit ahead of the server. That isn't achievable green:
+`@supabase/supabase-js` is already pruned from `node_modules`, so *any* tree that
+still contains `src/integrations/supabase/` fails `tsc`. Removing the data layer
+and re-pointing the SPA is one atomic change; it landed as a single commit with
+full verification output, followed by evidence and this status update.
+
+**Phase 1 decisions & assumptions (new — don't relitigate):**
+- **`rankings` table added** (decision 9 was only two-thirds implemented): the
+  canonical ranking now has its own row carrying `visibility` (default `friends`),
+  alongside lists and logs. `rank.canViewRanking()` is the single read gate.
+- **Cosigners are visibility-filtered** (`server/repo/rank.ts`). `cosignersOf`
+  returns `{cosigners, others, total}` — it names only rankings the viewer may
+  see (self, accepted friends, public) and counts the rest. Before this, a
+  logged-out caller could reconstruct every user's whole ranked list with exact
+  positions from the public `/api/shops/:slug` route. Regression-tested in
+  `server/repo/visibility.test.ts` (12 tests).
+- **Crowd aggregates deliberately span friends-only logs.** `intentTallies` and
+  `conditionsByBucket` count all logs regardless of visibility, because decision 6
+  wants *noise by time of day* on a shop page that logged-out people can read.
+  They expose counts and labels only — never identity or authorship.
+- **Share tokens are scoped strictly.** A `profile` token no longer renders the
+  ranking at `/s/:token` (it 404s until `/p/:token` exists in 5A), and the schema
+  enforces `(kind = 'list') = (list_id IS NOT NULL)`. Seed tokens are random
+  base64url; the seeder rejects a token that is short, non-random, or equal to a
+  username — a readable token would quietly restore the username-addressed page.
+- **`u_noah` is the deliberate empty-state fixture** (no ranking, no lists) and is
+  exempt from the seeded "3–5 lists per user" floor, which the seeder now enforces
+  for every user who has a ranking.
+- **Share pages are `noindex` + `Disallow`ed** in `robots.txt`. An unlisted URL
+  that search engines index isn't unlisted, and revocation would come too late.
+- **Fonts are system stacks for now.** The Google Fonts CDN import is gone; the
+  dead `Inter`/`Fraunces`/`JetBrains Mono` *names* were removed from
+  `tailwind.config.ts` and `index.css` too, so nothing references a face we don't
+  ship. Phase 2 commits the self-hosted pair.
+- **`PlaceSearch` is deferred to Phase 3** (it belongs to the log flow). The local
+  `/api/places/search` endpoint over seeded shops already exists and is unused.
+- **Playwright chromium is installed** on this machine (build v1217) for
+  `scripts/boot-smoke.mjs`. Phase 2 adds the full `playwright.config.ts`.
+- Main JS bundle dropped **672 kB → 345 kB** as a side effect of de-servicing.
 
 ### Phase 2 — Share page, OG, tokens ☐
 - [ ] Tokens file committed via design skills; consumed by Tailwind

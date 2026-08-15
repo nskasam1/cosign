@@ -11,7 +11,11 @@ resume from it alone.
 ```
 <repo root>              ← docs (this file, PLAN.md), git root
 └── cosign/
-    └── cosign-app/      ← the entire app (Vite + React SPA; server/ added in Phase 1)
+    └── cosign-app/      ← the entire app
+        ├── src/         ← Vite + React SPA
+        ├── server/      ← Hono + node:sqlite: JSON API, SSR share pages, static prod serving
+        ├── seed/        ← the committed source of truth for all data + imagery
+        └── scripts/     ← evidence capture (boot smoke, command transcripts)
 ```
 
 The double nesting (`cosign/cosign-app`) is historical (the app was a nested repo,
@@ -21,42 +25,48 @@ flattened in commit 177368b). Do not move it — every path below is relative to
 ## Commands
 
 All run from `cosign/cosign-app/`. **npm is canonical** (Node ≥ 24 required — the
-Phase 1 persistence layer uses the built-in `node:sqlite`). The README mentions bun;
-bun is not installed on this machine and its lockfiles are legacy (to be removed in
-Phase 1 — still present).
+persistence layer uses the built-in `node:sqlite`). The bun lockfiles are gone.
 
 | Task | Command | Notes |
 |---|---|---|
 | Install | `npm install` | |
-| Dev server | `npm run dev` | Vite, port 8080 |
-| Production build | `npm run build` | ~45 s; outputs `dist/` |
-| Typecheck | `npx tsc -b` | project refs: app / node / api |
-| Unit tests | `npm test` | Vitest, single run |
-| Lint | `npm run lint` | ESLint flat config |
+| Seed the database | `npm run seed` | one shot, from `seed/` → `server/data/cosign.db` |
+| Dev servers | `npm run dev` | Vite 8080 + Hono 8787 (concurrently); Vite proxies `/api,/img,/s,/p,/og` |
+| Production | `npm run prod` | `vite build` then the server on 8787 serving `dist/` + SSR |
+| Serve existing build | `npm run serve:prod` | skips the rebuild |
+| Typecheck | `npx tsc -b` | project refs: app / node / server |
+| Unit tests | `npm test` | Vitest, single run (~8 s, 49 tests) |
+| Lint | `npm run lint` | ESLint flat config (8 pre-existing warnings, 0 errors) |
+| Bulk shop entry | `npm run import:shops -- f.csv [--dry-run]` | merges by id into `seed/shops.json` |
+| Shops → spreadsheet | `npm run export:shops -- f.csv` | round-trips back through import |
+| Phase 1 evidence | `bash scripts/phase1-evidence.sh` | needs the prod server up |
+| SPA boot smoke | `node scripts/boot-smoke.mjs` | needs the prod server up |
 
-Phase 1 adds `npm run seed` (build the SQLite DB from `seed/`) and `npm run prod`
-(production build + local Hono server on 8787 serving `dist/` and the SSR share
-routes). The Phase 2/5A Lighthouse gates run against `npm run prod` — **never**
+The Phase 2/5A Lighthouse gates run against `npm run prod` — **never**
 `vite preview`, which bypasses SSR and measures the wrong thing.
 
-## Gotchas (verified on this machine, 2026-08-15)
+## Gotchas (verified on this machine, updated 2026-08-15 after Phase 1)
 
-- **The SPA whitescreens at boot today.** `src/integrations/supabase/client.ts` calls
-  `createClient` with env vars that don't exist (there is no `.env`, deliberately), and
-  throws at module load. This is expected until Phase 1 replaces the data layer. Do
-  **not** fix it by creating a `.env` or provisioning Supabase — the brief mandates
-  zero external services (no Supabase, no Google APIs, no keys of any kind, ever).
-- **Vitest startup is ~1–2 min** on this machine because `vitest.config.ts` sets a
-  global `jsdom` environment. For pure-logic tests add `// @vitest-environment node`
-  at the top of the file (or split configs) — node-env tests run in seconds.
-- **Playwright config is dead.** `playwright.config.ts` / `playwright-fixture.ts`
-  import `lovable-agent-playwright-config`, which is not installed and not on npm for
-  us. Replace with a standard config when Playwright evidence is first needed
-  (Phase 2); do not try to install the Lovable package. Zero spec files exist yet.
+- **The app boots and runs entirely locally now.** Supabase/Google/Vercel/Lovable are
+  gone; `server/` (Hono + `node:sqlite`) owns the data. Run `npm run seed` once, then
+  `npm run dev` or `npm run prod`. Never re-introduce a `.env`, a key, or a remote
+  host — the brief mandates zero external services, forever.
+- **The DB is a file lock.** `server/data/cosign.db` cannot be deleted or re-seeded
+  while a server holds it (Windows gives `EPERM`/`Device or resource busy`). Stop the
+  server first, or seed elsewhere with `COSIGN_DB=/tmp/x.db npm run seed`.
+- **Only one process may own :8787.** A second `npm run prod` dies with the port
+  already bound and *looks* like it started. If a check hits a stale instance, free
+  the port first (`Get-NetTCPConnection -LocalPort 8787`).
+- Vitest is fast again (~8 s for 49 tests) — the slow jsdom default is bypassed by
+  `// @vitest-environment node` at the top of pure-logic and server test files. Keep
+  using that pragma; a jsdom-env test file costs ~1 min of startup.
+- **Playwright: browsers are installed** (chromium v1217) and `scripts/boot-smoke.mjs`
+  drives them directly. The old Lovable `playwright.config.ts` is deleted; Phase 2
+  writes a standard config. Zero spec files exist yet.
 - **Windows dev machine.** Paths contain a space (`Vineet Sista`) — always quote.
   Git Bash is available for POSIX scripts; PowerShell 5.1 is the primary shell.
-- **672 kB main JS chunk** after build (everything in one bundle). Code-splitting is a
-  Phase 4 concern; the share page must not ship this bundle at all.
+- **345 kB main JS chunk** after build (down from 672 kB once the external SDKs left).
+  Code-splitting is a Phase 4 concern; the share page must not ship this bundle at all.
 - `tsconfig.json` is loose (`strictNullChecks: false`, `noImplicitAny: false`). Match
   existing style; don't fight it mid-phase.
 
