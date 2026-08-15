@@ -5,10 +5,10 @@ import type { TimeBucket } from "@/types/cosign";
 // bucket matches the viewer's current local time").
 export function currentTimeBucket(date: Date = new Date()): TimeBucket {
   const hour = date.getHours();
+  if (hour >= 22 || hour < 5) return "late_night"; // 10pm–4:59am
   if (hour < 11) return "morning";
   if (hour < 17) return "afternoon";
-  if (hour < 22) return "evening";
-  return "late_night";
+  return "evening";
 }
 
 const STALE_AFTER_DAYS = 60;

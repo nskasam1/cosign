@@ -1,4 +1,5 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,400;1,9..144,300&display=swap');
+/* No remote fonts — zero external services. System stack for now; the
+   committed self-hosted faces land with the Phase 2 design tokens. */
 
 @tailwind base;
 @tailwind components;
@@ -40,7 +41,8 @@
     font-feature-settings: "cv02", "cv03", "cv04", "cv11";
   }
   h1, h2, h3, h4, h5, h6 {
-    font-family: 'Inter', sans-serif;
+    /* inherits the system stack; the self-hosted display face lands with the
+       Phase 2 design tokens */
     font-weight: 700;
     letter-spacing: -0.02em;
   }

@@ -1,0 +1,159 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [-83.0091, 40.0002]
+      },
+      "properties": {
+        "google_maps_url": "http://maps.google.com/?cid=6565845670542078744",
+        "location": {
+          "address": "2044 N High St, Columbus, OH 43201, USA",
+          "name": "Wheelhouse Coffee"
+        }
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [-83.0078, 39.9968]
+      },
+      "properties": {
+        "google_maps_url": "http://maps.google.com/?cid=11418702033644516102",
+        "location": {
+          "address": "1685 N High St, Columbus, OH 43201, USA",
+          "name": "Cricket & Crow"
+        }
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [-82.9986, 40.0158]
+      },
+      "properties": {
+        "google_maps_url": "http://maps.google.com/?cid=3082926038992457333",
+        "location": {
+          "address": "2483 Indianola Ave, Columbus, OH 43202, USA",
+          "name": "Terrazzo"
+        }
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [-83.0067, 39.9891]
+      },
+      "properties": {
+        "google_maps_url": "http://maps.google.com/?cid=8623105419021423801",
+        "location": {
+          "address": "1391 N High St, Columbus, OH 43201, USA",
+          "name": "Night Owl Coffee"
+        }
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [-82.9998, 40.0064]
+      },
+      "properties": {
+        "google_maps_url": "http://maps.google.com/?cid=1497675784869346115",
+        "location": {
+          "address": "240 E Lane Ave, Columbus, OH 43201, USA",
+          "name": "Hackberry Roasters"
+        }
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [-83.0055, 39.9979]
+      },
+      "properties": {
+        "google_maps_url": "http://maps.google.com/?cid=15208245356505663377",
+        "location": {
+          "address": "12 E 15th Ave, Columbus, OH 43201, USA",
+          "name": "Oval Grounds"
+        }
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [-82.9979, 39.9995]
+      },
+      "properties": {
+        "google_maps_url": "http://maps.google.com/?cid=9364439869332374190",
+        "location": {
+          "address": "1871 N 4th St, Columbus, OH 43201, USA",
+          "name": "Marginalia"
+        }
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [-83.0182, 40.0059]
+      },
+      "properties": {
+        "google_maps_url": "http://maps.google.com/?cid=4599532081389360224",
+        "location": {
+          "address": "331 W Lane Ave, Columbus, OH 43201, USA",
+          "name": "The All-Nighter"
+        }
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [-82.9992, 40.0031]
+      },
+      "properties": {
+        "google_maps_url": "http://maps.google.com/?cid=12000353783212859511",
+        "location": {
+          "address": "2200 Summit St, Columbus, OH 43201, USA",
+          "name": "Batch & Crumb Bakery"
+        }
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [-83.0021, 39.9936]
+      },
+      "properties": {
+        "google_maps_url": "http://maps.google.com/?cid=14150750379401974746",
+        "location": {
+          "address": "833 Chittenden Ave, Columbus, OH 43201, USA",
+          "name": "The Copper Finch Cafe"
+        }
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [-82.9945, 40.0031]
+      },
+      "properties": {
+        "google_maps_url": "http://maps.google.com/?cid=6405834917122702491",
+        "location": {
+          "address": "2145 Iuka Ave, Columbus, OH 43201, USA",
+          "name": "Iuka Ridge Branch Library"
+        }
+      }
+    }
+  ]
+}

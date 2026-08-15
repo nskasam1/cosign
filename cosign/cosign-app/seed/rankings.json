@@ -1,0 +1,192 @@
+{
+  "u_maya": {
+    "final": [
+      "s_lantern-lane",
+      "s_cricket-and-crow",
+      "s_copper-kettle",
+      "s_hackberry",
+      "s_marginalia",
+      "s_bramble",
+      "s_wheelhouse",
+      "s_terrazzo",
+      "s_juniper",
+      "s_south-porch",
+      "s_cardinal-and-vine",
+      "s_tulip-tree",
+      "s_foundry",
+      "s_grandview-social",
+      "s_bexley-common",
+      "s_short-north-drip",
+      "s_high-street-standard",
+      "s_petal-and-bean",
+      "s_oval-grounds",
+      "s_percolate",
+      "s_night-owl",
+      "s_all-nighter"
+    ],
+    "arrival": [
+      "s_oval-grounds",
+      "s_wheelhouse",
+      "s_hackberry",
+      "s_foundry",
+      "s_terrazzo",
+      "s_lantern-lane",
+      "s_cricket-and-crow",
+      "s_percolate",
+      "s_marginalia",
+      "s_night-owl",
+      "s_copper-kettle",
+      "s_high-street-standard",
+      "s_bramble",
+      "s_juniper",
+      "s_south-porch",
+      "s_all-nighter",
+      "s_petal-and-bean",
+      "s_grandview-social",
+      "s_short-north-drip",
+      "s_tulip-tree",
+      "s_bexley-common",
+      "s_cardinal-and-vine"
+    ]
+  },
+  "u_dev": {
+    "final": [
+      "s_foundry",
+      "s_marginalia",
+      "s_wheelhouse",
+      "s_percolate",
+      "s_high-street-standard",
+      "s_juniper",
+      "s_oval-grounds",
+      "s_hackberry",
+      "s_night-owl",
+      "s_grandview-social"
+    ],
+    "arrival": [
+      "s_oval-grounds",
+      "s_wheelhouse",
+      "s_foundry",
+      "s_hackberry",
+      "s_percolate",
+      "s_night-owl",
+      "s_marginalia",
+      "s_high-street-standard",
+      "s_grandview-social",
+      "s_juniper"
+    ]
+  },
+  "u_june": {
+    "final": [
+      "s_terrazzo",
+      "s_tulip-tree",
+      "s_cardinal-and-vine",
+      "s_lantern-lane",
+      "s_juniper",
+      "s_petal-and-bean",
+      "s_bramble",
+      "s_short-north-drip",
+      "s_south-porch",
+      "s_grandview-social"
+    ],
+    "arrival": [
+      "s_lantern-lane",
+      "s_terrazzo",
+      "s_petal-and-bean",
+      "s_tulip-tree",
+      "s_bramble",
+      "s_cardinal-and-vine",
+      "s_short-north-drip",
+      "s_juniper",
+      "s_grandview-social",
+      "s_south-porch"
+    ]
+  },
+  "u_theo": {
+    "final": [
+      "s_night-owl",
+      "s_all-nighter",
+      "s_foundry",
+      "s_high-street-standard",
+      "s_grandview-social",
+      "s_wheelhouse",
+      "s_short-north-drip",
+      "s_oval-grounds"
+    ],
+    "arrival": [
+      "s_all-nighter",
+      "s_night-owl",
+      "s_oval-grounds",
+      "s_wheelhouse",
+      "s_foundry",
+      "s_grandview-social",
+      "s_high-street-standard",
+      "s_short-north-drip"
+    ]
+  },
+  "u_priya": {
+    "final": [
+      "s_bexley-common",
+      "s_grandview-social",
+      "s_foundry",
+      "s_wheelhouse",
+      "s_south-porch",
+      "s_oval-grounds",
+      "s_high-street-standard",
+      "s_copper-kettle",
+      "s_terrazzo"
+    ],
+    "arrival": [
+      "s_oval-grounds",
+      "s_foundry",
+      "s_bexley-common",
+      "s_wheelhouse",
+      "s_grandview-social",
+      "s_terrazzo",
+      "s_south-porch",
+      "s_copper-kettle",
+      "s_high-street-standard"
+    ]
+  },
+  "u_sam": {
+    "final": [
+      "s_hackberry",
+      "s_short-north-drip",
+      "s_copper-kettle",
+      "s_juniper",
+      "s_terrazzo",
+      "s_percolate",
+      "s_wheelhouse",
+      "s_oval-grounds",
+      "s_petal-and-bean"
+    ],
+    "arrival": [
+      "s_hackberry",
+      "s_oval-grounds",
+      "s_wheelhouse",
+      "s_copper-kettle",
+      "s_short-north-drip",
+      "s_percolate",
+      "s_terrazzo",
+      "s_juniper",
+      "s_petal-and-bean"
+    ]
+  },
+  "u_lena": {
+    "final": [
+      "s_oval-grounds",
+      "s_percolate",
+      "s_high-street-standard",
+      "s_wheelhouse",
+      "s_short-north-drip",
+      "s_juniper"
+    ],
+    "arrival": [
+      "s_percolate",
+      "s_oval-grounds",
+      "s_wheelhouse",
+      "s_high-street-standard",
+      "s_juniper",
+      "s_short-north-drip"
+    ]
+  }
+}

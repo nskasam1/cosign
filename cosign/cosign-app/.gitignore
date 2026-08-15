@@ -1,5 +1,6 @@
-# Logs
-logs
+# Logs. Anchored: a bare `logs` also matches seed/images/logs/, which would
+# silently drop 40 committed per-log seed images.
+/logs/
 *.log
 npm-debug.log*
 yarn-debug.log*

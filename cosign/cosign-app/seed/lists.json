@@ -1,0 +1,614 @@
+[
+ {
+  "id": "l_our-campus-ranking",
+  "owner_id": "u_maya",
+  "title": "our ranking of campus coffee",
+  "visibility": "friends",
+  "is_collaborative": true,
+  "editors": [
+   "u_dev",
+   "u_june"
+  ],
+  "items": [
+   {
+    "shop_id": "s_lantern-lane",
+    "added_by": "u_maya",
+    "note": "the corner table by the window is the whole point"
+   },
+   {
+    "shop_id": "s_foundry",
+    "added_by": "u_dev",
+    "note": "outlets at every table and nobody talks to you"
+   },
+   {
+    "shop_id": "s_terrazzo",
+    "added_by": "u_june",
+    "note": "the 4pm light in here should be studied"
+   },
+   {
+    "shop_id": "s_hackberry",
+    "added_by": "u_maya",
+    "note": "the cortado that ruined other cortados for me"
+   },
+   {
+    "shop_id": "s_marginalia",
+    "added_by": "u_dev",
+    "note": "quiet enough to think, shelves close enough to distract you"
+   },
+   {
+    "shop_id": "s_cricket-and-crow",
+    "added_by": "u_june",
+    "note": "mismatched chairs, all of them somehow right"
+   }
+  ],
+  "created_at": "2026-04-10T17:30:00-04:00"
+ },
+ {
+  "id": "l_rainy-day-rotation",
+  "owner_id": "u_maya",
+  "title": "rainy day rotation",
+  "visibility": "friends",
+  "is_collaborative": false,
+  "editors": [],
+  "items": [
+   {
+    "shop_id": "s_copper-kettle",
+    "added_by": "u_maya",
+    "note": "steam on the windows and nobody rushes you"
+   },
+   {
+    "shop_id": "s_cricket-and-crow",
+    "added_by": "u_maya",
+    "note": "reads like a novel you don't want to end"
+   },
+   {
+    "shop_id": "s_bramble",
+    "added_by": "u_maya",
+    "note": "somehow smells like rain even when it isn't"
+   },
+   {
+    "shop_id": "s_marginalia",
+    "added_by": "u_maya"
+   }
+  ],
+  "created_at": "2026-05-02T11:10:00-04:00"
+ },
+ {
+  "id": "l_take-your-parents-here",
+  "owner_id": "u_maya",
+  "title": "take your parents here",
+  "visibility": "public",
+  "is_collaborative": false,
+  "editors": [],
+  "items": [
+   {
+    "shop_id": "s_copper-kettle",
+    "added_by": "u_maya",
+    "note": "dad will love the mugs"
+   },
+   {
+    "shop_id": "s_south-porch",
+    "added_by": "u_maya",
+    "note": "porch seats and not a laptop in sight"
+   },
+   {
+    "shop_id": "s_lantern-lane",
+    "added_by": "u_maya",
+    "note": "warm enough that mom stops asking if you're eating"
+   },
+   {
+    "shop_id": "s_wheelhouse",
+    "added_by": "u_maya"
+   }
+  ],
+  "created_at": "2026-06-20T09:45:00-04:00"
+ },
+ {
+  "id": "l_saturday-slow-mornings",
+  "owner_id": "u_maya",
+  "title": "saturday slow mornings",
+  "visibility": "friends",
+  "is_collaborative": false,
+  "editors": [],
+  "items": [
+   {
+    "shop_id": "s_bramble",
+    "added_by": "u_maya",
+    "note": "get there before the pastry case empties"
+   },
+   {
+    "shop_id": "s_juniper",
+    "added_by": "u_maya"
+   },
+   {
+    "shop_id": "s_tulip-tree",
+    "added_by": "u_maya",
+    "note": "sit under the skylight, trust me"
+   }
+  ],
+  "created_at": "2026-07-12T10:20:00-04:00"
+ },
+ {
+  "id": "l_outlets-that-actually-work",
+  "owner_id": "u_dev",
+  "title": "outlets that actually work",
+  "visibility": "friends",
+  "is_collaborative": false,
+  "editors": [],
+  "items": [
+   {
+    "shop_id": "s_foundry",
+    "added_by": "u_dev",
+    "note": "every table, tested personally"
+   },
+   {
+    "shop_id": "s_marginalia",
+    "added_by": "u_dev",
+    "note": "the back wall row is the move"
+   },
+   {
+    "shop_id": "s_high-street-standard",
+    "added_by": "u_dev",
+    "note": "outlets are a lie after 10am — come at 9"
+   },
+   {
+    "shop_id": "s_percolate",
+    "added_by": "u_dev"
+   }
+  ],
+  "created_at": "2026-04-15T08:50:00-04:00"
+ },
+ {
+  "id": "l_quiet-after-eight",
+  "owner_id": "u_dev",
+  "title": "quiet after eight",
+  "visibility": "friends",
+  "is_collaborative": false,
+  "editors": [],
+  "items": [
+   {
+    "shop_id": "s_marginalia",
+    "added_by": "u_dev",
+    "note": "library rules without the library"
+   },
+   {
+    "shop_id": "s_foundry",
+    "added_by": "u_dev"
+   },
+   {
+    "shop_id": "s_night-owl",
+    "added_by": "u_dev",
+    "note": "quiet in the way only 11pm is"
+   }
+  ],
+  "created_at": "2026-05-22T20:15:00-04:00"
+ },
+ {
+  "id": "l_wifi-you-can-trust",
+  "owner_id": "u_dev",
+  "title": "wifi you can trust",
+  "visibility": "public",
+  "is_collaborative": false,
+  "editors": [],
+  "items": [
+   {
+    "shop_id": "s_foundry",
+    "added_by": "u_dev",
+    "note": "held through a 90-minute video call, twice"
+   },
+   {
+    "shop_id": "s_wheelhouse",
+    "added_by": "u_dev"
+   },
+   {
+    "shop_id": "s_percolate",
+    "added_by": "u_dev",
+    "note": "upload speeds that make no sense for a coffee shop"
+   },
+   {
+    "shop_id": "s_juniper",
+    "added_by": "u_dev"
+   }
+  ],
+  "created_at": "2026-06-30T13:05:00-04:00"
+ },
+ {
+  "id": "l_first-date-safe-picks",
+  "owner_id": "u_june",
+  "title": "first date safe picks",
+  "visibility": "friends",
+  "is_collaborative": false,
+  "editors": [],
+  "items": [
+   {
+    "shop_id": "s_cardinal-and-vine",
+    "added_by": "u_june",
+    "note": "enough corners that a quiet moment feels cozy, not awkward"
+   },
+   {
+    "shop_id": "s_lantern-lane",
+    "added_by": "u_june",
+    "note": "warm light does half the talking"
+   },
+   {
+    "shop_id": "s_terrazzo",
+    "added_by": "u_june",
+    "note": "if the date is bad, the room is still good"
+   },
+   {
+    "shop_id": "s_tulip-tree",
+    "added_by": "u_june"
+   }
+  ],
+  "created_at": "2026-04-20T16:40:00-04:00"
+ },
+ {
+  "id": "l_golden-hour-windows",
+  "owner_id": "u_june",
+  "title": "golden hour windows",
+  "visibility": "friends",
+  "is_collaborative": false,
+  "editors": [],
+  "items": [
+   {
+    "shop_id": "s_terrazzo",
+    "added_by": "u_june",
+    "note": "west windows, 4 to 6, no notes"
+   },
+   {
+    "shop_id": "s_tulip-tree",
+    "added_by": "u_june",
+    "note": "the skylight does the work"
+   },
+   {
+    "shop_id": "s_south-porch",
+    "added_by": "u_june"
+   },
+   {
+    "shop_id": "s_juniper",
+    "added_by": "u_june",
+    "note": "white walls turn gold at 5pm"
+   }
+  ],
+  "created_at": "2026-05-18T17:55:00-04:00"
+ },
+ {
+  "id": "l_prettiest-cups",
+  "owner_id": "u_june",
+  "title": "prettiest cups in columbus",
+  "visibility": "public",
+  "is_collaborative": false,
+  "editors": [],
+  "items": [
+   {
+    "shop_id": "s_petal-and-bean",
+    "added_by": "u_june",
+    "note": "the latte art deserves its own account"
+   },
+   {
+    "shop_id": "s_juniper",
+    "added_by": "u_june"
+   },
+   {
+    "shop_id": "s_terrazzo",
+    "added_by": "u_june"
+   },
+   {
+    "shop_id": "s_short-north-drip",
+    "added_by": "u_june",
+    "note": "even the to-go cups are trying"
+   }
+  ],
+  "created_at": "2026-07-01T12:30:00-04:00"
+ },
+ {
+  "id": "l_late-night-defense",
+  "owner_id": "u_theo",
+  "title": "late night defense",
+  "visibility": "friends",
+  "is_collaborative": false,
+  "editors": [],
+  "items": [
+   {
+    "shop_id": "s_night-owl",
+    "added_by": "u_theo",
+    "note": "open till 2 and means it"
+   },
+   {
+    "shop_id": "s_all-nighter",
+    "added_by": "u_theo",
+    "note": "24 hours, zero judgment at 4am"
+   },
+   {
+    "shop_id": "s_foundry",
+    "added_by": "u_theo",
+    "note": "midnight close, generous about the last hour"
+   }
+  ],
+  "created_at": "2026-04-08T23:50:00-04:00"
+ },
+ {
+  "id": "l_open-past-midnight-actually",
+  "owner_id": "u_theo",
+  "title": "open past midnight, actually",
+  "visibility": "friends",
+  "is_collaborative": false,
+  "editors": [],
+  "items": [
+   {
+    "shop_id": "s_all-nighter",
+    "added_by": "u_theo",
+    "note": "the hours on the door are real"
+   },
+   {
+    "shop_id": "s_night-owl",
+    "added_by": "u_theo"
+   },
+   {
+    "shop_id": "s_high-street-standard",
+    "added_by": "u_theo",
+    "note": "1am on weekends, don't tell everyone"
+   }
+  ],
+  "created_at": "2026-05-30T00:35:00-04:00"
+ },
+ {
+  "id": "l_finals-week-triage",
+  "owner_id": "u_theo",
+  "title": "finals week triage",
+  "visibility": "friends",
+  "is_collaborative": false,
+  "editors": [],
+  "items": [
+   {
+    "shop_id": "s_all-nighter",
+    "added_by": "u_theo",
+    "note": "your 3am self will thank you"
+   },
+   {
+    "shop_id": "s_foundry",
+    "added_by": "u_theo"
+   },
+   {
+    "shop_id": "s_night-owl",
+    "added_by": "u_theo",
+    "note": "refills get cheaper as the night gets longer"
+   }
+  ],
+  "created_at": "2026-08-01T22:10:00-04:00"
+ },
+ {
+  "id": "l_six-people-one-table",
+  "owner_id": "u_priya",
+  "title": "six people, one table",
+  "visibility": "friends",
+  "is_collaborative": false,
+  "editors": [],
+  "items": [
+   {
+    "shop_id": "s_bexley-common",
+    "added_by": "u_priya",
+    "note": "the long table in back seats eight; fights for it are polite but real"
+   },
+   {
+    "shop_id": "s_grandview-social",
+    "added_by": "u_priya",
+    "note": "nobody shushes you here"
+   },
+   {
+    "shop_id": "s_wheelhouse",
+    "added_by": "u_priya"
+   },
+   {
+    "shop_id": "s_south-porch",
+    "added_by": "u_priya",
+    "note": "push two tables together, staff doesn't blink"
+   }
+  ],
+  "created_at": "2026-04-25T14:00:00-04:00"
+ },
+ {
+  "id": "l_group-project-war-rooms",
+  "owner_id": "u_priya",
+  "title": "group project war rooms",
+  "visibility": "friends",
+  "is_collaborative": false,
+  "editors": [],
+  "items": [
+   {
+    "shop_id": "s_bexley-common",
+    "added_by": "u_priya",
+    "note": "outlet strip down the middle of the big table — someone planned this"
+   },
+   {
+    "shop_id": "s_foundry",
+    "added_by": "u_priya",
+    "note": "loud enough to argue about slides"
+   },
+   {
+    "shop_id": "s_grandview-social",
+    "added_by": "u_priya"
+   }
+  ],
+  "created_at": "2026-06-05T18:25:00-04:00"
+ },
+ {
+  "id": "l_presentation-day-fuel",
+  "owner_id": "u_priya",
+  "title": "presentation day fuel",
+  "visibility": "friends",
+  "is_collaborative": false,
+  "editors": [],
+  "items": [
+   {
+    "shop_id": "s_oval-grounds",
+    "added_by": "u_priya",
+    "note": "in and out before the 9am"
+   },
+   {
+    "shop_id": "s_percolate",
+    "added_by": "u_priya"
+   },
+   {
+    "shop_id": "s_high-street-standard",
+    "added_by": "u_priya"
+   }
+  ],
+  "created_at": "2026-07-20T07:55:00-04:00"
+ },
+ {
+  "id": "l_the-cup-is-the-point",
+  "owner_id": "u_sam",
+  "title": "the cup is the point",
+  "visibility": "public",
+  "is_collaborative": false,
+  "editors": [],
+  "items": [
+   {
+    "shop_id": "s_hackberry",
+    "added_by": "u_sam",
+    "note": "they weigh the beans. they weigh everything."
+   },
+   {
+    "shop_id": "s_short-north-drip",
+    "added_by": "u_sam",
+    "note": "a drip menu with tasting notes that are actually true"
+   },
+   {
+    "shop_id": "s_copper-kettle",
+    "added_by": "u_sam"
+   },
+   {
+    "shop_id": "s_juniper",
+    "added_by": "u_sam",
+    "note": "single-origin rotation changes weekly — get whatever's on"
+   }
+  ],
+  "created_at": "2026-04-12T09:15:00-04:00"
+ },
+ {
+  "id": "l_best-drip-in-columbus",
+  "owner_id": "u_sam",
+  "title": "best drip in columbus",
+  "visibility": "friends",
+  "is_collaborative": false,
+  "editors": [],
+  "items": [
+   {
+    "shop_id": "s_short-north-drip",
+    "added_by": "u_sam",
+    "note": "it's in the name and they earn it"
+   },
+   {
+    "shop_id": "s_hackberry",
+    "added_by": "u_sam"
+   },
+   {
+    "shop_id": "s_percolate",
+    "added_by": "u_sam",
+    "note": "surprisingly serious for a grab-and-go"
+   }
+  ],
+  "created_at": "2026-05-25T10:40:00-04:00"
+ },
+ {
+  "id": "l_espresso-worth-the-walk",
+  "owner_id": "u_sam",
+  "title": "espresso worth the walk",
+  "visibility": "friends",
+  "is_collaborative": false,
+  "editors": [],
+  "items": [
+   {
+    "shop_id": "s_hackberry",
+    "added_by": "u_sam",
+    "note": "the shot stands alone, no sugar required"
+   },
+   {
+    "shop_id": "s_copper-kettle",
+    "added_by": "u_sam"
+   },
+   {
+    "shop_id": "s_terrazzo",
+    "added_by": "u_sam",
+    "note": "pretty room, real machine"
+   }
+  ],
+  "created_at": "2026-07-08T08:20:00-04:00"
+ },
+ {
+  "id": "l_between-classes",
+  "owner_id": "u_lena",
+  "title": "between classes",
+  "visibility": "friends",
+  "is_collaborative": false,
+  "editors": [],
+  "items": [
+   {
+    "shop_id": "s_oval-grounds",
+    "added_by": "u_lena",
+    "note": "four minutes from the oval and they know the rush"
+   },
+   {
+    "shop_id": "s_percolate",
+    "added_by": "u_lena",
+    "note": "the line moves like they respect your schedule"
+   },
+   {
+    "shop_id": "s_high-street-standard",
+    "added_by": "u_lena"
+   }
+  ],
+  "created_at": "2026-05-10T12:05:00-04:00"
+ },
+ {
+  "id": "l_ten-minutes-or-less",
+  "owner_id": "u_lena",
+  "title": "ten minutes or less",
+  "visibility": "friends",
+  "is_collaborative": false,
+  "editors": [],
+  "items": [
+   {
+    "shop_id": "s_percolate",
+    "added_by": "u_lena",
+    "note": "order ahead actually works here"
+   },
+   {
+    "shop_id": "s_oval-grounds",
+    "added_by": "u_lena"
+   },
+   {
+    "shop_id": "s_wheelhouse",
+    "added_by": "u_lena",
+    "note": "counter seats for when you have exactly one chapter to read"
+   }
+  ],
+  "created_at": "2026-06-18T15:30:00-04:00"
+ },
+ {
+  "id": "l_drip-only",
+  "owner_id": "u_lena",
+  "title": "just the coffee, no ceremony",
+  "visibility": "friends",
+  "is_collaborative": false,
+  "editors": [],
+  "items": [
+   {
+    "shop_id": "s_short-north-drip",
+    "added_by": "u_lena",
+    "note": "drip is $2.50 and nobody asks what I do"
+   },
+   {
+    "shop_id": "s_juniper",
+    "added_by": "u_lena"
+   },
+   {
+    "shop_id": "s_high-street-standard",
+    "added_by": "u_lena",
+    "note": "reliable in the way a bus route is reliable"
+   }
+  ],
+  "created_at": "2026-07-02T08:15:00-04:00"
+ }
+]

@@ -1,6 +1,6 @@
 import { ReactNode } from "react";
 import { useAuth } from "@/hooks/useAuth";
-import LoginScreen from "./LoginScreen";
+import UserSwitcher from "./UserSwitcher";
 
 const RequireAuth = ({ children }: { children: ReactNode }) => {
   const { user, loading } = useAuth();
@@ -13,7 +13,7 @@ const RequireAuth = ({ children }: { children: ReactNode }) => {
     );
   }
 
-  if (!user) return <LoginScreen />;
+  if (!user) return <UserSwitcher />;
 
   return <>{children}</>;
 };

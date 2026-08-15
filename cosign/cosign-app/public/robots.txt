@@ -1,14 +1,8 @@
-User-agent: Googlebot
-Allow: /
-
-User-agent: Bingbot
-Allow: /
-
-User-agent: Twitterbot
-Allow: /
-
-User-agent: facebookexternalhit
-Allow: /
-
+# Share links are unlisted and revocable (decision 12): they are meant to be
+# passed to a person, not indexed. Crawling them would make "revocable"
+# meaningless the moment a link is shared.
 User-agent: *
 Allow: /
+Disallow: /s/
+Disallow: /p/
+Disallow: /og/

@@ -1,41 +1,56 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Check } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
+import { Coffee } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
-import { useProfile } from "@/hooks/useProfile";
-import type { Shop } from "@/types/cosign";
+import { api, type ShopSummary } from "@/lib/api";
 
-// Phase 3.1. The brief's ideal path is importing Google Maps saved places;
-// that needs a Places API scope beyond autocomplete (reading a user's
-// saved-places list) that isn't wired up yet, so this ships the brief's
-// named fallback instead: pick 3 already-seeded shops into a starter list,
-// so nobody lands on an empty profile on day one. Swap in the Maps import
-// later without changing steps 1–2.
-const OSU_SLUG = "osu";
-
+// Stub onboarding (the brief's "signup"): make a name+school profile, then
+// pick up to 3 starter spots into a first list. Google Maps saved-places
+// import (Takeout fixtures) joins this flow in Phase 5A.
 const Onboarding = () => {
-  const { user } = useAuth();
-  const { createProfile } = useProfile();
+  const { user, createAccount, refresh } = useAuth();
   const navigate = useNavigate();
 
-  const [step, setStep] = useState<1 | 2>(1);
+  const [step, setStep] = useState<1 | 2>(user ? 2 : 1);
   const [username, setUsername] = useState("");
-  const [saving, setSaving] = useState(false);
-  const [shops, setShops] = useState<Shop[]>([]);
+  const [displayName, setDisplayName] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+
+  const [shops, setShops] = useState<ShopSummary[]>([]);
   const [picked, setPicked] = useState<Set<string>>(new Set());
+  const [schools, setSchools] = useState<Array<{ id: string; name: string }>>([]);
+  const [schoolId, setSchoolId] = useState<string>("");
 
   useEffect(() => {
-    supabase.from("shops").select("*").limit(30).then(({ data }) => setShops((data ?? []) as Shop[]));
+    api.shops().then(({ shops }) => setShops(shops));
+    api.meta().then(({ schools }) => {
+      setSchools(schools);
+      setSchoolId((prev) => prev || schools[0]?.id || "");
+    });
   }, []);
 
-  const finishStepOne = async () => {
-    if (!username.trim() || !user) return;
-    setSaving(true);
-    const { data: school } = await supabase.from("schools").select("id").eq("slug", OSU_SLUG).single();
-    const error = await createProfile(username.trim(), { school_id: school?.id ?? null });
-    setSaving(false);
-    if (!error) setStep(2);
+  // `user` is null on first render while /api/me is in flight, so the step
+  // can't be decided from it up front — skip the profile step once it lands.
+  useEffect(() => {
+    if (user) setStep(2);
+  }, [user]);
+
+  const submitProfile = async () => {
+    setBusy(true);
+    setError(null);
+    try {
+      await createAccount({
+        username: username.trim(),
+        display_name: displayName.trim(),
+        school_id: schoolId,
+      });
+      setStep(2);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Something went wrong");
+    } finally {
+      setBusy(false);
+    }
   };
 
   const togglePick = (id: string) => {
@@ -48,79 +63,99 @@ const Onboarding = () => {
   };
 
   const finish = async () => {
-    if (!user) return;
-    setSaving(true);
-    const { data: list } = await supabase
-      .from("lists")
-      .insert({ title: "My Spots", owner_id: user.id })
-      .select()
-      .single();
-    if (list) {
-      await supabase.from("list_items").insert(
-        Array.from(picked).map((shop_id, i) => ({
-          list_id: list.id,
-          shop_id,
-          added_by: user.id,
-          position: i,
-        }))
-      );
+    setBusy(true);
+    try {
+      if (picked.size > 0) {
+        const { list } = await api.createList({ title: "My spots" });
+        for (const shopId of picked) await api.addListItem(list.id, shopId);
+      }
+      await refresh();
+      navigate("/");
+    } finally {
+      setBusy(false);
     }
-    setSaving(false);
-    navigate(`/${username.trim()}`);
   };
 
   return (
-    <div className="min-h-screen flex flex-col px-6 py-10">
+    <div className="min-h-screen px-5 py-10 max-w-md mx-auto">
       {step === 1 ? (
-        <div className="flex-1 flex flex-col gap-4 max-w-xs mx-auto w-full">
-          <h1 className="text-2xl font-black text-foreground">Pick a username</h1>
-          <p className="text-sm text-muted-foreground">
-            You're on Ohio State — Cosign is scoped to one campus for now.
+        <div>
+          <Coffee className="w-8 h-8 text-primary mb-3" />
+          <h1 className="text-2xl font-black text-foreground mb-1">Make your profile</h1>
+          <p className="text-sm text-muted-foreground mb-6">
+            A name and a school. That's the whole signup.
           </p>
+          <label className="block text-sm text-muted-foreground mb-1" htmlFor="ob-name">Your name</label>
           <input
-            autoFocus
-            value={username}
-            onChange={(e) => setUsername(e.target.value.replace(/\s/g, ""))}
-            placeholder="username"
-            className="bg-card border border-border rounded-2xl px-4 py-3 text-foreground"
+            id="ob-name"
+            value={displayName}
+            onChange={(e) => setDisplayName(e.target.value)}
+            className="w-full rounded-xl bg-card border border-border p-3 mb-4 text-foreground"
+            placeholder="Sam Whitfield"
           />
+          <label className="block text-sm text-muted-foreground mb-1" htmlFor="ob-username">Username</label>
+          <input
+            id="ob-username"
+            value={username}
+            onChange={(e) => setUsername(e.target.value)}
+            className="w-full rounded-xl bg-card border border-border p-3 mb-2 text-foreground"
+            placeholder="sam"
+          />
+          <p className="block text-sm text-muted-foreground mb-1" id="ob-school-label">Your school</p>
+          <div className="flex flex-wrap gap-2 mb-4" role="group" aria-labelledby="ob-school-label">
+            {schools.map((s) => (
+              <button
+                key={s.id}
+                onClick={() => setSchoolId(s.id)}
+                aria-pressed={schoolId === s.id}
+                className={`rounded-full border px-4 py-2 text-sm min-h-[44px] ${
+                  schoolId === s.id ? "border-primary text-primary bg-primary/10" : "border-border text-muted-foreground"
+                }`}
+              >
+                {s.name}
+              </button>
+            ))}
+          </div>
+          {error && <p className="text-sm text-destructive mb-3">{error}</p>}
           <button
-            onClick={finishStepOne}
-            disabled={!username.trim() || saving}
-            className="mt-2 bg-primary text-primary-foreground rounded-2xl py-3 font-semibold disabled:opacity-50"
+            onClick={submitProfile}
+            disabled={busy || !username.trim() || !displayName.trim() || !schoolId}
+            className="w-full rounded-xl bg-primary text-primary-foreground font-semibold p-3 disabled:opacity-50 min-h-[44px]"
           >
-            {saving ? "Saving…" : "Continue"}
+            {busy ? "Making it…" : "That's me"}
           </button>
         </div>
       ) : (
-        <div className="flex-1 flex flex-col gap-4 max-w-sm mx-auto w-full">
-          <h1 className="text-2xl font-black text-foreground">Add your first 3 spots</h1>
-          <p className="text-sm text-muted-foreground">
-            Pick a few shops you already know — you can rank and add more later.
+        <div>
+          <h1 className="text-2xl font-black text-foreground mb-1">Pick your spots</h1>
+          <p className="text-sm text-muted-foreground mb-6">
+            Up to three places you already trust. They start your first list.
           </p>
-          <div className="flex flex-col gap-2 max-h-[50vh] overflow-y-auto">
-            {shops.map((shop) => (
+          <div className="grid gap-2 mb-6">
+            {shops.map((s) => (
               <button
-                key={shop.id}
-                onClick={() => togglePick(shop.id)}
-                className={`flex items-center justify-between rounded-2xl border p-3 text-left ${
-                  picked.has(shop.id) ? "border-primary bg-primary/10" : "border-border bg-card"
+                key={s.id}
+                onClick={() => togglePick(s.id)}
+                aria-pressed={picked.has(s.id)}
+                className={`rounded-2xl border p-3 flex items-center gap-3 text-left min-h-[44px] ${
+                  picked.has(s.id) ? "border-primary bg-primary/10" : "border-border bg-card"
                 }`}
               >
-                <span className="text-sm font-semibold text-foreground">{shop.name}</span>
-                {picked.has(shop.id) && <Check className="w-4 h-4 text-primary" />}
+                {s.photo ? (
+                  <img src={s.photo} alt="" className="w-10 h-10 rounded-xl object-cover" loading="lazy" />
+                ) : (
+                  <span className="w-10 h-10 rounded-xl bg-muted grid place-items-center text-primary">☕</span>
+                )}
+                <span className="text-sm font-semibold text-foreground">{s.name}</span>
               </button>
             ))}
-            {shops.length === 0 && (
-              <p className="text-sm text-muted-foreground">No shops seeded for your campus yet — check back soon.</p>
-            )}
           </div>
           <button
             onClick={finish}
-            disabled={saving}
-            className="mt-2 bg-primary text-primary-foreground rounded-2xl py-3 font-semibold disabled:opacity-50"
+            disabled={busy}
+            className="w-full rounded-xl bg-primary text-primary-foreground font-semibold p-3 disabled:opacity-50 min-h-[44px]"
           >
-            {saving ? "Saving…" : picked.size > 0 ? `Add ${picked.size} and finish` : "Skip for now"}
+            {busy ? "Saving…" : picked.size > 0 ? `Start with ${picked.size}` : "Skip for now"}
           </button>
         </div>
       )}

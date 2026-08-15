@@ -3,8 +3,9 @@
 Social place-discovery for college students: places near campus, cosigned by the
 people you'd actually ask. One person's ranked list, shared as one link. Rebuilt
 from its previous incarnation as a solo coffee-logging app ("Sip") — see
-`MIGRATION_NOTES.md` for the original migration audit, and `../../PLAN.md` at the
-repo root for the current build plan, architecture decisions, and status.
+`MIGRATION_NOTES.md` for the original migration audit (historical — it predates
+the local-server rebuild), and `../../PLAN.md` at the repo root for the current
+build plan, architecture decisions, and status.
 
 ## Stack
 

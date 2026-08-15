@@ -1,17 +1,23 @@
-import { supabase } from "@/integrations/supabase/client";
-import type { Json } from "@/integrations/supabase/types";
+// Local analytics: fire-and-forget into the server's events table. Data
+// never leaves this machine (decision 11). Event names live here so the
+// north-star query and the UI agree on spelling.
 
-// Phase 5.4 — instrumentation from day one, even with no dashboard yet.
-// The brief names one metric explicitly as the real signal for whether
-// the retention loop works: weekly returning users who logged nothing.
-// That's computed later from these raw events (a query over `rankings`
-// vs. distinct users active per week), not tracked as its own event here.
-export function track(event: string, props?: Record<string, Json>) {
-  supabase.auth.getUser().then(({ data }) => {
-    supabase.from("analytics_events").insert({
-      user_id: data.user?.id ?? null,
-      event,
-      props: props ?? null,
-    });
+export type AnalyticsEvent =
+  | "app_open"
+  | "log_created"
+  | "share_viewed"
+  | "share_created"
+  | "shop_viewed"
+  | "freshness_confirmed"
+  | "ranking_inserted";
+
+export function track(event: AnalyticsEvent, props: Record<string, unknown> = {}): void {
+  void fetch("/api/events", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    credentials: "same-origin",
+    body: JSON.stringify({ event, props }),
+  }).catch(() => {
+    // analytics must never break the app
   });
 }

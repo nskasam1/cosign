@@ -21,7 +21,7 @@
       "path": "./tsconfig.node.json"
     },
     {
-      "path": "./tsconfig.api.json"
+      "path": "./tsconfig.server.json"
     }
   ]
 }

@@ -18,10 +18,12 @@ export default {
       },
     },
     extend: {
+      // System stacks only — nothing here may name a face we do not ship.
+      // Phase 2 replaces these with the self-hosted display/body pair.
       fontFamily: {
-        sans: ["'Inter'", "system-ui", "sans-serif"],
-        serif: ["'Fraunces'", "serif"],
-        mono: ["'JetBrains Mono'", "monospace"],
+        sans: ["system-ui", "-apple-system", "Segoe UI", "Roboto", "sans-serif"],
+        serif: ["Georgia", "Cambria", "Times New Roman", "serif"],
+        mono: ["ui-monospace", "SFMono-Regular", "Consolas", "monospace"],
       },
       colors: {
         border: "hsl(var(--border))",

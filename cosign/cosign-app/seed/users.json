@@ -1,0 +1,82 @@
+[
+  {
+    "id": "u_maya",
+    "username": "maya",
+    "display_name": "Maya Okafor",
+    "school": "osu",
+    "taste_line": "warm light and worn wood win every tiebreaker, and I will defend my rankings",
+    "signature_order": "cortado, whole milk",
+    "avatar": "/img/avatars/maya.svg",
+    "created_at": "2026-01-12T09:30:00-05:00"
+  },
+  {
+    "id": "u_dev",
+    "username": "dev",
+    "display_name": "Dev Raghunathan",
+    "school": "osu",
+    "taste_line": "two outlets and silence; everything else is decoration",
+    "signature_order": "cold brew, black, large",
+    "avatar": "/img/avatars/dev.svg",
+    "created_at": "2026-01-15T14:02:00-05:00"
+  },
+  {
+    "id": "u_june",
+    "username": "june",
+    "display_name": "June Park",
+    "school": "osu",
+    "taste_line": "will walk 20 minutes for good natural light",
+    "signature_order": "iced oat latte, light ice",
+    "avatar": "/img/avatars/june.svg",
+    "created_at": "2026-01-20T11:45:00-05:00"
+  },
+  {
+    "id": "u_theo",
+    "username": "theo",
+    "display_name": "Theo Marsh",
+    "school": "osu",
+    "taste_line": "nothing before noon counts; everything after eleven does",
+    "signature_order": "drip, black, refill assumed",
+    "avatar": "/img/avatars/theo.svg",
+    "created_at": "2026-01-28T23:40:00-05:00"
+  },
+  {
+    "id": "u_priya",
+    "username": "priya",
+    "display_name": "Priya Shenoy",
+    "school": "osu",
+    "taste_line": "perpetually scouting a table that seats six with an outlet in reach",
+    "signature_order": "chai latte, extra hot",
+    "avatar": "/img/avatars/priya.svg",
+    "created_at": "2026-02-03T10:15:00-05:00"
+  },
+  {
+    "id": "u_sam",
+    "username": "sam",
+    "display_name": "Sam Whitfield",
+    "school": "osu",
+    "taste_line": "orders the drip first — if that's right, everything else usually is",
+    "signature_order": "single-origin pour-over, black",
+    "avatar": "/img/avatars/sam.svg",
+    "created_at": "2026-02-10T08:05:00-05:00"
+  },
+  {
+    "id": "u_lena",
+    "username": "lena",
+    "display_name": "Lena Voss",
+    "school": "osu",
+    "taste_line": "in, caffeinated, out — fifteen minutes door to door or it doesn't make the rotation",
+    "signature_order": "medium drip, splash of oat",
+    "avatar": "/img/avatars/lena.svg",
+    "created_at": "2026-03-14T13:20:00-04:00"
+  },
+  {
+    "id": "u_noah",
+    "username": "noah",
+    "display_name": "Noah Bright",
+    "school": "osu",
+    "taste_line": "new here — taking recommendations seriously",
+    "signature_order": "still deciding",
+    "avatar": "/img/avatars/noah.svg",
+    "created_at": "2026-08-13T16:42:00-04:00"
+  }
+]

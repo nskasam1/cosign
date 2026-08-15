@@ -12,7 +12,6 @@ import ShopDetail from "./pages/ShopDetail";
 import ListDetail from "./pages/ListDetail";
 import GroupSession from "./pages/GroupSession";
 import GroupSessionNew from "./pages/GroupSessionNew";
-import AdminSeed from "./pages/AdminSeed";
 import Profile from "./pages/Profile";
 import NotFound from "./pages/NotFound.tsx";
 
@@ -30,12 +29,13 @@ const App = () => (
         <BrowserRouter>
           <Routes>
             <Route path="/" element={<RequireAuth><Home /></RequireAuth>} />
-            <Route path="/onboarding" element={<RequireAuth><Onboarding /></RequireAuth>} />
             <Route path="/rank" element={<RequireAuth><RankingFlow /></RequireAuth>} />
-            <Route path="/admin/seed" element={<RequireAuth><AdminSeed /></RequireAuth>} />
             <Route path="/group/new" element={<RequireAuth><GroupSessionNew /></RequireAuth>} />
 
             {/* Public, no auth wall */}
+            {/* Onboarding *is* signup — behind RequireAuth it would show the
+                switcher to the logged-out people it exists to serve. */}
+            <Route path="/onboarding" element={<Onboarding />} />
             <Route path="/shop/:shopId" element={<ShopDetail />} />
             <Route path="/lists/:listId" element={<ListDetail />} />
             <Route path="/group/:sessionId" element={<GroupSession />} />

@@ -1,127 +1,136 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { Compass, MapPin, Swords, Share2, Trophy } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
+import { Compass, MapPin, Trophy, Share2, ListOrdered } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
-import { useProfile } from "@/hooks/useProfile";
-import { currentSemesterPhase } from "@/lib/semester";
-import type { Shop } from "@/types/cosign";
+import { api, type Meta, type ShopSummary } from "@/lib/api";
+import { track } from "@/lib/analytics";
 import EmptyState from "@/components/EmptyState";
 
-// "near me, open now, has outlets" answered in zero taps from home. Real
-// open-hours/outlet filtering needs shop_amenities + hours joined in; this
-// does the distance half now and stubs the rest until real shop data +
-// amenity fields are seeded.
-const useNearestShop = () => {
-  const [nearest, setNearest] = useState<Shop | null>(null);
+// Phase 1 holding shape — the real home (hero query chip, friend-weighted
+// discovery, freshness, app shell) is Phase 4. This proves the local data
+// path: shops from SQLite, distance from the stubbed campus coordinate,
+// open-now from shop_hours.
+const Home = () => {
+  const { user, signOut } = useAuth();
+  const [meta, setMeta] = useState<Meta | null>(null);
+  const [shops, setShops] = useState<ShopSummary[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    (async () => {
-      const { data } = await supabase.from("shops").select("*");
-      const shops = (data ?? []) as Shop[];
-      if (shops.length === 0 || !navigator.geolocation) { setLoading(false); return; }
-
-      navigator.geolocation.getCurrentPosition(
-        (pos) => {
-          const { latitude, longitude } = pos.coords;
-          const withDistance = shops.map((s) => ({
-            shop: s,
-            distance: Math.hypot(s.lat - latitude, s.lng - longitude),
-          }));
-          withDistance.sort((a, b) => a.distance - b.distance);
-          setNearest(withDistance[0]?.shop ?? null);
-          setLoading(false);
-        },
-        () => setLoading(false),
-        { timeout: 8000 }
-      );
-    })();
+    track("app_open");
+    Promise.all([api.meta(), api.shops()])
+      .then(([m, s]) => {
+        setMeta(m);
+        setShops(s.shops);
+      })
+      .finally(() => setLoading(false));
   }, []);
 
-  return { nearest, loading };
-};
+  // "near me, open now, has outlets" — the hero query, stub-grade for now
+  const heroPick = shops
+    .filter((s) => s.open_now && (s.amenities?.outlet_count ?? 0) > 0)
+    .sort((a, b) => a.distance_m - b.distance_m)[0];
 
-const Home = () => {
-  const { signOut } = useAuth();
-  const { profile } = useProfile();
-  const { nearest, loading: nearestLoading } = useNearestShop();
-  // Phase 5.2 — semester phase decides what leads the home screen: week
-  // one surfaces campus-wide discovery (nobody has a personal list yet),
-  // mid-semester and finals lead with the near-me/open-late/outlets card.
-  const phase = currentSemesterPhase();
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-screen">
+        <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
+  }
 
   return (
-    <div className="min-h-screen pb-10">
-      <div className="flex items-center justify-between px-5 py-5">
-        <span className="text-xl font-black tracking-tight gradient-text">Cosign</span>
-        <div className="flex items-center gap-4">
-          {profile && (
-            <Link to={`/${profile.username}`} className="text-sm font-semibold text-primary">
-              My profile
-            </Link>
-          )}
-          <button onClick={signOut} className="text-sm text-muted-foreground">
-            Sign out
+    <div className="min-h-screen px-5 pb-16 pt-8 max-w-md mx-auto">
+      <header className="flex items-center justify-between mb-6">
+        <div>
+          <h1 className="text-2xl font-black text-foreground">Cosign</h1>
+          <p className="text-xs text-muted-foreground">
+            {meta?.phase === "finals"
+              ? "Finals week. Godspeed."
+              : meta?.phase === "week_one"
+                ? "Week one — go find your spot."
+                : meta?.phase === "break"
+                  ? "Campus is quiet. Good."
+                  : "Know where to go."}
+          </p>
+        </div>
+        {user && (
+          <button onClick={() => signOut()} className="text-xs text-muted-foreground underline-offset-4 hover:underline">
+            {user.display_name} · switch
           </button>
-        </div>
-      </div>
-
-      <div className="px-5">
-        {phase === "week_one" ? (
-          <Link to="/rank" className="flex items-center gap-3 rounded-2xl bg-card border border-border p-4">
-            <div className="w-10 h-10 rounded-xl bg-primary/15 flex items-center justify-center flex-shrink-0">
-              <Trophy className="w-5 h-5 text-primary" />
-            </div>
-            <div className="flex-1">
-              <div className="text-sm font-semibold text-foreground">Week one — see what's ranked so far</div>
-              <div className="text-xs text-muted-foreground">Start building your own list</div>
-            </div>
-          </Link>
-        ) : (
-          <Link
-            to={nearest ? `/shop/${nearest.id}` : "#"}
-            className="flex items-center gap-3 rounded-2xl bg-card border border-border p-4"
-          >
-            <div className="w-10 h-10 rounded-xl bg-primary/15 flex items-center justify-center flex-shrink-0">
-              <MapPin className="w-5 h-5 text-primary" />
-            </div>
-            <div className="flex-1">
-              <div className="text-sm font-semibold text-foreground">
-                {nearestLoading ? "Finding the closest shop…" : nearest ? nearest.name : "No shops seeded yet"}
-              </div>
-              <div className="text-xs text-muted-foreground">
-                {phase === "finals" ? "Near me · open late · has outlets" : "Near me · open now · has outlets"}
-              </div>
-            </div>
-          </Link>
         )}
+      </header>
 
-        <div className="grid grid-cols-2 gap-3 mt-3">
-          <Link to="/rank" className="rounded-2xl bg-card border border-border p-4 flex flex-col items-start gap-2">
-            <Swords className="w-5 h-5 text-primary" />
-            <span className="text-sm font-semibold text-foreground">Rank two shops</span>
-          </Link>
-          <Link
-            to={profile ? `/${profile.username}` : "/onboarding"}
-            className="rounded-2xl bg-card border border-border p-4 flex flex-col items-start gap-2"
-          >
-            <Share2 className="w-5 h-5 text-primary" />
-            <span className="text-sm font-semibold text-foreground">Share your list</span>
-          </Link>
-        </div>
-      </div>
-
-      {!profile && (
-        <div className="px-5 mt-6">
+      {heroPick ? (
+        <Link
+          to={`/shop/${heroPick.slug}`}
+          className="block rounded-2xl bg-card border border-border p-4 mb-6 hover:border-primary/60"
+        >
+          <p className="text-xs text-primary font-semibold mb-1 flex items-center gap-1">
+            <Compass className="w-3.5 h-3.5" /> Near you, open now, has outlets
+          </p>
+          <p className="text-lg font-bold text-foreground">{heroPick.name}</p>
+          <p className="text-sm text-muted-foreground flex items-center gap-1">
+            <MapPin className="w-3.5 h-3.5" /> {heroPick.walk_min} min walk
+            {heroPick.amenities?.outlet_count ? ` · ${heroPick.amenities.outlet_count} outlets` : ""}
+          </p>
+        </Link>
+      ) : (
+        <div className="mb-6">
           <EmptyState
             icon={<Compass className="w-6 h-6" />}
-            title="Set up your profile"
-            description="Pick a username and school to start ranking shops and get your own share link."
-            action={<Link to="/onboarding" className="text-sm font-semibold text-primary">Get started</Link>}
+            title="Nothing open with outlets right now"
+            description="Late night? The Night Owl crowd would know. Check the full list."
           />
         </div>
       )}
+
+      <nav className="grid gap-3">
+        <Link to="/rank" className="rounded-2xl bg-card border border-border p-4 flex items-center gap-3 hover:border-primary/60">
+          <Trophy className="w-5 h-5 text-primary" />
+          <span className="text-sm font-semibold text-foreground">My ranking</span>
+        </Link>
+        {user && (
+          <Link
+            to={`/${user.username}`}
+            className="rounded-2xl bg-card border border-border p-4 flex items-center gap-3 hover:border-primary/60"
+          >
+            <Share2 className="w-5 h-5 text-primary" />
+            <span className="text-sm font-semibold text-foreground">My profile & share link</span>
+          </Link>
+        )}
+      </nav>
+
+      <section className="mt-8">
+        <h2 className="text-sm font-semibold text-muted-foreground mb-3 flex items-center gap-1">
+          <ListOrdered className="w-4 h-4" /> Every shop near campus
+        </h2>
+        <div className="grid gap-2">
+          {shops
+            .slice()
+            .sort((a, b) => a.distance_m - b.distance_m)
+            .map((s) => (
+              <Link
+                key={s.id}
+                to={`/shop/${s.slug}`}
+                className="rounded-2xl bg-card border border-border p-3 flex items-center gap-3 hover:border-primary/60"
+              >
+                {s.photo ? (
+                  <img src={s.photo} alt="" className="w-12 h-12 rounded-xl object-cover" loading="lazy" />
+                ) : (
+                  <span className="w-12 h-12 rounded-xl bg-muted grid place-items-center text-primary">☕</span>
+                )}
+                <span className="min-w-0">
+                  <span className="block text-sm font-semibold text-foreground truncate">{s.name}</span>
+                  <span className="block text-xs text-muted-foreground">
+                    {s.walk_min} min · {s.open_now ? "open" : "closed"}
+                    {s.stale ? " · info getting old" : ""}
+                  </span>
+                </span>
+              </Link>
+            ))}
+        </div>
+      </section>
     </div>
   );
 };
