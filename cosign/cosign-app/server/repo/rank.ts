@@ -194,3 +194,70 @@ export function cosignersOf(
   visible.sort((a, b) => Number(b.is_friend) - Number(a.is_friend) || a.position - b.position);
   return { cosigners: visible, others, total: rows.length };
 }
+
+export interface ShareCosigner {
+  username: string;
+  display_name: string;
+  avatar: string | null;
+  is_friend: boolean; // of the author, not of the (logged-out) reader
+}
+
+/**
+ * Cosigners as the *public share page* may show them (decision 13, reconciled
+ * with decision 12's friends-only default).
+ *
+ * There is no viewer to be friends with — the reader is logged out — so the
+ * ordering axis is the author's friendships: their friends first, then
+ * everyone else, each by the position the shop holds in that person's list.
+ *
+ * Naming is a separate question from ordering. The author consented to
+ * publishing their own list; nobody else did. So only people whose ranking is
+ * `public` are named, and the rest are counted. Otherwise one person sharing a
+ * link would out every friend's friends-only list.
+ */
+export function cosignersForShare(
+  db: DatabaseSync,
+  shopId: string,
+  authorId: string,
+): { named: ShareCosigner[]; others: number; total: number } {
+  const rows = db
+    .prepare(
+      `SELECT re.user_id, u.username, u.display_name, u.avatar, re.position,
+              coalesce(r.visibility, 'friends') AS visibility
+       FROM ranking_entries re
+       JOIN users u ON u.id = re.user_id
+       LEFT JOIN rankings r ON r.user_id = re.user_id
+       WHERE re.shop_id = ? ORDER BY re.position`,
+    )
+    .all(shopId) as unknown as Array<{
+    user_id: string;
+    username: string;
+    display_name: string;
+    avatar: string | null;
+    position: number;
+    visibility: string;
+  }>;
+  const friends = new Set(friendIdsOf(db, authorId));
+  const named: Array<ShareCosigner & { position: number }> = [];
+  let others = 0;
+  for (const r of rows) {
+    if (r.user_id === authorId) continue; // the author is the list, not a cosigner of it
+    if (r.visibility === "public") {
+      named.push({
+        username: r.username,
+        display_name: r.display_name,
+        avatar: r.avatar,
+        is_friend: friends.has(r.user_id),
+        position: r.position,
+      });
+    } else {
+      others++;
+    }
+  }
+  named.sort((a, b) => Number(b.is_friend) - Number(a.is_friend) || a.position - b.position);
+  return {
+    named: named.map(({ position: _p, ...rest }) => rest),
+    others,
+    total: rows.length,
+  };
+}

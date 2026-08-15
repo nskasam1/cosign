@@ -76,6 +76,7 @@
     ]
   },
   "u_june": {
+    "visibility": "public",
     "final": [
       "s_terrazzo",
       "s_tulip-tree",
@@ -102,6 +103,7 @@
     ]
   },
   "u_theo": {
+    "visibility": "public",
     "final": [
       "s_night-owl",
       "s_all-nighter",
@@ -172,6 +174,7 @@
     ]
   },
   "u_lena": {
+    "visibility": "public",
     "final": [
       "s_oval-grounds",
       "s_percolate",

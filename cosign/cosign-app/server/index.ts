@@ -8,6 +8,7 @@
 import { serve } from "@hono/node-server";
 import { serveStatic } from "@hono/node-server/serve-static";
 import { Hono } from "hono";
+import { compress } from "hono/compress";
 import { readFileSync, existsSync } from "node:fs";
 import { join } from "node:path";
 import { getDb, APP_ROOT } from "./db/db.ts";
@@ -20,6 +21,7 @@ import * as share from "./repo/share.ts";
 import * as logsRepo from "./repo/logsRepo.ts";
 import * as analytics from "./repo/analytics.ts";
 import { renderSharePage, renderTombstone } from "./pages/shareList.ts";
+import { renderOgImage } from "./pages/og.ts";
 import { isStale } from "../src/lib/timeBucket.ts";
 import { phaseForDate, semesterForDate, type AcademicCalendar } from "../src/lib/calendar.ts";
 import { CAMPUS_CENTER, haversineMeters, walkingMinutes } from "../src/lib/geo.ts";
@@ -33,6 +35,12 @@ const calendar: AcademicCalendar = JSON.parse(
 );
 
 const app = new Hono<{ Variables: { userId: string | null } }>();
+
+// ── transport ───────────────────────────────────────────────────────────────
+// gzip everything compressible. The share page is measured on simulated
+// Slow-4G where the LCP budget is 1.0 s and the document sits on the critical
+// path — uncompressed HTML spends ~50 ms of that budget on bytes alone.
+app.use("*", compress());
 
 // ── session ─────────────────────────────────────────────────────────────────
 app.use("*", async (c, next) => {
@@ -323,19 +331,48 @@ app.get("/s/:token", (c) => {
   const res = share.resolveToken(db, c.req.param("token"));
   if (res.status === "missing") return c.notFound();
   if (res.status === "revoked") return c.html(renderTombstone(), 410);
-  const html = renderSharePage(db, res.token);
+  const html = renderSharePage(db, res.token, new URL(c.req.url).origin);
   if (!html) return c.notFound();
   analytics.track(db, null, "share_viewed", { token: c.req.param("token") });
   c.header("Cache-Control", "public, max-age=60, stale-while-revalidate=300");
   return c.html(html);
 });
 
+// The preview image for that link. Same token, same scope, same revocation:
+// a revoked link must not keep serving a picture of the list it withdrew.
+app.get("/og/s/:token", async (c) => {
+  const db = getDb();
+  const res = share.resolveToken(db, c.req.param("token"));
+  if (res.status === "missing") return c.notFound();
+  if (res.status === "revoked") return c.text("This link isn't shared anymore.", 410);
+  const png = await renderOgImage(db, res.token);
+  if (!png) return c.notFound();
+  c.header("Content-Type", "image/png");
+  c.header("Cache-Control", "public, max-age=300, stale-while-revalidate=3600");
+  return c.body(png as unknown as ArrayBuffer);
+});
+
 // ── static ──────────────────────────────────────────────────────────────────
-app.use("/img/*", serveStatic({ root: "./seed/images", rewriteRequestPath: (p) => p.replace(/^\/img/, "") }));
+// Seed imagery and fonts are content-addressed by name and never mutate
+// between builds, so they can be cached hard. Everything here is local files.
+const IMMUTABLE = "public, max-age=31536000, immutable";
+const immutable = (_p: string, c: { header: (k: string, v: string) => void }) =>
+  c.header("Cache-Control", IMMUTABLE);
+
+app.use(
+  "/img/*",
+  serveStatic({ root: "./seed/images", rewriteRequestPath: (p) => p.replace(/^\/img/, ""), onFound: immutable }),
+);
+
+// In dev the SSR pages are served from here (:8787) while Vite owns :8080, so
+// this server has to serve the fonts itself; in prod they come out of dist/.
+if (!PROD) {
+  app.use("/fonts/*", serveStatic({ root: "./public", onFound: immutable }));
+}
 
 if (PROD) {
-  app.use("/assets/*", serveStatic({ root: "./dist" }));
-  app.use("/fonts/*", serveStatic({ root: "./dist" }));
+  app.use("/assets/*", serveStatic({ root: "./dist", onFound: immutable }));
+  app.use("/fonts/*", serveStatic({ root: "./dist", onFound: immutable }));
   app.use("/*", serveStatic({ root: "./dist" }));
   app.get("*", (c) => c.html(readFileSync(join(APP_ROOT, "dist", "index.html"), "utf-8")));
 }
@@ -345,8 +382,23 @@ if (!existsSync(join(APP_ROOT, "server", "data", "cosign.db")) && !process.env.C
   process.exit(1);
 }
 
-serve({ fetch: app.fetch, port: PORT }, (info) => {
+const server = serve({ fetch: app.fetch, port: PORT }, (info) => {
   console.log(`cosign server ${PROD ? "(prod)" : "(dev)"} on http://localhost:${info.port}`);
+});
+
+// A second instance must never look like it started. Without this it exits
+// quietly, the stale process keeps answering, and every check afterwards
+// measures the previous build.
+server.on("error", (err: NodeJS.ErrnoException) => {
+  if (err.code === "EADDRINUSE") {
+    console.error(
+      `Port ${PORT} is already in use — another cosign server is still running.\n` +
+        `Stop it first (PowerShell: Get-NetTCPConnection -LocalPort ${PORT} -State Listen).`,
+    );
+  } else {
+    console.error(err);
+  }
+  process.exit(1);
 });
 
 export { app };
