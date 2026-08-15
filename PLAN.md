@@ -356,18 +356,101 @@ full verification output, followed by evidence and this status update.
   `scripts/boot-smoke.mjs`. Phase 2 adds the full `playwright.config.ts`.
 - Main JS bundle dropped **672 kB → 345 kB** as a side effect of de-servicing.
 
-### Phase 2 — Share page, OG, tokens ☐
-- [ ] Tokens file committed via design skills; consumed by Tailwind
-- [ ] Share page SSR, logged-out; **all decision-2 elements** (header
-      name/photo/school/taste-line; per-entry photo+line+tags; chips top; CTA
-      bottom; no-photo fallback; cosigned-by friends-first) visible in mobile
-      screenshots
-- [ ] OG snapshot committed with author name+photo, list title, top places, cosign
-      count
-- [ ] Token revocation works (test)
-- [ ] a11y ≥ 95 + reduced-motion pass + anti-slop self-review
-- [ ] **Perf gate: LCP ≤ 1.0 s, score ≥ 90** (numbers: ___ ; evidence:
-      `evidence/phase2/lighthouse.json`)
+### Phase 2 — Share page, OG, tokens ✅
+- [x] Tokens file committed via design skills (`src/design/tokens.css` +
+      `tokens.md` rationale); consumed by Tailwind (61 `var(--…)` references in
+      `tailwind.config.ts`), by the SPA (`src/index.css` imports it), and by the
+      SSR pages (`server/pages/tokens.ts` inlines it). `tokens.test.ts`
+      (32 tests) fails the build on a contrast regression, a font that is named
+      but not committed, or drift in the copies `og.ts` needs.
+- [x] Share page SSR, logged-out; **all decision-2 elements** present and
+      asserted, not just screenshotted (`e2e/share.spec.ts`, 24 tests across
+      mobile 390×844 and desktop 1280): author header (name/photo/school/taste
+      line/usual order), 22 entries each with position + name + honest line +
+      intent tags, chips above the list, CTA below the last entry, 3 designed
+      no-photo plates, and all three cosigned-by states. Evidence:
+      `evidence/phase2/share-{mobile,desktop}.png`, `share-filtered-*.png`,
+      `commands.txt`
+- [x] OG snapshot committed (`evidence/phase2/og-share.png`) — 1200×630 PNG with
+      author monogram + name + school, list title, top three places, and the
+      cosign count; satori + resvg-wasm, no key, no browser, ~210 ms cold
+- [x] Token revocation works: `/s/<revoked>` → 410 tombstone leaking zero shop
+      names, `/og/s/<revoked>` → 410, profile-scoped token → 404 at `/s/`
+      (tested; transcript in `commands.txt`)
+- [x] a11y ≥ 95 (Lighthouse **100**; axe: 24 passes, **0 violations**) +
+      reduced-motion pass (every computed animation/transition is 0 s) +
+      anti-slop self-review
+- [x] **Perf gate: LCP ≤ 1.0 s, score ≥ 90** — measured **LCP 869 ms,
+      performance 100**, FCP 869 ms, TBT 16 ms, CLS 0.023, 7.9 kB gzipped
+      document. Median of 5 runs, Lighthouse 13.4.1, mobile + simulated
+      Slow-4G, against `npm run prod` on the seeded 22-place list with images.
+      Evidence: `evidence/phase2/lighthouse-share.json` (+ full `.report.json`).
+
+**Phase 2 decisions & assumptions (new — don't relitigate):**
+- **Direction chosen by panel, not by reflex.** `frontend-design` +
+  `ui-ux-pro-max` were invoked first, then four independent share-page
+  directions were generated against the real seeded data (broadside /
+  photo-essay / field ledger / a free-choice pigment deck), each rendered as a
+  working mockup, screenshotted at both viewports, and audited for brief
+  compliance and contrast. What shipped is a synthesis. Rationale, the panel's
+  three decisive findings, and the full contrast table live in
+  `src/design/tokens.md`.
+- **`ui-ux-pro-max` is only partly installed on this machine** — `SKILL.md` is
+  present but its `data/` and `scripts/` directories are empty, so the CSV
+  search tool could not run. Its rule tables were applied directly. Not a
+  blocker; noted so a future session doesn't chase the missing script.
+- **Type: Young Serif 400 + Karla 400/700**, both OFL, self-hosted, 53 kB of
+  woff2 total. All four designers independently picked Young Serif; three of
+  four picked Karla over the neutral grotesques. The font *files* are committed
+  under `public/fonts/` (and `.woff` duplicates under `server/assets/fonts/`
+  because satori cannot parse woff2) — the `@fontsource/*` packages they came
+  from are **not** dependencies and nothing fetches a font at build or run time.
+- **Colour: two accents with separate jobs.** Ember `#E0633C` is the *ranking*
+  voice (numerals, active chip, CTA); gold `#C8A96E` is the *label* voice
+  (small caps, intent tags). Deliberately not gold-on-brown, which is the
+  reflex and reads stock. The ground `#14100E` is warm to match the seeded
+  imagery's own six grounds.
+- **Each entry's rank numeral and no-photo plate take that place's own imagery
+  palette.** The list carries a colour rhythm drawn from the places rather than
+  applied on top of them, and the no-photo state becomes first-class: entry 11
+  is `C&V` set in the display face on Cardinal & Vine's clay, not a missing
+  picture. All six palettes clear 4.5:1 on both the ground and their plate.
+- **Cosigners on a public page are ordered by the author's friendships but
+  named only if their own ranking is public** (`rank.cosignersForShare`).
+  The author consented to publishing their list; nobody else did, so friends-only
+  rankings are counted, never named — otherwise one share link would out every
+  friend's private list. To make all three states real, `seed/rankings.json`
+  marks june/theo/lena public; the default stays `friends` (4 of 7 seeded
+  rankings). The page renders 17 named, 4 counted, 1 "Only on Maya's list so
+  far".
+- **`INTENT_TAG_LABELS_SHORT` added** for dense surfaces (chips, the entry
+  metadata line). Same nine tags; "Actually here for the coffee" wraps to two
+  lines in a 390 px column, "Just the coffee" does not. The long forms stay for
+  the Phase 3 log flow, where the phrasing is the point.
+- **The LCP element is the lead photograph, inlined as a data URI.** The
+  document floor on this harness is ~0.82 s, so a second round trip for the
+  hero would blow the 1.0 s budget outright. Two consequences worth keeping:
+  (a) `hono/compress` is now on for everything — the document is 34.8 kB raw,
+  7.9 kB gzipped; (b) the inlined copy has the seeded imagery's `feTurbulence`
+  grain **stripped**. That filter rasterises over its full 800×600 user-space
+  region regardless of display size and cost ~110 ms of LCP *render* delay under
+  4× CPU throttle — it was also the entire source of run-to-run variance
+  (LCP swung 760–1365 ms with it, 794–885 ms without). It is invisible at
+  354 px wide. Everything below the fold keeps its grain.
+- **Perf numbers are noisy on this machine.** Simulated throttling makes the
+  network deterministic but scales *observed* CPU time by 4×, so a busy box
+  inflates LCP. One run in five still lands ~1.37 s. The gate is therefore
+  reported as the median of 5 (`LH_RUNS=5`), and `scripts/lighthouse.mjs` exits
+  non-zero when the median misses — it cannot be passed by claim.
+- **SEO scores 66 on the share page, by design.** The only failing audit is
+  `is-crawlable`: the page is `noindex, nofollow` (decision 12). An unlisted URL
+  a search engine has indexed is not unlisted, and revocation would come far too
+  late. Not a gated category.
+- **Known gap, deferred to Phase 4:** the SPA inherits the new tokens and boots
+  clean (`evidence/phase2/spa/`, 10/10 routes, zero console errors, every
+  request local), but it is not redesigned — and its no-photo shops still fall
+  back to the light `public/placeholder.svg`, which now reads wrong on the warm
+  dark ground. The share page's plate treatment is the fix to port.
 
 ### Phase 3 — Logging + ranking ☐
 - [ ] ≤ 8 taps, zero required keyboard input, ≤ 10 s timed (Playwright), per-step
