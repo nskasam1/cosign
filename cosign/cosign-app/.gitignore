@@ -15,6 +15,9 @@ dist-ssr
 # Secrets — never commit real keys
 .env
 
+# Build metadata
+*.tsbuildinfo
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
