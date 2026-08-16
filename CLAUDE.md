@@ -39,11 +39,16 @@ persistence layer uses the built-in `node:sqlite`). The bun lockfiles are gone.
 | Lint | `npm run lint` | ESLint flat config (8 pre-existing warnings, 0 errors) |
 | Bulk shop entry | `npm run import:shops -- f.csv [--dry-run]` | merges by id into `seed/shops.json` |
 | Shops → spreadsheet | `npm run export:shops -- f.csv` | round-trips back through import |
-| Share-page e2e | `npx playwright test` | 24 tests, mobile + desktop; needs the prod server up |
+| Share-page e2e | `npx playwright test share.spec.ts` | 24 tests, mobile + desktop; needs the prod server up |
+| Log-flow e2e | `COSIGN_EVIDENCE=phase3 npx playwright test log.spec.ts` | 31 tests; **writes** — point the server at a scratch DB first |
 | Perf gate | `MSYS_NO_PATHCONV=1 node scripts/lighthouse.mjs /s/<token> phase2 share` | exits non-zero if the gate misses |
 | Phase 1 evidence | `bash scripts/phase1-evidence.sh` | needs the prod server up |
 | Phase 2 evidence | `LH_RUNS=5 bash scripts/phase2-evidence.sh` | transcript + playwright + the gate |
+| Phase 3 evidence | `bash scripts/phase3-evidence.sh` | owns its own server + scratch DB; :8787 must be free |
 | SPA boot smoke | `node scripts/boot-smoke.mjs` | `COSIGN_EVIDENCE_DIR=phase2/spa` to target a phase |
+
+`COSIGN_EVIDENCE=<phase>` picks the directory Playwright writes into (default
+`phase2`), so a Phase 3 run cannot overwrite Phase 2's committed numbers.
 
 The Phase 2/5A Lighthouse gates run against `npm run prod` — **never**
 `vite preview`, which bypasses SSR and measures the wrong thing.
@@ -52,7 +57,42 @@ The Phase 2/5A Lighthouse gates run against `npm run prod` — **never**
 the local TypeScript; call `./node_modules/.bin/tsc` (or `.\node_modules\.bin\tsc.cmd`
 in PowerShell) to be sure.
 
-## Gotchas (verified on this machine, updated 2026-08-15 after Phase 2)
+## Gotchas (verified on this machine, updated 2026-08-16 after Phase 3)
+
+- **A phase's evidence run must never be able to rewrite an earlier phase's.**
+  `share.spec.ts` hard-coded `evidence/phase2/`, so Phase 3's regression re-run
+  silently regenerated seven committed Phase 2 artifacts from a database its own
+  log suite had filled with test accounts — the OG image's cosign count moved and
+  a designed empty state vanished from the screenshot Phase 2 was signed off on.
+  Every spec now derives its directory from `COSIGN_EVIDENCE`, and a regression
+  re-run happens **before** the writing suite and into its own subdirectory.
+  Check `git status evidence/` before committing a phase.
+- **The log-flow e2e writes, so never point it at `server/data/cosign.db`.**
+  `scripts/phase3-evidence.sh` seeds a scratch DB (`COSIGN_DB=…`), builds, serves
+  against it, runs the suite and stops. Run the specs against the real database
+  and the second run finds state its own first run created. Tests that need an
+  empty ranking sign up a **fresh account** through `POST /api/auth/create` rather
+  than reusing `u_noah`, for the same reason.
+- **axe measured mid-animation reports contrast failures that do not exist.**
+  Each step fades in over 200 ms; axe sampled `#817364` (muted at partial opacity)
+  and failed it at 4.08:1, when the resting `#9A8977` is 5.5:1. `await settled(page)`
+  in `e2e/fixtures.ts` awaits `document.getAnimations()` before auditing or
+  screenshotting. If a contrast number looks impossible, check the fill state first.
+- **`server/index.ts` only calls `serve()` when it is the entry module.** It used
+  to bind at import time, so `import { app }` in a test hit the EADDRINUSE guard
+  and killed the whole vitest run. The npm scripts are unaffected — but if you ever
+  add a new entry point, it must call `serve()` itself.
+- **Timed runs need the CDP session, not `page.emulate*`.** The ≤ 10 s budget is
+  measured with `Emulation.setCPUThrottlingRate: 4` plus
+  `Network.emulateNetworkConditions` (150 ms RTT, 1.6 Mbps), median of three runs;
+  a single run swings ±700 ms. It is mobile-project-only by design.
+- **The optional log photo has a local upload route** (`POST /api/uploads` →
+  `server/data/uploads/`, served at `/u/*`). It sniffs magic bytes, caps at 2 MB
+  decoded, and generates its own filename — never trust the client's. `logs.photo`
+  is allowlisted to the seeded `/img/logs/log-NNN.svg` or an uploaded `/u/*` path.
+  This is the only writable surface outside the DB; keep it that way.
+
+## Older gotchas (Phase 2)
 
 - **Only one process may own :8787 — and it now says so.** `server/index.ts`
   exits 1 with a clear message on `EADDRINUSE`. Before that guard existed, a
@@ -109,9 +149,10 @@ in PowerShell) to be sure.
   `evidence/phase2/`. `scripts/boot-smoke.mjs` still drives chromium directly.
 - **Windows dev machine.** Paths contain a space (`Vineet Sista`) — always quote.
   Git Bash is available for POSIX scripts; PowerShell 5.1 is the primary shell.
-- **345 kB main JS chunk** after build (down from 672 kB once the external SDKs left).
-  Code-splitting is a Phase 4 concern; the share page must not ship this bundle at all
-  — `e2e/share.spec.ts` asserts it requests zero `/assets/*.js` and zero stylesheets.
+- **382 kB main JS chunk** after build (345 kB before Phase 3's two pages; 672 kB
+  before the external SDKs left). Code-splitting is a Phase 4 concern; the share
+  page must not ship this bundle at all — `e2e/share.spec.ts` asserts it requests
+  zero `/assets/*.js` and zero stylesheets.
 - `tsconfig.json` is loose (`strictNullChecks: false`, `noImplicitAny: false`). Match
   existing style; don't fight it mid-phase.
 
@@ -123,7 +164,12 @@ in PowerShell) to be sure.
 - **No rating-scale inputs anywhere** — no stars, sliders, 1–10, numeric scales, or
   thumbs. Ranking input is head-to-head comparison only (binary-search insertion into
   the user's ordered list). Qualitative place data (noise etc.) uses labeled enum
-  taps (e.g. `quiet / conversational / loud`), never numbers.
+  taps (e.g. `quiet / conversational / loud`), never numbers. **This is enforced,
+  not remembered:** `src/design/no-scales.test.ts` fails the unit suite on a
+  range/number input, `role=slider|progressbar|radiogroup`, `aria-value*`, a
+  star/thumb glyph, an `N/5` score, or an import of a scale-capable primitive
+  anywhere under `src/` or `server/`. Don't weaken it — and don't reach for a
+  progress bar as a step indicator; the log flow shows progress as a sentence.
 - **Share page and public profile never require auth**, are SSR/SSG with minimal JS,
   and are addressed by revocable tokens.
 - **Cosign only via ranking.** Ranking a place into your list *is* the cosign;
@@ -151,8 +197,20 @@ in PowerShell) to be sure.
   colour anywhere else** — the one unavoidable duplication (satori has no CSS
   variables, so `server/pages/og.ts` repeats a dozen hex values) is guarded by a
   test.
-- Data fetching via `@tanstack/react-query`; motion via `framer-motion` (subtle,
-  purposeful; honor `prefers-reduced-motion`).
+- **The SPA's design vocabulary is the `cs-*` layer in `src/index.css`** (Phase 3):
+  `.cs-wrap` (the reading column), `.cs-caps` (the small-caps voice), `.cs-display`
+  / `.cs-figures`, `.cs-row` (a hairline row whose press state bleeds through the
+  gutter, and whose `aria-pressed` state draws the 2 px ember mark in the margin),
+  `.cs-shot` / `.cs-plate` (photo or the designed no-photo plate), `.cs-pill` /
+  `.cs-pill-ghost`, `.cs-word` (a 44 px word like BACK), `.cs-stamp`. Later phases
+  port this rather than inventing a second look — `src/pages/LogFlow.tsx` and
+  `PlaceFlow.tsx` are the reference implementations. No cards, no radius above 3 px
+  except the two pills, no icons on these surfaces.
+- Data fetching via `@tanstack/react-query` (the log flow prefetches `shops` /
+  `meta` / `ranking` on the entry pill's `pointerdown`, which is why the measured
+  path makes exactly one request — the save). Motion via CSS on the duration
+  tokens; **avoid `framer-motion` on new surfaces** — `whileTap`, springs and
+  `layoutId` ignore `prefers-reduced-motion`, which is a phase gate.
 - Domain types in `src/types/cosign.ts`; pure domain logic in `src/lib/`
   (`semester.ts`, `timeBucket.ts` are keepers — see PLAN.md for their known bugs).
 - Copy voice: a knowing friend, not a brand. "Cosign" is the endorsement verb.

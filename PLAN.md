@@ -251,7 +251,9 @@ Commit order matters (brief: *first commit is the scoped rename, green build aft
   wall-clock through the flow). Auto-captured `time_bucket` + `semester`. **Log
   saves first; binary-search insertion starts after save, outside the 10 s budget**
   (`src/lib/insertion.ts` pure state machine + comparison UI reusing the RankingFlow
-  shell; persists comparisons + updated ranking_entries).
+  shell; persists comparisons + updated ranking_entries). *Written in Phase 0: it
+  assumed a RankingFlow shell to reuse, but Phase 1 reduced that page to a 67-line
+  read-only list. The comparison screen is `src/pages/PlaceFlow.tsx`, new.*
 - Tests: insertion at empty/head/middle/tail; tap-count + timing assertions;
   per-step screenshots → `evidence/phase3/`.
 
@@ -452,12 +454,176 @@ full verification output, followed by evidence and this status update.
   back to the light `public/placeholder.svg`, which now reads wrong on the warm
   dark ground. The share page's plate treatment is the fix to port.
 
-### Phase 3 — Logging + ranking ☐
-- [ ] ≤ 8 taps, zero required keyboard input, ≤ 10 s timed (Playwright), per-step
-      shots
-- [ ] Insertion unit tests: empty/head/middle/tail; insertion runs only after log
-      save
-- [ ] time_bucket + semester auto-captured; no rating-scale input anywhere (sweep)
+### Phase 3 — Logging + ranking ✅
+- [x] **≤ 8 taps, zero required keyboard, one decision per step, ≤ 10 s timed** —
+      measured **6 taps** from cold (entry · place · intent · noise · crowd · save;
+      5 from a shop page) against a cap of 8, and a **median 3.59 s** of three runs
+      under 4× CPU throttle + simulated Slow-4G (runs 4569/3566/3589 ms, budget
+      10 000 ms). The e2e counts its own clicks, checks **on every step** that no
+      `next|continue|submit|done` button exists, and asserts zero visible
+      `input`/`textarea` on every step of the required path. Evidence:
+      `evidence/phase3/{taps-mobile.json,timing.json,commands.txt}`, per-step
+      screenshots `step-{1..6}-*.png` at 390×844 **and** 1280 (35 e2e tests pass,
+      18 mobile / 17 desktop; the timed run is mobile-only by design)
+- [x] **Insertion unit tests: empty/head/middle/tail; insertion runs only after log
+      save** — `src/lib/insertion.test.ts` (13 tests) now anchors the four cases to
+      the seeded data (u_noah empty; u_lena's list for head/middle/tail) with the
+      exact opponent sequence and final position asserted. Save-ordering is
+      executable, not claimed: the e2e records request order and asserts the 201
+      from `POST /api/logs` precedes any `POST /api/rankings/insert`, and that
+      `[data-placeflow]` does not exist in the DOM until it lands. The head/middle/
+      tail e2e re-derives the expected midpoint itself rather than trusting a
+      memorised list
+- [x] **time_bucket + semester auto-captured; no rating-scale input anywhere
+      (sweep)** — the receipt on the post-save screen carries the *server's*
+      returned values (`data-time-bucket` / `data-semester`, asserted equal to the
+      POST response), and the flow never asks. The sweep is now a mechanism, not a
+      claim: `src/design/no-scales.test.ts` walks all 117 `.ts/.tsx/.css` files
+      under `src/` and `server/` and fails on range/number inputs, `role=slider|
+      progressbar|radiogroup`, `aria-value*`, star/thumb glyphs, an `N/5`-style
+      score, or an import of a scale-capable primitive — plus the e2e runs the
+      share page's DOM assertions on **every step**, not just the last screen
+- [x] a11y **0 serious/critical axe violations** across 7 surfaces × 2 viewports
+      (14 reports, 18–20 passes each — including the head-to-head itself, not
+      just its result), 44 px targets swept on the flow **and** the comparison,
+      `prefers-reduced-motion` leaves every computed animation/transition at 0 s,
+      anti-slop self-review done against the committed screenshots
+- [x] Reviewed adversarially before commit: four independent lenses (brief
+      compliance / correctness / test scepticism / design + a11y) produced 37
+      findings, each then handed to a separate agent instructed to refute it.
+      19 survived and **all 19 are fixed** — see "what the review caught" below.
+      The Phase 2 share suite (24 tests) is re-run against the clean seed as a
+      regression check and still passes
+
+**Phase 3 decisions & assumptions (new — don't relitigate):**
+- **Direction chosen by panel again, then judged.** Three independent designs for
+  the flow were generated against the real seeded data (a printed receipt; a
+  one-thumb single screen; a friend asking one question per screen), scored by
+  three lenses (literal brief compliance / a sophomore in a queue / the designer
+  who shipped the share page), and synthesised. What shipped is **the receipt**:
+  one small-caps line under the header that is *already half-written before you
+  touch anything* (`Evening · Between terms · 3 min walk`, muted, because that is
+  what Cosign already knew) and that each answer lands on in gold. That one colour
+  rule is how auto-capture is *shown* rather than asked.
+- **Ember is starved on purpose.** It appears nowhere on the four asks — they
+  auto-advance and nothing persists — so its first appearance *is* the `SAVE IT`
+  pill. After the save it has exactly three jobs: the 2 px selection bar in the
+  page margin, the 1 px stamp rule that draws itself across the column and then
+  **stays above every comparison** as proof the log is safe, and `:focus-visible`.
+- **No Next button anywhere in the chain**; back is the undo. That is where the tap
+  budget comes from: four auto-advancing steps save five taps, which is what leaves
+  room for two optional confirmations inside the cap.
+- **Crowd is on the critical path** (so the required path is 6 taps, not 5).
+  `shops.conditionsByBucket` aggregates modal crowd per `time_bucket` exactly as it
+  does noise, and `ShopDetail` already renders both — an optional crowd would
+  starve a shipped feature. Both steps are pixel-identical components, which is
+  itself the argument that neither is a scale.
+- **The review step is hard-capped at two confirmations** (`confirmationsFor`,
+  exhaustively unit-tested over 9 intents × 4 crowd values × every seeded amenity
+  row). The worst case is therefore 8 taps *by construction*, not by hope. Gating
+  alone was not enough: 14 of 22 seeded shops carry outlets + wifi + camp_ok, so
+  gating would have surfaced all four rows 64 % of the time.
+- **The optional photo is real, and local.** A stock-image picker was the panel's
+  recommendation; it is dishonest data. Instead the extras branch takes a real
+  file (`capture="environment"`), downscales it in a canvas to ≤ 1280 px, and posts
+  it to a new **`POST /api/uploads`** that is the phase's only new writable
+  surface: auth required, data-URL shape enforced, 2 MB decoded cap, **magic bytes
+  sniffed** (never the declared mime), filename server-generated from `randomUUID`,
+  written under `server/data/uploads/` (already gitignored) and served read-only at
+  `/u/*`. `logs.photo` is allowlisted to `^/img/logs/log-\d{3}\.svg$` or
+  `^/u/[A-Za-z0-9_-]{8,64}\.(jpg|png|webp)$`. Still zero external services: no key,
+  no CDN, no remote host — the bytes never leave the machine, asserted in the e2e.
+- **Five real server defects were found and fixed while building on them**, each
+  reproduced before it was fixed (transcript in `evidence/phase3/commands.txt`):
+  (a) `POST /api/logs` spread the client body *after* `user_id`, so a signed-in
+  client could attribute a log to another user **and set `visibility:'public'`** —
+  the friends-only default was advisory, not enforced; (b) `noise`/`crowd` reached
+  the SQLite CHECK and surfaced as a 500; (c) `photo` was an unvalidated client
+  string (`../../etc/passwd` persisted verbatim); (d) a bogus comparison hit the FK
+  *inside* `insertIntoRanking`'s transaction, rolling back a legitimate re-order
+  with an unreadable 500; (e) **`insertIntoRanking` never created the `rankings`
+  row**, so for anyone who ranked through the API rather than the seeder, the row
+  that carries `visibility` (decision 9) did not exist and the share page's "last
+  put in order" timestamp never moved. There is now an `app.onError` that maps a
+  JSON `SyntaxError` and SQLite constraint failures to 400 rather than 500.
+- **`server/index.ts` only binds :8787 when it is the entry module.** It bound at
+  import time, so importing `app` in a test hit the EADDRINUSE guard and
+  `process.exit(1)`'d the whole vitest run. `npm run dev|prod|serve:prod` are
+  unaffected (verified against a real process).
+- **Three unused shadcn primitives are deleted** — `progress.tsx` (the only thing
+  left emitting `role="progressbar"` + `aria-valuenow`), `radio-group.tsx` (a
+  five-item Likert scale in nine lines), `chart.tsx` (a ~370-line recharts wrapper)
+  — along with their three dependencies, exactly as Phase 1 removed the slider.
+  They were the drawer a step-indicator author would have opened.
+- **The slot is not a progress bar.** Progress on the comparison screen is a strip
+  of *the user's own ranking* — the live `[lo, hi)` window — collapsing as each tap
+  halves it, plus a plain sentence (`Tap 1 of at most 4`). No track, no fill, no
+  total, no `aria-valuenow`. A meter with a moving fill is the one shape that would
+  read as a scale on a screen whose whole point is that nothing is scored.
+- **The Lovable-era utility kit is gone from `src/index.css`** (`.glass`,
+  `.gradient-card`, `.card-shine`, `.gradient-text`, `.gradient-accent`,
+  `.gold-glow`, `.accent-glow`, `.nav-shadow`) — every one a gradient, glow or
+  glass panel, i.e. the exact stock look the brief bans. `LocationFilter` was its
+  only consumer and is now a flat ember chip; its ungated framer-motion `whileTap`
+  and `layoutId` spring went with it, because those ignore `prefers-reduced-motion`
+  on their own. The new surfaces use **no framer-motion at all**: six CSS
+  animations, all on the three duration tokens, which `tokens.css` already zeroes.
+- **The e2e writes, so it runs against a scratch database** (`COSIGN_DB=…` seeded
+  per run by `scripts/phase3-evidence.sh`) and every test that needs an empty
+  ranking **signs up a fresh account through the real stub-signup route** rather
+  than reusing `u_noah`. Reusing a seeded empty user works exactly once; the second
+  test to log finds the state its own suite created.
+- **axe must be run after animations settle.** It reported the step glosses at
+  4.08:1 because it sampled `#817364` — muted at partial opacity, mid-fade — not
+  the resting `#9A8977`, which clears 4.5:1. WCAG applies to the resting state, so
+  the fix is `await settled(page)` (awaiting `document.getAnimations()`), not
+  repainting a token. Worth remembering the next time a contrast number looks
+  impossible.
+- **Today is between terms** (2026-summer ended 08-06, 2026-autumn starts 08-25),
+  so every log created now stamps `semester: 'break'` and the receipt reads
+  "Between terms". The screenshots show the honest current state.
+- **Main JS bundle 345 kB → 382 kB** (119 kB gzipped) with the two new pages. The
+  share page still ships none of it.
+- **Known gap, still Phase 4:** Home, ShopDetail and RankingFlow gained entry
+  points and a resume section in the new language, but are otherwise untouched
+  Phase-1 holding shapes (rounded cards, lucide icons, `font-black`). The log flow
+  is the reference implementation to port from.
+
+**What the review caught (all fixed before commit — worth knowing, not repeating):**
+- **The one that mattered:** `PlaceFlow` gated on `isLoading`, which is false for
+  a *failed* or offline-paused query too — so an unread ranking was
+  indistinguishable from an empty one, and the screen would have auto-committed
+  the just-logged place at **#1 with zero comparisons behind it**. It gates on
+  `isSuccess` now, with its own designed unreachable state. The rule this
+  encodes: on this surface, never infer a rank from an absence.
+- **Evidence hygiene, which is an acceptance mechanism here.** The harness re-ran
+  the Phase 2 share suite *after* the log suite had filled the database with test
+  accounts, and `share.spec.ts` hard-coded `evidence/phase2/` — so it silently
+  rewrote seven committed Phase 2 artifacts (the OG image's cosign count moved
+  52 → 65, and the "Only on Maya's list so far" state disappeared from the
+  screenshot Phase 2 was accepted on) while its own results JSON overwrote Phase
+  3's. Now: `share.spec.ts` follows `COSIGN_EVIDENCE`, the regression runs
+  **first against the clean seed** into `evidence/phase3/share-regression/`, and
+  the two suites no longer share a results file.
+- A tapped confirmation survived going back and changing the answer that offered
+  it, so a log could carry a claim the user could no longer see. `save()` now
+  intersects the taps with what the screen is currently offering.
+- `SAVE IT` stayed live while a photo was still uploading, silently dropping it.
+- The slot and the tap bound indexed the *live ranking* while the search runs on
+  its own list — wrong for the re-rank path, where that list is the ranking minus
+  the place being moved.
+- `RankingFlow`'s `Promise.all` had no `catch`: one rejected request rendered "no
+  ranking yet" to someone whose list was fine.
+- Auto-advance dropped keyboard/screen-reader focus to `<body>`; each step's
+  question is now focused on mount.
+- The axe run and the 44 px sweep never actually reached the head-to-head — the
+  audited surface was the already-ranked done screen, because the picker's first
+  row is the closest place, which the fixture user had usually already ranked.
+- The no-scales guard could not see `<progress>` / `<meter>`, whose scale roles
+  are implicit; both the static guard and the DOM assertion cover them now.
+- The head/middle/tail e2e borrowed a seeded account and grew it by one place per
+  run, so a third re-run without a re-seed would have run out of unranked shops.
+  Those fixtures now build their own five-place ranking through the insert route.
 
 ### Phase 4 — Home/discovery/shell ☐
 - [ ] Hero query correct via stubbed geolocation (test)
