@@ -35,20 +35,29 @@ persistence layer uses the built-in `node:sqlite`). The bun lockfiles are gone.
 | Production | `npm run prod` | `vite build` then the server on 8787 serving `dist/` + SSR |
 | Serve existing build | `npm run serve:prod` | skips the rebuild |
 | Typecheck | `./node_modules/.bin/tsc -b` | project refs: app / node / server |
-| Unit tests | `npm test` | Vitest, single run (~7 s warm, 81 tests) |
+| Unit tests | `npm test` | Vitest, single run (~11 s warm, 241 tests) |
 | Lint | `npm run lint` | ESLint flat config (8 pre-existing warnings, 0 errors) |
 | Bulk shop entry | `npm run import:shops -- f.csv [--dry-run]` | merges by id into `seed/shops.json` |
 | Shops → spreadsheet | `npm run export:shops -- f.csv` | round-trips back through import |
 | Share-page e2e | `npx playwright test share.spec.ts` | 24 tests, mobile + desktop; needs the prod server up |
-| Log-flow e2e | `COSIGN_EVIDENCE=phase3 npx playwright test log.spec.ts` | 31 tests; **writes** — point the server at a scratch DB first |
+| Log-flow e2e | `COSIGN_EVIDENCE=phase3 npx playwright test log.spec.ts` | 35 tests; **writes** — point the server at a scratch DB first |
+| Home/discovery e2e | `COSIGN_EVIDENCE=phase4 npx playwright test home.spec.ts` | 44 tests; **writes**; finals tests skip without `COSIGN_FINALS_BASE` |
 | Perf gate | `MSYS_NO_PATHCONV=1 node scripts/lighthouse.mjs /s/<token> phase2 share` | exits non-zero if the gate misses |
 | Phase 1 evidence | `bash scripts/phase1-evidence.sh` | needs the prod server up |
 | Phase 2 evidence | `LH_RUNS=5 bash scripts/phase2-evidence.sh` | transcript + playwright + the gate |
 | Phase 3 evidence | `bash scripts/phase3-evidence.sh` | owns its own server + scratch DB; :8787 must be free |
+| Phase 4 evidence | `bash scripts/phase4-evidence.sh` | owns **two** servers (:8787 + :8788) and a scratch DB; both ports must be free |
 | SPA boot smoke | `node scripts/boot-smoke.mjs` | `COSIGN_EVIDENCE_DIR=phase2/spa` to target a phase |
 
-`COSIGN_EVIDENCE=<phase>` picks the directory Playwright writes into (default
-`phase2`), so a Phase 3 run cannot overwrite Phase 2's committed numbers.
+`COSIGN_EVIDENCE=<phase>` picks the directory Playwright writes into. It
+defaults to `evidence/scratch/` (gitignored) — never to a phase that has been
+signed off — so an ad-hoc `npx playwright test` cannot touch committed
+evidence. Every evidence script sets it explicitly.
+
+`COSIGN_CALENDAR=<file>` points the server at a different academic calendar
+(default `seed/academic-calendar.json`). Configuration, not a test hook: it is
+how `scripts/phase4-evidence.sh` stands a second server inside finals week,
+and how a second school would be run.
 
 The Phase 2/5A Lighthouse gates run against `npm run prod` — **never**
 `vite preview`, which bypasses SSR and measures the wrong thing.
@@ -57,7 +66,48 @@ The Phase 2/5A Lighthouse gates run against `npm run prod` — **never**
 the local TypeScript; call `./node_modules/.bin/tsc` (or `.\node_modules\.bin\tsc.cmd`
 in PowerShell) to be sure.
 
-## Gotchas (verified on this machine, updated 2026-08-16 after Phase 3)
+## Gotchas (verified on this machine, updated 2026-08-16 after Phase 4)
+
+- **A default that points at a signed-off phase is a loaded gun.** Phase 3
+  fixed `share.spec.ts`'s hard-coded `evidence/phase2/`, but the *fallbacks*
+  still pointed backwards: `playwright.config.ts` defaulted to `phase2` and
+  `e2e/fixtures.ts` to `phase3`, so a bare `npx playwright test home.spec.ts`
+  wrote Phase 4 screenshots into `evidence/phase3/` and overwrote Phase 2's
+  committed results JSON. Both default to `evidence/scratch/` now. Still check
+  `git status evidence/` before committing a phase.
+- **A `fullPage` screenshot of a sticky element is a capture artifact, not the
+  design.** `.cs-shelf` is `position: sticky; bottom: 0`; a full-page capture
+  lands it wherever the scroll happened to be, i.e. across the middle of a
+  row. Use `shotViewport()` (e2e/fixtures.ts) for anything shell-bearing, and
+  scroll to the bottom before a full-column `shot()`. And wait for the page to
+  *render* before measuring its height — scrolling a loading screen to its
+  "bottom" is a no-op, which is how the artifact got committed once already.
+- **The evidence suites share one scratch database, so their ORDER is part of
+  the evidence.** `log.spec.ts` drives the real log flow as `u_lena` and grows
+  her ranking; run it before the Phase 4 suite and Home's screenshots show
+  "your second" against a place she has never been. `scripts/phase4-evidence.sh`
+  runs share (read-only) → home → log (writes most, builds its own fixtures).
+- **`minutesUntilClose` must join overlapping windows, not just midnight
+  ones.** The All-Nighter is 07:00–01:00 Mon–Wed and 00:00–24:00 Thu–Sun: on a
+  Wednesday afternoon those two overlap and it is open for 106 hours. An
+  exact-midnight-only join reported eleven, which quietly handed the
+  finals-week hero to a place that shuts at 8pm.
+- **axe reports a contrast failure it cannot measure as "incomplete", which
+  never fails a gate.** The fact separators were `--rule-strong` on the page
+  ground — 1.68:1 — for a whole phase, and twelve green axe reports said
+  nothing. If a colour is on *text*, check it against `tokens.md` by hand;
+  `--rule` and `--rule-strong` are hairline colours and are documented as
+  "decorative only — never text".
+- **react-query's default is three retries with exponential backoff**, i.e.
+  seven seconds of "Looking…" before any screen may say it cannot reach the
+  server. `App.tsx` sets `retry: 1, retryDelay: 500`. If a designed failure
+  state seems not to render in a test, check that first.
+- **Gate a screen on the DATA, never on `isLoading` or `isError`.** A query
+  paused because the browser went offline is neither. Phase 3 learned this on
+  `PlaceFlow`; Phase 4 shipped the same bug on Search and the review caught
+  it. The pattern is `const unreachable = !query.isLoading && !query.data;`.
+
+## Older gotchas (Phase 3)
 
 - **A phase's evidence run must never be able to rewrite an earlier phase's.**
   `share.spec.ts` hard-coded `evidence/phase2/`, so Phase 3's regression re-run
@@ -149,8 +199,9 @@ in PowerShell) to be sure.
   `evidence/phase2/`. `scripts/boot-smoke.mjs` still drives chromium directly.
 - **Windows dev machine.** Paths contain a space (`Vineet Sista`) — always quote.
   Git Bash is available for POSIX scripts; PowerShell 5.1 is the primary shell.
-- **382 kB main JS chunk** after build (345 kB before Phase 3's two pages; 672 kB
-  before the external SDKs left). Code-splitting is a Phase 4 concern; the share
+- **394 kB main JS chunk** after build (382 kB before Phase 4; 345 kB before
+  Phase 3's two pages; 672 kB
+  before the external SDKs left). Code-splitting is still unaddressed; the share
   page must not ship this bundle at all — `e2e/share.spec.ts` asserts it requests
   zero `/assets/*.js` and zero stylesheets.
 - `tsconfig.json` is loose (`strictNullChecks: false`, `noImplicitAny: false`). Match
@@ -197,15 +248,24 @@ in PowerShell) to be sure.
   colour anywhere else** — the one unavoidable duplication (satori has no CSS
   variables, so `server/pages/og.ts` repeats a dozen hex values) is guarded by a
   test.
-- **The SPA's design vocabulary is the `cs-*` layer in `src/index.css`** (Phase 3):
-  `.cs-wrap` (the reading column), `.cs-caps` (the small-caps voice), `.cs-display`
-  / `.cs-figures`, `.cs-row` (a hairline row whose press state bleeds through the
-  gutter, and whose `aria-pressed` state draws the 2 px ember mark in the margin),
-  `.cs-shot` / `.cs-plate` (photo or the designed no-photo plate), `.cs-pill` /
-  `.cs-pill-ghost`, `.cs-word` (a 44 px word like BACK), `.cs-stamp`. Later phases
-  port this rather than inventing a second look — `src/pages/LogFlow.tsx` and
-  `PlaceFlow.tsx` are the reference implementations. No cards, no radius above 3 px
-  except the two pills, no icons on these surfaces.
+- **The SPA's design vocabulary is the `cs-*` layer in `src/index.css`** (Phase 3,
+  extended in Phase 4): `.cs-wrap` (the reading column), `.cs-caps` (the small-caps
+  voice), `.cs-display` / `.cs-figures`, `.cs-row` (a hairline row whose press state
+  bleeds through the gutter, and whose `aria-pressed` state draws the 2 px ember
+  mark in the margin), `.cs-shot` / `.cs-plate` (photo or the designed no-photo
+  plate), `.cs-pill` / `.cs-pill-ghost`, `.cs-word` (a 44 px-tall word like BACK —
+  it sets no minimum *width*, so give a short one its own padding), `.cs-stamp`,
+  `.cs-chip` (a filter chip, ported from the share page), and `.cs-shelf` /
+  `.cs-tab` / `.cs-tab-log` (the four-word bottom shell). Later phases port this
+  rather than inventing a second look — `src/pages/LogFlow.tsx`, `PlaceFlow.tsx`,
+  `Home.tsx` and `ShopDetail.tsx` are the reference implementations, and
+  `src/components/Nothing.tsx` is how every empty state is set. No cards, no radius
+  above 3 px except the two pills, no icons on these surfaces (lucide is gone from
+  everything outside `src/components/ui/`).
+- **Ember has two jobs and gold has one.** Ember: the order (rank numerals, the
+  active tab's rule, the selection mark) and the act of writing (`SAVE IT`, the
+  `Log` tab). Gold: the label voice. They never do each other's job, and neither
+  is ever a background for a large area.
 - Data fetching via `@tanstack/react-query` (the log flow prefetches `shops` /
   `meta` / `ranking` on the entry pill's `pointerdown`, which is why the measured
   path makes exactly one request — the save). Motion via CSS on the duration

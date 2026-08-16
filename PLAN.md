@@ -625,11 +625,252 @@ full verification output, followed by evidence and this status update.
   run, so a third re-run without a re-seed would have run out of unranked shops.
   Those fixtures now build their own five-place ranking through the insert route.
 
-### Phase 4 — Home/discovery/shell ☐
-- [ ] Hero query correct via stubbed geolocation (test)
-- [ ] Friend-weighted ≠ crowd order (test); data-age labels; re-verify prompt
-- [ ] Mocked finals week changes Home; shell + empty states in screenshots;
-      a11y/reduced-motion/anti-slop pass
+### Phase 4 — Home/discovery/shell ✅
+- [x] **Hero query correct via stubbed geolocation** — "near me, open now, has
+      outlets" is one predicate in `src/lib/discover.ts` (open · outlets ≥ 1 ·
+      ≤ 25 walking minutes of the position it is handed), and the position is an
+      *argument* all the way down, so the tests move the campus rather than
+      trusting it. Standing on the Oval it answers Night Owl (10 min, 18
+      outlets); standing on The Foundry's doorstep it answers The Foundry
+      (0 min); two miles west it answers **nothing**, which is a designed state.
+      The e2e also inspects the request the SPA actually makes and finds the
+      stub's coordinate on it (`lat=40.0007&lng=-83.0114`). Evidence:
+      `evidence/phase4/commands.txt`, `home-{mobile,desktop}.png`
+- [x] **Friend-weighted ≠ crowd order** — and it is a *tier*, not a weight:
+      every place somebody you know has ranked sits above every place nobody
+      you know has, at any crowd size. `server/repo/scores.test.ts` +
+      `discover.test.ts` prove it against a unanimous crowd of fifty (17+22
+      tests), and the same guarantee is asserted on the rendered page. It is
+      also **visible in the product**: Home can show you the crowd's order and
+      says how many places move (`20 of 20` for Lena on the seeded campus).
+      Evidence: `friend-vs-crowd-{mobile,desktop}.json`, `home-crowd-order-*.png`
+- [x] **Data-age labels + re-verify prompt** — every row states its age in
+      words from the seed timestamps, in three bands: silent under 21 days,
+      a muted clause to 60, and past 60 the facts themselves fall out of the
+      gold label voice while the caveat is set *brighter* than the facts it
+      qualifies. The re-verify prompt is asked of exactly one person — whoever
+      has been in since the facts were last confirmed — and everybody else is
+      told without being asked to vouch for what they did not see. Evidence:
+      `shop-reverify-*.png`, `shop-stale-stranger-*.png`, `shop-verified-*.png`
+- [x] **Mocked finals week changes Home** — from the calendar JSON, with no
+      date hook in the running server: `COSIGN_CALENDAR` points a second server
+      at a generated fixture whose finals week contains today, and
+      `scripts/phase4-evidence.sh` runs both. The same build, same database,
+      same clock: `phase=break mode=usual hero=Night Owl` on :8787 versus
+      `phase=finals mode=finals hero=The All-Nighter` on :8788 — plus a section
+      that exists in no other week (still open in four hours, off `shop_hours`).
+      Evidence: `finals-{mobile,desktop}.json`, `home-finals-*.png`
+- [x] **Shell + empty states in screenshots** — `src/components/AppShell.tsx`:
+      four words on a hairline (Home · Search · Log · You), no icons, no
+      badges, Log primary by face and enclosure rather than by a filled
+      lozenge, absent from the log flow, the head-to-head, onboarding and the
+      public share page. Every empty state rewritten as a designed screen
+      (`src/components/Nothing.tsx` replaces the Phase-1 `EmptyState`, whose
+      centred icon in a rounded grey square was the most stock shape in the
+      app). Evidence: `empty-{ranking,search}-*.png`, `home-no-friends-*.png`,
+      `search-*.png`, `profile-*.png`
+- [x] a11y **0 serious/critical axe violations** across 6 surfaces × 2
+      viewports (12 reports, 22–27 passes each — including the re-verify
+      prompt, audited while it is on screen rather than after the test has
+      answered it), 44 px targets swept on every destination,
+      `prefers-reduced-motion` leaves every computed animation/transition at
+      0 s, anti-slop self-review done against the committed screenshots
+- [x] Reviewed adversarially before commit: four independent lenses (brief
+      compliance / correctness / test scepticism / design + a11y), each
+      finding then handed to a separate agent instructed to refute it — see
+      "what the review caught" below. The Phase 2 (24) and Phase 3 (35) e2e
+      suites re-run as regressions against the clean seed and still pass; the
+      SPA boot smoke covers 11 routes with zero console errors and every
+      request on localhost
+
+**Phase 4 decisions & assumptions (new — don't relitigate):**
+- **Direction chosen by panel again, then judged.** Three independent designs
+  for Home and the shell were generated against the real seeded data (a printed
+  front page; the answer then the room; a continuity direction that adds the
+  fewest possible new shapes), each rendered as a working mockup at 390 px and
+  screenshotted, then scored by three lenses (literal brief compliance / a
+  sophomore in a queue at 11pm on 14% battery / the designer who shipped the
+  share page). No direction broke a hard rule. What shipped is a synthesis:
+  continuity's structure and row anatomy, the front page's shell treatment and
+  its crowd-order toggle, the answer direction's freshness attribution.
+- **The hero query is the page's headline, already answered on arrival.** The
+  brief asks for a "one-tap hero query"; this is zero taps — the question is
+  the largest editorial line on Home and the answer is under it. The tap it
+  *does* have is "ask again", which re-reads the position. Two judges
+  independently said the answer must outsize the question, so the question is
+  23 px and the answer's name is 44 px.
+- **Two orders, kept apart and both labelled.** The ANSWER is chosen by the
+  query (nearest; in finals week, the one you can sit in longest). The COLUMN
+  is chosen by your people. Blending them would let "near me" quietly outrank a
+  friend's #1, and the brief asks for both separately (#7 and #8).
+- **"Friends outrank the crowd" is lexicographic, not a weight** — this
+  supersedes decision 8's "friend-weighted" phrasing, and the weight is gone.
+  The order is: (1) has anybody you'd actually ask put it in order; (2) if so,
+  how highly do *they* rank it — a mean over your own and your friends' lists
+  with **no stranger in the arithmetic at all**; (3) otherwise, and to break
+  their ties, the crowd baseline; (4) then the walk. Keys 1 and 2 are separate
+  because a place a friend ranked *last* scores 0.0 for them exactly like a
+  place they have never been, and those are not the same statement.
+  A weighted mean cannot carry an invariant: at any fixed weight enough
+  strangers outvote your friends, so the guarantee fails exactly when a campus
+  gets dense — which is the moat. The review caught that the first cut had the
+  tier right and the *within-tier* ordering still decided by the crowd, so a
+  friend's #1 could sit below their #9. `discover.test.ts` now proves both
+  levels against a unanimous fifty. The cost is deliberate and visible: a
+  place one friend ranked near the bottom leads a place the whole campus loves
+  and nobody you know has been to, and every row says which it is, in names.
+- **Only accepted friends are ever named on a discovery surface** — stricter
+  than the share page, which may name a stranger whose ranking is public.
+  Here "friends first" means friends only, so the line cannot leak anything the
+  viewer could not already open. Two names per row is a hard cap, tested: with
+  three you could walk the column and reassemble a friend's whole ordering.
+- **Home can show you the order it is not giving you.** "Show the crowd's
+  order" plus "N of M move when your friends count for more" turns the
+  phase's headline claim from a passing test into something a person can tap.
+  It is also the best in-product evidence that rank is not for sale.
+- **The re-verify prompt is asked of one person, and the route agrees.**
+  Whoever has been in since the facts were last confirmed — the last person
+  through the door — gets the ask and the ember commit pill. Everybody else
+  gets the caveat and no button, because confirming something you did not see
+  is exactly the unverified data the feature exists to prevent, and an ask
+  everyone gets is a nag. `POST /api/shops/:id/verify` enforces the same rule
+  and 403s otherwise: the freshness signal the whole of brief #10 rests on
+  cannot be a client-side suggestion. It lives on the place page, not on Home:
+  asking twenty-two questions of somebody who opened the app to be told one
+  thing is how you train people to ignore you.
+- **Finals week changes the answer, never the question.** The predicate is the
+  brief's in both weeks; what changes is which match wins (somewhere you can
+  stay, open longest), the copy, and one section that exists in no other week.
+  `COSIGN_CALENDAR` is configuration, not a test hook — the academic calendar
+  is a file the way the database is a file, and nothing in the running server
+  can move the date. The Phase 4 evidence run generates its fixture from
+  today's date so it never needs re-dating.
+- **`minutesUntilClose` joins midnight.** `isOpenAt` clamps a same-day window
+  at 1440 because minutes stop there — the shop does not. Night Owl at 23:30
+  has 150 minutes left, not 30, and The All-Nighter (00:00–24:00, Thursday to
+  Sunday) is open for 86 hours, not 14. Without the join it would lose the
+  finals tiebreak to a place that shuts at 8pm.
+- **The shell's Log is not the ember pill.** Ember has two jobs — rank, and
+  the live one — and a filled lozenge in the bar on every screen forever would
+  be the loudest object in the app, permanently, for a destination rather than
+  for an act. Log is primary by face, case and enclosure: the display serif in
+  title case between two hairlines. The pill stays where it means something.
+- **Freshness has three bands, and the caveat outranks the facts.** Silent
+  under 21 days; a muted clause to 60; past 60 the facts leave the gold label
+  voice and the caveat is set brighter than the facts it qualifies, so a row
+  reads stale before a word of it is read.
+- **`isStale` moved to `src/lib/freshness.ts`** with the data-age labels it
+  shares a threshold with, and is deliberately not re-exported from
+  `timeBucket.ts`: one definition, one import path. The month in a stale label
+  is read off the timestamp's own date part, never through the viewer's clock —
+  otherwise March is renamed February for anyone west of the shop.
+- **Three more dead files deleted** — `EmptyState.tsx` (the centred-icon grey
+  square), `LocationFilter.tsx` (the last lucide import outside `ui/`, and
+  unused), `NavLink.tsx` (unused). Same reasoning as Phase 1's slider and
+  Phase 3's progress/radio-group/chart: an unused primitive is the drawer
+  somebody opens later.
+- **A logged-out reader gets the crowd's order and nobody's name**, and a
+  brand-new account gets exactly the same — which is honest, and is why the
+  no-friends Home says so in words rather than pretending to personalise.
+- **Main JS bundle 382 kB → 392 kB** (123 kB gzipped) with Home, Search and
+  the shell. The share page still ships none of it.
+- **Queries retry once, half a second apart** (`App.tsx`), not react-query's
+  default three with exponential backoff. Every screen in this phase has a
+  designed thing to say about not reaching the server; making somebody watch
+  "Looking…" for seven seconds before it is allowed to say it is its own kind
+  of dishonesty.
+- **`COSIGN_EVIDENCE` no longer defaults to a signed-off phase.** It was
+  `phase2` in `playwright.config.ts` and `phase3` in `e2e/fixtures.ts`, so a
+  bare `npx playwright test home.spec.ts` wrote Phase 4 screenshots into
+  `evidence/phase3/` and overwrote Phase 2's committed results JSON — the same
+  trap Phase 3 fixed one level down. Both now default to `evidence/scratch/`,
+  which is gitignored.
+- **Known gaps, deferred:** the Wrapped-style semester recap stays reserved
+  (logs carry `semester` for it); group mode and collaborative lists are 5B;
+  and `index.html` still gives every SPA route the same `<title>`, which is a
+  Phase-1 condition this phase did not introduce and did not fix.
+
+**What the review caught (all fixed before commit — worth knowing, not repeating):**
+Four lenses produced 33 findings; each went to a separate agent told to refute
+it, and 13 survived. All 13 are fixed. The ones worth remembering:
+- **The tier protected membership, not order.** "Friends outrank the crowd"
+  held for *which* places led, and then handed the ordering of your friends'
+  own picks back to the crowd — a friend's #1 could sit below their #9. The
+  friend score has no stranger in it at all now; see the decision above.
+- **`minutesUntilClose` only joined runs that met exactly at midnight.** The
+  All-Nighter is 07:00–01:00 Monday to Wednesday and round-the-clock Thursday
+  to Sunday: at 2pm on a Wednesday those two windows *overlap*, so it is open
+  for 106 hours and the old code reported eleven. In the committed calendar's
+  real finals week (which starts on a Wednesday) that handed the finals hero
+  to a place that shuts at 8pm.
+- **Search could not tell a failed request from an empty campus** — exactly
+  the Phase 3 defect, one surface over, and it would have blamed filters the
+  user never set for a dropped connection. It gates on absent data now (not on
+  `isError`, which misses the offline-paused case) and has its own designed
+  unreachable state.
+- **Fact separators were painted in `--rule-strong` — 1.68:1**, a contrast
+  failure axe reports as "incomplete" and therefore never fails on. The share
+  page had set the identical character in `--muted` since Phase 2; the SPA now
+  matches it, including the Phase 3 receipt that had the same bug.
+- **`POST /api/shops/:id/verify` had no entitlement check at all**, so the
+  freshness signal was enforced only by the screen that offered it.
+- **`confirmFresh` had a `finally` with no `catch`**: a failed write flipped
+  the button back to "Still right" and said nothing, and the one person who
+  can answer would reasonably believe they had.
+- **Two tests could not fail.** The share-page shell assertion sat behind
+  `if (live)` and the viewer owned no share token, so it never ran; and "Log
+  is the one that writes" asserted an attribute the component derives from
+  the tab's own key. The first mints a token; the second follows the tab.
+- **Three fixtures had expiry dates** — a "fresh row" that stops existing 21
+  days after the seed's last check, a hard-coded stale slug the suite itself
+  consumes, and a shop page the freshness suite makes fresh before the axe
+  sweep audits it. All three are now derived from the data at run time.
+
+**What the review caught (all fixed before commit — the rest):**
+- **A `fullPage` screenshot of a sticky shelf is a lie.** The shell is
+  `position: sticky; bottom: 0`, so a full-page capture lands it wherever the
+  scroll happened to be — across the middle of a row. `shotViewport()` captures
+  what the phone actually shows, and the two full-column shots scroll to the
+  bottom first so the shelf sits where it belongs.
+- **`[data-home]` also marked the loading screen**, so a test could read an
+  empty column and conclude the rows were missing. It failed only under load —
+  the dry runs were fast enough to miss it. The loading state carries
+  `data-state="loading"` now and the suite waits for the column, not the main.
+- **`Number("")` is 0**, which is a perfectly finite coordinate in the Gulf of
+  Guinea: `?lat=&lng=` placed the viewer at the equator. Empty parameters are
+  refused before they are parsed.
+- **A scrollable strip of nothing but images has no focusable child**, so a
+  keyboard user could not reach the shop page's photographs at all. axe caught
+  it; the region is focusable now.
+- **The evidence run's own ordering was rewriting its own screenshots.** The
+  Phase 3 log suite drives the real log flow as `u_lena` and therefore grows her
+  ranking, so running it before the Phase 4 suite produced Home screenshots
+  showing "your second" against a place she has never been. Phase 4 now runs
+  second, against the clean seed, and Phase 3 — which writes most and builds its
+  own fixtures — runs last.
+- The re-verify test hard-coded a seeded (user, shop) pair, and answering the
+  prompt *writes*: it worked exactly once, and the second run found the state
+  its own first run had created. It builds its own fixture now — the Phase 3
+  lesson, applied before it bit.
+- A `<button>` wrapped an `<h1>`, which is invalid (a button may contain only
+  phrasing content). The button sits inside the heading instead.
+- "None of them anyone you know" was true on every row of a friendless
+  account's Home — the same eight words twenty times, under a section that had
+  already said it once.
+- `.cs-word` sets a minimum *height* and nothing about width, so ListDetail's
+  "off" was a 40 px target — on the one destination the 44 px sweep did not
+  visit. Both fixed; `/lists/:listId` is in the sweep now.
+- Onboarding's three-place cap silently ignored the twentieth tap: no pressed
+  state, no message, no `aria-disabled`. It says "that's three — drop one
+  first" and announces itself now.
+- Nothing was the entire content of eight screens that then had no `<h1>` at
+  all. It takes a `standalone` prop and renders its title as the heading.
+- The sticky shelf had no `scroll-padding-bottom`, so a tabbed-to row was
+  scrolled to the viewport edge and landed underneath it — with the facts line
+  and the freshness caveat covered.
+- ShopDetail's cosigner sentence named the first eight and then counted only
+  the rankings the viewer may *not* read, so a place with 21 cosigners read as
+  12. The remainder is computed from the total.
 
 ### Phase 5A — Profile + import ☐
 - [ ] `/p/:token` logged-out + own OG + **hard perf gate** (numbers: ___)
