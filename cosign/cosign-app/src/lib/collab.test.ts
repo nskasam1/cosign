@@ -117,6 +117,44 @@ describe("ties break on evidence, then on the list's own history", () => {
   });
 });
 
+describe("two places the contributors cannot separate share a standing", () => {
+  it("says third twice and has no fourth", () => {
+    // x beats everything; y and z split one-one against each other and are
+    // level on the rest of the list, so nothing can put one above the other
+    const order = collabOrder(items("x", "y", "z", "w"), [
+      who("u_a", "x", "y", "z", "w"),
+      who("u_b", "x", "z", "y", "w"),
+    ]);
+    expect(order.ranked.map((r) => [r.shop_id, r.standing, r.tied_with_previous])).toEqual([
+      ["x", 1, false],
+      ["y", 2, false],
+      ["z", 2, true],
+      ["w", 4, false],
+    ]);
+  });
+
+  it("silence is not a tie — an unjudged pair gets its own standing", () => {
+    // nobody has ordered a against b, so there is nothing level about them
+    const order = collabOrder(items("a", "b"), [who("u_x", "a"), who("u_y", "b")]);
+    expect(order.ranked.map((r) => [r.standing, r.tied_with_previous])).toEqual([
+      [1, false],
+      [2, false],
+    ]);
+  });
+
+  it("a decisive pair separates two places level on the rest of the list", () => {
+    // p and q both go 1-1 overall, but they met and q won it
+    const order = collabOrder(items("p", "q", "r"), [
+      who("u_a", "q", "p", "r"),
+      who("u_b", "q", "p", "r"),
+    ]);
+    const [first, second] = order.ranked;
+    expect(first.shop_id).toBe("q");
+    expect(second.tied_with_previous).toBe(false);
+    expect(second.standing).toBe(2);
+  });
+});
+
 describe("a re-rank that changes nothing is not an event", () => {
   it("reports no movement when the derived order is the order already there", () => {
     const list = items("a", "b", "c");

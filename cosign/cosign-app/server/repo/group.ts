@@ -15,8 +15,10 @@ import { CAMPUS_CENTER, haversineMeters, walkingMinutes, type LatLng } from "../
 import { timeBucketForHour } from "../../src/lib/timeBucket.ts";
 import {
   MAX_PARTICIPANTS,
+  funnel,
   intersect,
   sessionState,
+  type FunnelStep,
   type GroupAnswer,
   type GroupNeed,
   type GroupPlace,
@@ -226,6 +228,8 @@ export interface GroupView {
   /** How many places each constraint is on its own responsible for losing. */
   ruled_out: Array<{ key: GroupAnswer["constraints"][number]["key"]; n: number }>;
   ruled_out_total: number;
+  /** The same arithmetic as a column that subtracts to the answer. */
+  funnel: { total: number; steps: FunnelStep[]; held: number; left: number };
   costliest: GroupAnswer["costliest"];
   /** Shop id → what the page needs to print about it. */
   places: Record<string, { name: string; slug: string; palette: string | null; walk_min: number }>;
@@ -348,6 +352,7 @@ export function sessionView(
       .map(([key, n]) => ({ key: key as GroupAnswer["constraints"][number]["key"], n }))
       .sort((a, b) => b.n - a.n || a.key.localeCompare(b.key)),
     ruled_out_total: answer.ruledOut.length,
+    funnel: funnel(needs, places),
     costliest: answer.costliest,
     places: named,
     members,

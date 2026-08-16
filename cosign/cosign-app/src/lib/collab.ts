@@ -38,6 +38,15 @@ export interface CollabRow {
   wins: number;
   losses: number;
   draws: number;
+  /**
+   * What the list calls it: 1, 2, 3, 3, 5 — two places SHARE a standing when
+   * the contributors ordered them against each other and came out level. An
+   * average would settle it, and settling it would be inventing an opinion
+   * nobody holds, so the list says third twice and has no fourth.
+   */
+  standing: number;
+  /** True when this row shares its standing with the row above it. */
+  tied_with_previous: boolean;
   /** Everyone who can edit this list and has ranked it, best position first. */
   positions: ContributorPosition[];
 }
@@ -98,6 +107,8 @@ export function collabOrder(items: CollabInput[], contributors: Contributor[]): 
     wins: 0,
     losses: 0,
     draws: 0,
+    standing: 0,
+    tied_with_previous: false,
     positions: rankers
       .filter((c) => indexOf.get(c.user_id)!.has(it.shop_id))
       .map((c) => ({
@@ -125,6 +136,15 @@ export function collabOrder(items: CollabInput[], contributors: Contributor[]): 
 
   const ranked = items.filter((it) => rows.get(it.shop_id)!.positions.length > 0);
   const disagreements: Disagreement[] = [];
+  /** `pair.get(a)!.get(b)` is +1 when a leads b, -1 when b leads, 0 for a
+   *  draw, and absent when no contributor has ordered both. */
+  const pair = new Map<string, Map<string, number>>();
+  const set = (a: string, b: string, v: number) => {
+    if (!pair.has(a)) pair.set(a, new Map());
+    if (!pair.has(b)) pair.set(b, new Map());
+    pair.get(a)!.set(b, v);
+    pair.get(b)!.set(a, -v);
+  };
 
   for (let i = 0; i < ranked.length; i++) {
     for (let j = i + 1; j < ranked.length; j++) {
@@ -145,28 +165,64 @@ export function collabOrder(items: CollabInput[], contributors: Contributor[]): 
       if (forA.length > forB.length) {
         rows.get(a)!.wins++;
         rows.get(b)!.losses++;
+        set(a, b, 1);
       } else if (forB.length > forA.length) {
         rows.get(b)!.wins++;
         rows.get(a)!.losses++;
+        set(a, b, -1);
       } else {
         rows.get(a)!.draws++;
         rows.get(b)!.draws++;
+        set(a, b, 0);
       }
       if (forA.length > 0 && forB.length > 0) disagreements.push({ a, b, forA, forB });
     }
   }
 
+  const copeland = (r: CollabRow) => r.wins - r.losses;
   const best = (r: CollabRow) => (r.positions[0] ? percentile(r.positions[0].position, r.positions[0].of) : 0);
+  /** The keys that decide when the pairs cannot: evidence, then history. */
+  const fallback = (x: CollabRow, y: CollabRow) =>
+    y.positions.length - x.positions.length ||
+    best(y) - best(x) ||
+    (order.get(x.shop_id) ?? 0) - (order.get(y.shop_id) ?? 0) ||
+    x.shop_id.localeCompare(y.shop_id);
+
   const sorted = ranked
     .map((it) => rows.get(it.shop_id)!)
-    .sort(
-      (x, y) =>
-        y.wins - y.losses - (x.wins - x.losses) ||
-        y.positions.length - x.positions.length ||
-        best(y) - best(x) ||
-        (order.get(x.shop_id) ?? 0) - (order.get(y.shop_id) ?? 0) ||
-        x.shop_id.localeCompare(y.shop_id),
-    );
+    .sort((x, y) => copeland(y) - copeland(x) || fallback(x, y));
+
+  // Level across the whole list, so the pair itself decides — re-sorted
+  // WITHIN each tied group on a local score (wins minus losses against that
+  // group alone) rather than by a pairwise comparator, because a comparator
+  // that disagrees with itself around a cycle gives an order the language
+  // does not define.
+  for (let i = 0; i < sorted.length; ) {
+    let j = i + 1;
+    while (j < sorted.length && copeland(sorted[j]) === copeland(sorted[i])) j++;
+    if (j - i > 1) {
+      const group = sorted.slice(i, j);
+      const ids = new Set(group.map((r) => r.shop_id));
+      const local = (r: CollabRow) =>
+        [...(pair.get(r.shop_id) ?? new Map())]
+          .filter(([id]) => ids.has(id))
+          .reduce((n, [, v]) => n + v, 0);
+      group.sort((x, y) => local(y) - local(x) || fallback(x, y));
+      sorted.splice(i, group.length, ...group);
+    }
+    i = j;
+  }
+
+  // Competition standings: 1, 2, 3, 3, 5. Two rows share one only when the
+  // contributors ordered them against each other and came out LEVEL — an
+  // unjudged pair is silence, not a tie, and silence does not create one.
+  sorted.forEach((row, i) => {
+    const above = sorted[i - 1];
+    const level =
+      !!above && copeland(above) === copeland(row) && pair.get(above.shop_id)?.get(row.shop_id) === 0;
+    row.tied_with_previous = level;
+    row.standing = level ? above.standing : i + 1;
+  });
 
   return {
     source: "contributors",

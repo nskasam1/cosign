@@ -2,12 +2,14 @@
 // machine (Vite proxies /api to localhost:8787 in dev; same origin in prod).
 
 import type {
+  GroupSession,
   IntentTag,
   List,
   ListItem,
   Log,
   LogTaps,
   NoiseLevel,
+  NotificationType,
   CrowdLevel,
   RankingEntry,
   SemesterPhase,
@@ -18,6 +20,7 @@ import type {
   TimeBucket,
   User,
 } from "@/types/cosign";
+import type { ConstraintKey as GroupConstraintKey } from "@/lib/group";
 
 export class ApiError extends Error {
   status: number;
@@ -92,11 +95,100 @@ export interface ProfileView {
   logs_count: number;
 }
 
+/** One place's standing in the order its contributors' rankings imply. */
+export interface CollabRow {
+  shop_id: string;
+  wins: number;
+  losses: number;
+  draws: number;
+  positions: Array<{ user_id: string; position: number; of: number }>;
+}
+
 export interface ListView {
   list: List;
   items: Array<ListItem & { shop: Shop }>;
   editors: string[];
   can_edit: boolean;
+  is_owner: boolean;
+  contributors: Array<{ user_id: string; display_name: string; username: string }>;
+  /** Computed for the reader and written nowhere: a list only moves when an
+   *  editor says so, because a change nobody made has nobody to name. */
+  derived: {
+    source: "owner" | "contributors";
+    contributors: number;
+    ranked: CollabRow[];
+    unranked: CollabRow[];
+    disagreements: Array<{ a: string; b: string; forA: string[]; forB: string[] }>;
+    settled: boolean;
+  };
+  last_rerank: { id: string; list_id: string; actor_id: string; moved: number; created_at: string } | null;
+}
+
+// ── the notification feed (brief #11) ───────────────────────────────────────
+
+export interface FeedEntry {
+  id: string;
+  type: NotificationType;
+  created_at: string;
+  read_at: string | null;
+  actor: { id: string; username: string; display_name: string; avatar: string | null };
+  ref: { kind: string; id: string };
+  /** Still asking the reader for something, read off the record every time. */
+  needs_answer: boolean;
+  subject: Record<string, unknown>;
+}
+
+export interface FriendsView {
+  accepted: User[];
+  incoming: Array<{ friendship_id: string; user: User; created_at: string }>;
+  outgoing: Array<{ friendship_id: string; user: User; created_at: string }>;
+}
+
+// ── group decision mode (brief #8) ──────────────────────────────────────────
+
+export interface GroupAnswerLine {
+  shop_id: string;
+  positions: Array<{ user_id: string; position: number; of: number }>;
+  worst: { user_id: string; position: number; of: number } | null;
+  coverage: number;
+  never_been: string[];
+}
+
+export interface GroupView {
+  session: GroupSession;
+  starter: { id: string; username: string; display_name: string; avatar: string | null } | null;
+  invited: number;
+  state: "alone" | "partial" | "complete";
+  answers: Array<{
+    participant: string;
+    display_name: string | null;
+    is_you: boolean;
+    brings_a_list: boolean;
+    intent_tag: IntentTag | null;
+    outlets: boolean;
+    open_now: boolean;
+    wifi: boolean;
+    max_noise: NoiseLevel | null;
+  }>;
+  constraints: Array<{ key: GroupConstraintKey; askedBy: string[]; detail: string }>;
+  picks: GroupAnswerLine[];
+  more: number;
+  unknown_to_all: string[];
+  unvouched: string[];
+  ruled_out: Array<{ key: GroupConstraintKey; n: number }>;
+  ruled_out_total: number;
+  /** The arithmetic as a column that subtracts to the answer. */
+  funnel: {
+    total: number;
+    steps: Array<{ key: GroupConstraintKey; detail: string; askedBy: string[]; removed: number; remaining: number }>;
+    /** Would qualify, but nobody has logged how loud they get at this hour. */
+    held: number;
+    left: number;
+  };
+  costliest: { key: GroupConstraintKey; detail: string; unlocks: number } | null;
+  places: Record<string, { name: string; slug: string; palette: string | null; walk_min: number }>;
+  members: Record<string, string>;
+  resolved_shop_id: string | null;
 }
 
 /** One row of Home's list: the shop, why it is there, and how old it is. */
@@ -225,6 +317,52 @@ export const api = {
     req<{ ok: true }>(`/api/lists/${encodeURIComponent(listId)}/items/${encodeURIComponent(shopId)}`, {
       method: "DELETE",
     }),
+
+  // Only the owner may hand over the pen, and only to an accepted friend —
+  // the server enforces both (server/index.ts).
+  addListEditor: (listId: string, username: string) =>
+    post<{ ok: true }>(`/api/lists/${encodeURIComponent(listId)}/editors`, { username }),
+  /** Put a collaborative list in the order its contributors' lists imply.
+   *  409 when there is nothing to move: that is not an event. */
+  rerankList: (listId: string) =>
+    post<{ rerank: { id: string; moved: number } }>(`/api/lists/${encodeURIComponent(listId)}/rerank`),
+
+  // ── people, and the five things they can do that reach you ───────────────
+  friends: () => req<FriendsView>("/api/friends"),
+  requestFriend: (username: string) => post<{ friendship: unknown }>("/api/friends/request", { username }),
+  acceptFriend: (friendshipId: string) =>
+    post<{ friendship: unknown }>(`/api/friends/${encodeURIComponent(friendshipId)}/accept`),
+
+  notifications: () => req<{ entries: FeedEntry[] }>("/api/notifications"),
+  markNotificationsRead: (ids: string[]) => post<{ read: number }>("/api/notifications/read", { ids }),
+
+  // ── group mode ───────────────────────────────────────────────────────────
+  // Reading and answering never require an account; starting and closing do.
+  startGroup: (invite: string[]) => post<{ session: GroupSession }>("/api/group", { invite }),
+  group: (id: string, opts: { at?: { lat: number; lng: number }; participantToken?: string } = {}) => {
+    const q = new URLSearchParams();
+    if (opts.at) {
+      q.set("lat", String(opts.at.lat));
+      q.set("lng", String(opts.at.lng));
+    }
+    if (opts.participantToken) q.set("pt", opts.participantToken);
+    const query = q.toString();
+    return req<GroupView>(`/api/group/${encodeURIComponent(id)}${query ? `?${query}` : ""}`);
+  },
+  submitGroupNeeds: (
+    id: string,
+    needs: {
+      participant_token: string;
+      display_name?: string | null;
+      intent_tag?: IntentTag | null;
+      outlets?: boolean;
+      open_now?: boolean;
+      wifi?: boolean;
+      max_noise?: NoiseLevel | null;
+    },
+  ) => post<{ ok: true }>(`/api/group/${encodeURIComponent(id)}/needs`, needs),
+  resolveGroup: (id: string, shopId: string | null) =>
+    post<{ session: GroupSession }>(`/api/group/${encodeURIComponent(id)}/resolve`, { shop_id: shopId }),
 
   myShareTokens: () => req<{ tokens: ShareToken[] }>("/api/share/mine"),
   createShareToken: (input: { kind: "ranking" | "list" | "profile"; list_id?: string }) =>

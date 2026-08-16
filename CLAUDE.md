@@ -41,6 +41,7 @@ persistence layer uses the built-in `node:sqlite`). The bun lockfiles are gone.
 | Shops → spreadsheet | `npm run export:shops -- f.csv` | round-trips back through import |
 | Share-page e2e | `npx playwright test share.spec.ts` | 24 tests, mobile + desktop; needs the prod server up |
 | Profile + import e2e | `COSIGN_EVIDENCE=phase5a npx playwright test profile.spec.ts` | 46 tests; the import half **writes** — point the server at a scratch DB first |
+| Social/group e2e | `COSIGN_EVIDENCE=phase5b npx playwright test social.spec.ts` | **writes** (sessions, friend requests, re-ranks) — scratch DB first |
 | Log-flow e2e | `COSIGN_EVIDENCE=phase3 npx playwright test log.spec.ts` | 35 tests; **writes** — point the server at a scratch DB first |
 | Home/discovery e2e | `COSIGN_EVIDENCE=phase4 npx playwright test home.spec.ts` | 44 tests; **writes**; finals tests skip without `COSIGN_FINALS_BASE` |
 | Perf gate | `MSYS_NO_PATHCONV=1 node scripts/lighthouse.mjs /s/<token> phase2 share` | exits non-zero if the gate misses |
@@ -49,6 +50,7 @@ persistence layer uses the built-in `node:sqlite`). The bun lockfiles are gone.
 | Phase 3 evidence | `bash scripts/phase3-evidence.sh` | owns its own server + scratch DB; :8787 must be free |
 | Phase 4 evidence | `bash scripts/phase4-evidence.sh` | owns **two** servers (:8787 + :8788) and a scratch DB; both ports must be free |
 | Phase 5A evidence | `bash scripts/phase5a-evidence.sh` | owns its own server + scratch DB; :8787 must be free; ~8 min (three Lighthouse gates) |
+| Phase 5B evidence | `bash scripts/phase5b-evidence.sh` | owns its own server + scratch DB; :8787 must be free; no Lighthouse gate (5B ships no public SSR surface) |
 | SPA boot smoke | `node scripts/boot-smoke.mjs` | `COSIGN_EVIDENCE_DIR=phase2/spa` to target a phase |
 
 `COSIGN_EVIDENCE=<phase>` picks the directory Playwright writes into. It

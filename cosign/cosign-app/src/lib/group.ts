@@ -340,6 +340,52 @@ export function costliestConstraint(
   return best && { key: best.key, detail: best.detail, unlocks: best.unlocks };
 }
 
+/**
+ * How the campus became the answer, one constraint at a time.
+ *
+ * The count each need is *on its own* responsible for is the wrong number to
+ * print: two needs that rule out the same eight places would each claim
+ * eight, and the arithmetic would not add up on the page. This walks the
+ * constraints in a fixed order and reports what each one took off a table
+ * the previous ones had already narrowed — so the column subtracts to the
+ * answer, and a need that cost nothing says so, which is the only way anybody
+ * learns which of their needs is cheap.
+ */
+export const FUNNEL_ORDER: ConstraintKey[] = ["open_now", "table", "outlets", "wifi", "noise"];
+
+export interface FunnelStep {
+  key: ConstraintKey;
+  detail: string;
+  askedBy: string[];
+  removed: number;
+  remaining: number;
+}
+
+export function funnel(
+  needs: GroupNeed[],
+  places: GroupPlace[],
+): { total: number; steps: FunnelStep[]; held: number; left: number } {
+  const constraints = constraintsFor(needs);
+  const ordered = FUNNEL_ORDER.flatMap((k) => constraints.filter((c) => c.key === k));
+  let alive = places;
+  const steps: FunnelStep[] = [];
+  for (const c of ordered) {
+    // "unknown" survives this pass: an unlogged room has not failed the
+    // question, it has declined to answer it, and it is counted separately.
+    const next = alive.filter((p) => meets(p, c, needs) !== false);
+    steps.push({
+      key: c.key,
+      detail: c.detail,
+      askedBy: c.askedBy,
+      removed: alive.length - next.length,
+      remaining: next.length,
+    });
+    alive = next;
+  }
+  const held = alive.filter((p) => constraints.some((c) => meets(p, c, needs) === "unknown")).length;
+  return { total: places.length, steps, held, left: alive.length - held };
+}
+
 /** Everyone who has answered, in the order they arrived. */
 export function answeredBy(needs: GroupNeed[]): string[] {
   return needs.map((n) => n.display_name ?? "Someone");

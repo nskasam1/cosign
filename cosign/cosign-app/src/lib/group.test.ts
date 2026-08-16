@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   constraintsFor,
   costliestConstraint,
+  funnel,
   intersect,
   meets,
   sessionState,
@@ -223,6 +224,52 @@ describe("when nothing works, it names what is costing the group", () => {
 
   it("says nothing about cost while there is still something to sit at", () => {
     expect(intersect([need("a")], [place("fine")]).costliest).toBeNull();
+  });
+});
+
+describe("the arithmetic subtracts to the answer", () => {
+  const needs = [
+    need("a", { open_now: true, outlets: true }),
+    need("b", { outlets: true, wifi: true }),
+    need("c", { max_noise: "quiet" }),
+  ];
+  const places = [
+    place("shut", { open_now: false }),
+    place("no-outlets", { outlet_count: 1 }), // two people need one each
+    place("no-wifi", { wifi_mbps: null }),
+    place("loud", { noise: "loud" }),
+    place("unlogged", { noise: null, noise_samples: 0 }),
+    place("fine", { positions: [{ user_id: "u_a", position: 1, of: 3 }] }),
+  ];
+
+  it("charges each need only for what the ones before it left", () => {
+    const f = funnel(needs, places);
+    expect(f.total).toBe(6);
+    expect(f.steps.map((s) => [s.key, s.removed, s.remaining])).toEqual([
+      ["open_now", 1, 5],
+      // a party of three needs a table, and every place here has one
+      ["table", 0, 5],
+      ["outlets", 1, 4],
+      ["wifi", 1, 3],
+      ["noise", 1, 2],
+    ]);
+    // the unlogged room has not failed the question, it has declined to
+    // answer it, and it is held rather than subtracted
+    expect(f.held).toBe(1);
+    expect(f.left).toBe(1);
+    expect(f.left).toBe(intersect(needs, places).picks.length + intersect(needs, places).unknownToAll.length);
+  });
+
+  it("prints a need that cost nothing, which is the only way anybody learns it was cheap", () => {
+    const cheap = [need("a", { wifi: true }), need("b", { max_noise: "quiet" })];
+    const f = funnel(cheap, [place("x"), place("y")]);
+    expect(f.steps.find((s) => s.key === "wifi")!.removed).toBe(0);
+  });
+
+  it("names who asked for each line", () => {
+    const f = funnel(needs, places);
+    expect(f.steps.find((s) => s.key === "outlets")!.askedBy).toEqual(["a", "b"]);
+    expect(f.steps.find((s) => s.key === "noise")!.askedBy).toEqual(["c"]);
   });
 });
 
