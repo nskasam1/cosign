@@ -23,6 +23,57 @@ export function isOpenAt(rows: HoursRow[], day: number, minute: number): boolean
   return false;
 }
 
+/**
+ * Minutes from `minute` on `day` until the shop shuts, or null when it is
+ * already shut. Finals week asks "how long can I sit here", which open-now
+ * cannot answer — a place that closes in nine minutes is open and useless.
+ *
+ * Mirrors isOpenAt exactly, including the previous day's window overflowing
+ * past midnight (Night Owl at 1am is on Monday's row, not Tuesday's).
+ */
+export function minutesUntilClose(rows: HoursRow[], day: number, minute: number): number | null {
+  const prevDay = (day + 6) % 7;
+  let left: number | null = null;
+  const keep = (m: number) => {
+    if (m > 0 && (left === null || m > left)) left = m;
+  };
+  for (const r of rows) {
+    // isOpenAt clamps the same-day window at 1440 because minutes stop
+    // there — but the shop does not. Night Owl at 23:30 has 150 minutes
+    // left, not 30: the clamp answers "is it open", never "for how long".
+    if (r.day === day && r.open_min <= minute && minute < Math.min(r.close_min, 1440)) {
+      keep(r.close_min - minute);
+    }
+    if (r.day === prevDay && r.close_min > 1440 && minute < r.close_min - 1440) {
+      keep(r.close_min - 1440 - minute);
+    }
+  }
+  if (left === null) return null;
+  let remaining: number = left;
+
+  // Consecutive windows that touch or overlap are ONE run, not two. The
+  // All-Nighter is 07:00–01:00 on Monday to Wednesday and 00:00–24:00 from
+  // Thursday to Sunday: standing in it at 2pm on a Wednesday it does not
+  // shut in eleven hours, it shuts on Monday morning — Wednesday's window
+  // runs to 01:00 Thursday and Thursday's has been open since midnight.
+  //
+  // Checking only for an exact midnight join would miss that overlap and
+  // hand the finals-week tiebreak to a place that shuts at 8pm. Bounded at
+  // a week so a genuinely 24/7 shop terminates.
+  for (let hop = 0; hop < 7; hop++) {
+    const end = minute + remaining;
+    const dayOffset = Math.floor(end / 1440);
+    const endMinute = end % 1440;
+    const nextDay = (day + dayOffset) % 7;
+    // A window on that day already open at the instant this run ends
+    // continues it; the run then reaches THAT window's close.
+    const carries = rows.find((r) => r.day === nextDay && r.open_min <= endMinute && endMinute < r.close_min);
+    if (!carries) break;
+    remaining = dayOffset * 1440 + carries.close_min - minute;
+  }
+  return remaining;
+}
+
 /** Day-of-week (0=Sunday) and minutes-since-midnight in a timezone. */
 export function localDayMinute(date: Date, timezone: string): { day: number; minute: number } {
   const parts = new Intl.DateTimeFormat("en-US", {

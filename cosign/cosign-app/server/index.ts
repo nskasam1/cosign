@@ -18,15 +18,16 @@ import { COOKIE_NAME, clearSessionCookie, makeSessionCookie, verifySession } fro
 import * as social from "./repo/social.ts";
 import * as shops from "./repo/shops.ts";
 import * as rank from "./repo/rank.ts";
+import { discover } from "./repo/discover.ts";
 import * as lists from "./repo/lists.ts";
 import * as share from "./repo/share.ts";
 import * as logsRepo from "./repo/logsRepo.ts";
 import * as analytics from "./repo/analytics.ts";
 import { renderSharePage, renderTombstone } from "./pages/shareList.ts";
 import { renderOgImage } from "./pages/og.ts";
-import { isStale } from "../src/lib/timeBucket.ts";
+import { isStale } from "../src/lib/freshness.ts";
 import { phaseForDate, semesterForDate, type AcademicCalendar } from "../src/lib/calendar.ts";
-import { CAMPUS_CENTER, haversineMeters, walkingMinutes } from "../src/lib/geo.ts";
+import { CAMPUS_CENTER, haversineMeters, walkingMinutes, type LatLng } from "../src/lib/geo.ts";
 import {
   CROWD_LEVELS,
   INTENT_TAGS,
@@ -40,9 +41,12 @@ import {
 const PROD = process.argv.includes("--prod") || process.env.NODE_ENV === "production";
 const PORT = Number(process.env.PORT ?? 8787);
 
-const calendar: AcademicCalendar = JSON.parse(
-  readFileSync(join(APP_ROOT, "seed", "academic-calendar.json"), "utf-8"),
-);
+// The academic calendar is a file, like the database is a file. COSIGN_CALENDAR
+// points at a different one — another school's terms, or the fixture the Phase 4
+// evidence run uses to stand the server inside finals week. It is configuration,
+// not a test hook: nothing in the running server can move the date.
+const CALENDAR_PATH = process.env.COSIGN_CALENDAR ?? join(APP_ROOT, "seed", "academic-calendar.json");
+const calendar: AcademicCalendar = JSON.parse(readFileSync(CALENDAR_PATH, "utf-8"));
 
 const app = new Hono<{ Variables: { userId: string | null } }>();
 
@@ -163,13 +167,58 @@ app.get("/api/shops/:slug", (c) => {
     conditions: shops.conditionsByBucket(db, s.id),
     cosigners: rank.cosignersOf(db, s.id, uid),
     logs: logsRepo.visibleLogsForShop(db, s.id, uid, friendIds),
+    // The viewer's own last visit, from their own logs alone — `logs` above
+    // is capped at 30 and a busy shop would push theirs out of it.
+    your_last_visit: uid ? logsRepo.lastVisitOf(db, s.id, uid) : null,
   });
 });
 
+// ── discovery: the surface behind Home (brief #7 and #8) ────────────────────
+//
+// The position is an ARGUMENT, never a stored field. It arrives on the query
+// string from a momentary GeoProvider read, is used to compute distances for
+// this one response, and is written nowhere — not to a row, not to an
+// analytics event (decision 12: no persistent location history).
+// `server/repo/discover.test.ts` proves it by sweeping every text column in
+// the database for the coordinate afterwards.
+function positionFrom(lat: string | undefined, lng: string | undefined): LatLng {
+  // `Number("")` is 0, which is a perfectly finite coordinate in the Gulf of
+  // Guinea — so an empty parameter has to be refused before it is parsed,
+  // not after.
+  if (!lat?.trim() || !lng?.trim()) return CAMPUS_CENTER;
+  const la = Number(lat);
+  const ln = Number(lng);
+  const usable = Number.isFinite(la) && Number.isFinite(ln) && Math.abs(la) <= 90 && Math.abs(ln) <= 180;
+  return usable ? { lat: la, lng: ln } : CAMPUS_CENTER;
+}
+
+app.get("/api/discover", (c) =>
+  c.json(
+    discover(getDb(), calendar, {
+      at: positionFrom(c.req.query("lat"), c.req.query("lng")),
+      viewerId: me(c),
+    }),
+  ),
+);
+
+/**
+ * "These facts are still right." The freshness signal the whole of brief #10
+ * rests on, so the entitlement is enforced HERE and not only in the screen
+ * that offers it: only somebody who has been in since the last confirmation
+ * may confirm. Anyone else would be vouching for a room they have not seen,
+ * which is exactly the unverified data the feature exists to prevent.
+ */
 app.post("/api/shops/:id/verify", (c) => {
   const uid = me(c);
   if (!uid) return c.json({ error: "sign in first" }, 401);
-  shops.confirmFreshness(getDb(), c.req.param("id"));
+  const db = getDb();
+  const shop = shops.shopById(db, c.req.param("id"));
+  if (!shop) return c.json({ error: "not found" }, 404);
+  const lastVisit = logsRepo.lastVisitOf(db, shop.id, uid);
+  if (!lastVisit || (shop.last_verified_at && lastVisit <= shop.last_verified_at)) {
+    return c.json({ error: "you haven't been in since this was last checked" }, 403);
+  }
+  shops.confirmFreshness(db, shop.id);
   return c.json({ ok: true });
 });
 

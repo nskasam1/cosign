@@ -73,6 +73,9 @@ export interface ShopDetail {
     total: number;
   };
   logs: Log[];
+  /** The viewer's own last visit — its own query, so a busy shop's 30-log
+   *  window cannot hide it. Null when logged out or never been. */
+  your_last_visit: string | null;
 }
 
 /** The canonical ranking joined to its shops, each with its lead photo —
@@ -96,6 +99,36 @@ export interface ListView {
   can_edit: boolean;
 }
 
+/** One row of Home's list: the shop, why it is there, and how old it is. */
+export interface DiscoverEntry extends ShopSummary {
+  /** Lifted out of `amenities` because the hero query reads it directly. */
+  outlet_count: number | null;
+  closes_in_min: number | null;
+  camp_ok: boolean;
+  /** Friends (and you) with it in their list — the tier, not a tiebreak. */
+  friend_count: number;
+  friend_score: number;
+  friend_sample: number;
+  crowd_score: number;
+  crowd_sample: number;
+  /** The viewer's own position in their own ranking, if they have one. */
+  you: number | null;
+  /** Accepted friends only — never a stranger, even a public-ranking one. */
+  friends: Array<{ username: string; display_name: string; avatar: string | null; position: number }>;
+  others: number;
+  cosign_total: number;
+  age: { days: number | null; stale: boolean; label: string };
+}
+
+export interface DiscoverView {
+  /** Echoed back, never stored — see the route's comment. */
+  at: { lat: number; lng: number };
+  phase: SemesterPhase;
+  semester: string;
+  hero: { mode: "usual" | "finals"; shop_id: string | null; matches: number };
+  entries: DiscoverEntry[];
+}
+
 export interface Meta {
   schools: Array<{ id: string; name: string }>;
   semester: string;
@@ -116,6 +149,10 @@ export const api = {
   logout: () => post<{ ok: true }>("/api/auth/logout"),
 
   shops: () => req<{ shops: ShopSummary[] }>("/api/shops"),
+  // The position is read momentarily and handed over for this one response;
+  // the server stores none of it (decision 12).
+  discover: (at?: { lat: number; lng: number }) =>
+    req<DiscoverView>(at ? `/api/discover?lat=${at.lat}&lng=${at.lng}` : "/api/discover"),
   shop: (slugOrId: string) => req<ShopDetail>(`/api/shops/${encodeURIComponent(slugOrId)}`),
   verifyShop: (id: string) => post<{ ok: true }>(`/api/shops/${encodeURIComponent(id)}/verify`),
   searchPlaces: (q: string) => req<{ results: Shop[] }>(`/api/places/search?q=${encodeURIComponent(q)}`),

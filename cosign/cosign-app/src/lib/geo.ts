@@ -20,6 +20,18 @@ export const stubGeoProvider: GeoProvider = {
   currentPosition: async () => CAMPUS_CENTER,
 };
 
+/**
+ * One momentary read, handed straight to the request that needs it.
+ *
+ * Nothing keeps the result: not a module variable, not localStorage, not a
+ * row. Swapping the provider is the whole seam — `server/repo/discover.test.ts`
+ * moves the coordinate and watches the hero query follow it, which is what
+ * "correct via stubbed geolocation" means when the stub IS the provider.
+ */
+export async function readPosition(provider: GeoProvider = stubGeoProvider): Promise<LatLng> {
+  return provider.currentPosition();
+}
+
 /** Great-circle distance in meters (replaces the raw-degrees Math.hypot bug). */
 export function haversineMeters(a: LatLng, b: LatLng): number {
   const R = 6371000;

@@ -78,72 +78,9 @@ export function insertIntoRanking(
   }
 }
 
-export interface ShopScore {
-  shop_id: string;
-  score: number; // 0..1, higher = better-ranked
-  sample: number; // how many rankings include it
-}
-
-/**
- * Crowd baseline: for each shop, the mean rank percentile across every
- * user's ordered list (1.0 = everyone's #1). Positions derive from
- * comparisons, so this is aggregated rank — no ratings involved.
- */
-export function crowdScores(db: DatabaseSync): Map<string, ShopScore> {
-  const rows = db
-    .prepare(
-      `SELECT re.shop_id, re.position, c.n
-       FROM ranking_entries re
-       JOIN (SELECT user_id, count(*) AS n FROM ranking_entries GROUP BY user_id) c
-         ON c.user_id = re.user_id`,
-    )
-    .all() as unknown as Array<{ shop_id: string; position: number; n: number }>;
-  return aggregate(rows);
-}
-
-/**
- * Friend-weighted scores for a viewer: friends' lists dominate (weight 3)
- * over the crowd (weight 1). Friends outrank the crowd — decision 8.
- */
-export function friendWeightedScores(db: DatabaseSync, viewerId: string): Map<string, ShopScore> {
-  const friends = new Set([viewerId, ...friendIdsOf(db, viewerId)]);
-  const rows = db
-    .prepare(
-      `SELECT re.user_id, re.shop_id, re.position, c.n
-       FROM ranking_entries re
-       JOIN (SELECT user_id, count(*) AS n FROM ranking_entries GROUP BY user_id) c
-         ON c.user_id = re.user_id`,
-    )
-    .all() as unknown as Array<{ user_id: string; shop_id: string; position: number; n: number }>;
-  const weighted = rows.map((r) => ({
-    shop_id: r.shop_id,
-    position: r.position,
-    n: r.n,
-    weight: friends.has(r.user_id) ? 3 : 1,
-  }));
-  const byShop = new Map<string, ShopScore>();
-  for (const r of weighted) {
-    const pct = r.n === 1 ? 1 : 1 - (r.position - 1) / (r.n - 1);
-    const cur = byShop.get(r.shop_id) ?? { shop_id: r.shop_id, score: 0, sample: 0 };
-    // running weighted mean via accumulated weight in `sample`
-    cur.score = (cur.score * cur.sample + pct * r.weight) / (cur.sample + r.weight);
-    cur.sample += r.weight;
-    byShop.set(r.shop_id, cur);
-  }
-  return byShop;
-}
-
-function aggregate(rows: Array<{ shop_id: string; position: number; n: number }>): Map<string, ShopScore> {
-  const byShop = new Map<string, ShopScore>();
-  for (const r of rows) {
-    const pct = r.n === 1 ? 1 : 1 - (r.position - 1) / (r.n - 1);
-    const cur = byShop.get(r.shop_id) ?? { shop_id: r.shop_id, score: 0, sample: 0 };
-    cur.score = (cur.score * cur.sample + pct) / (cur.sample + 1);
-    cur.sample += 1;
-    byShop.set(r.shop_id, cur);
-  }
-  return byShop;
-}
+// The crowd baseline and the friend-weighted score moved to
+// server/repo/scores.ts in Phase 4. This file owns one user's ordered list;
+// that one owns what many lists say together.
 
 export interface Cosigner {
   user_id: string;

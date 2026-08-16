@@ -11,10 +11,6 @@ export function currentTimeBucket(date: Date = new Date()): TimeBucket {
   return "evening";
 }
 
-const STALE_AFTER_DAYS = 60;
-
-export function isStale(lastVerifiedAt: string | null): boolean {
-  if (!lastVerifiedAt) return true;
-  const ageMs = Date.now() - new Date(lastVerifiedAt).getTime();
-  return ageMs > STALE_AFTER_DAYS * 24 * 60 * 60 * 1000;
-}
+// Staleness lives in src/lib/freshness.ts (Phase 4), next to the data-age
+// labels it shares its threshold with. Deliberately not re-exported from
+// here: one definition, one import path.

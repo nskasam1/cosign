@@ -12,7 +12,7 @@ import type {
   ShopPhoto,
   TimeBucket,
 } from "../../src/types/cosign.ts";
-import { isOpenAt, localDayMinute, type HoursRow } from "../lib/hours.ts";
+import { isOpenAt, localDayMinute, minutesUntilClose, type HoursRow } from "../lib/hours.ts";
 
 export interface ShopRow extends Omit<Shop, "student_discount"> {
   student_discount: number;
@@ -64,6 +64,13 @@ export function hoursOf(db: DatabaseSync, shopId: string): HoursRow[] {
 export function isShopOpen(db: DatabaseSync, shopId: string, at: Date, timezone: string): boolean {
   const { day, minute } = localDayMinute(at, timezone);
   return isOpenAt(hoursOf(db, shopId), day, minute);
+}
+
+/** How much longer it stays open, or null when it is shut (Phase 4: finals
+ *  week ranks on how long you can sit somewhere, not on whether it is open). */
+export function shopClosesIn(db: DatabaseSync, shopId: string, at: Date, timezone: string): number | null {
+  const { day, minute } = localDayMinute(at, timezone);
+  return minutesUntilClose(hoursOf(db, shopId), day, minute);
 }
 
 /** Intent-tag tallies for a shop, derived from logs (one tap = one voice). */

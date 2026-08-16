@@ -85,6 +85,21 @@ export function logsOfUser(
 }
 
 /**
+ * When this user was last in this shop, from their own logs alone.
+ *
+ * Deliberately its own query rather than a scan of `visibleLogsForShop`,
+ * which is capped at 30 rows: thirty newer logs from other people would push
+ * the viewer's own out of that window, and the freshness prompt would stop
+ * asking the one person who can answer it precisely when a place got busy.
+ */
+export function lastVisitOf(db: DatabaseSync, shopId: string, userId: string): string | null {
+  const row = db
+    .prepare("SELECT max(created_at) AS at FROM logs WHERE shop_id = ? AND user_id = ?")
+    .get(shopId, userId) as { at: string | null } | undefined;
+  return row?.at ?? null;
+}
+
+/**
  * Logs for a shop visible to the viewer: public + own + friends'.
  * The predicate lives in SQL, not in a post-filter — filtering after a
  * fixed prefetch would drop a friend's older log once a shop got busy.
