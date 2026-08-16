@@ -15,10 +15,15 @@ import { fileURLToPath } from "node:url";
 
 const APP_ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 // Later phases re-run this to prove the SPA still boots without overwriting
-// the evidence an earlier phase was accepted on.
+// the evidence an earlier phase was accepted on — which is exactly why the
+// fallback is `scratch` and not `phase1`. It WAS phase1 for four phases, and
+// on 2026-08-16 a bare `node scripts/boot-smoke.mjs` during Phase 5B rewrote
+// twelve committed Phase 1 screenshots with Phase 5B's app. Same trap
+// `playwright.config.ts` and `e2e/fixtures.ts` were caught in one level down;
+// evidence/scratch/ is gitignored, and every phase script names its own.
 const OUT = process.env.COSIGN_EVIDENCE_DIR
   ? join(APP_ROOT, "..", "..", "evidence", process.env.COSIGN_EVIDENCE_DIR)
-  : join(APP_ROOT, "..", "..", "evidence", "phase1");
+  : join(APP_ROOT, "..", "..", "evidence", "scratch", "spa");
 const BASE = process.env.COSIGN_BASE ?? "http://localhost:8787";
 const ORIGIN = new URL(BASE).origin;
 
