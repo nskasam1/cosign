@@ -15,6 +15,12 @@
     @apply bg-background text-foreground font-sans antialiased;
     -webkit-tap-highlight-color: transparent;
   }
+  /* The shelf is sticky at the bottom, so without this a tabbed-to row is
+     scrolled flush to the viewport edge and lands underneath it — with the
+     facts line and the freshness caveat, the bottom of the row, covered. */
+  html {
+    scroll-padding-bottom: 5rem;
+  }
   h1, h2, h3 {
     font-family: var(--font-display);
     font-weight: 400;
@@ -182,6 +188,110 @@
     min-height: var(--tap);
     margin-inline: -0.5rem;
     padding-inline: 0.5rem;
+  }
+
+  /* A filter chip. Ported from the share page's chips (server/pages/
+     shareList.ts) rather than re-decided — Search is the same act of
+     narrowing a ranked column that the share page already does. */
+  .cs-chip {
+    display: inline-flex;
+    flex: none;
+    align-items: center;
+    min-height: var(--tap);
+    padding-inline: var(--space-4);
+    border: 1px solid hsl(var(--rule-strong));
+    border-radius: var(--radius-full);
+    background: hsl(var(--surface));
+    color: hsl(var(--line));
+    font-family: var(--font-body);
+    font-size: var(--text-xs);
+    white-space: nowrap;
+    transition: background-color var(--duration-fast) var(--ease-out),
+      border-color var(--duration-fast) var(--ease-out),
+      color var(--duration-fast) var(--ease-out);
+  }
+  .cs-chip[aria-pressed="true"] {
+    background: hsl(var(--ember));
+    border-color: hsl(var(--ember));
+    color: hsl(var(--bg));
+    font-weight: 700;
+  }
+
+  /* ── the shelf (Phase 4) ────────────────────────────────────────────────
+     The one new object this phase ships: four words on a hairline. No
+     icons, no raised bar, no badge — there is nothing to badge, because
+     nothing in this product notifies you without a person behind it.
+
+     The active tab's mark is the same 2px ember rule that
+     .cs-row[aria-pressed] draws in the page margin and .cs-stamp draws
+     across the column after a save: one object, three surfaces, the same
+     meaning every time — this is the live one. */
+  .cs-shelf {
+    position: sticky;
+    bottom: 0;
+    z-index: 3;
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    align-items: center;
+    background: hsl(var(--bg));
+    border-top: 1px solid hsl(var(--rule-strong));
+    padding-top: var(--space-2);
+    padding-bottom: max(var(--space-2), env(safe-area-inset-bottom));
+    padding-inline: var(--space-2);
+  }
+  .cs-tab {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: var(--tap);
+    font-family: var(--font-body);
+    font-size: var(--text-2xs);
+    font-weight: 700;
+    letter-spacing: var(--tracking-caps);
+    text-transform: uppercase;
+    color: hsl(var(--muted));
+    transition: color var(--duration-fast) var(--ease-out);
+  }
+  .cs-tab[aria-current="page"] {
+    color: hsl(var(--ink));
+  }
+  .cs-tab[aria-current="page"]::before {
+    content: "";
+    position: absolute;
+    top: calc((var(--space-2) + 1px) * -1);
+    left: var(--space-4);
+    right: var(--space-4);
+    height: 2px;
+    background: hsl(var(--ember));
+  }
+  /* Log is the thumb-reach primary and has no icon to be primary with, so
+     it is primary by FACE, CASE and ENCLOSURE: the display serif in title
+     case between two hairlines, while its three neighbours are tracked
+     small caps. Those three signals are what make it primary; the ember
+     tint only confirms it.
+
+     Both ember objects appear in this bar, and they are different shapes
+     for different jobs: the 2px RULE is "the one you are on", the WORD is
+     "the one that writes" — the same voice as the log flow's SAVE IT, which
+     is the only other solid-ember thing in the product. A rule and a word
+     are not mistakable for one another; two words would have been.
+
+     It is deliberately not the solid ember pill. A filled lozenge sitting
+     in the bar on every screen forever would be the loudest object in the
+     app, permanently, for a destination rather than for an act. */
+  .cs-tab-log {
+    padding: 0;
+    border-inline: 1px solid hsl(var(--rule-strong));
+    font-family: var(--font-display);
+    font-size: var(--text-lg);
+    font-weight: 400;
+    letter-spacing: var(--tracking-display);
+    text-transform: none;
+    color: hsl(var(--ember-ink));
+  }
+  .cs-tab-log[aria-current="page"] {
+    color: hsl(var(--ember-ink));
   }
 
   /* The save stamp: one ember hairline drawing itself across the column,
