@@ -230,8 +230,6 @@ const ListDetail = () => {
     }
   }
 
-  const rankedCount = (userId: string) =>
-    derived.ranked.filter((r) => r.positions.some((p) => p.user_id === userId)).length;
 
   const newest = [...items].sort((a, b) => (a.added_at < b.added_at ? 1 : -1))[0];
 
@@ -282,7 +280,7 @@ const ListDetail = () => {
                     </span>
                   </dt>
                   <dd className="cs-caps text-muted">
-                    {rankedCount(c.user_id)} of {items.length} ranked
+                    {c.ranked} of {items.length} ranked
                   </dd>
                 </Fragment>
               ))}

@@ -231,6 +231,28 @@ describe("answering needs no account", () => {
     expect(v.answers[0].brings_a_list).toBe(true);
   });
 
+  it("one person who answered anonymously and then signed in is still one seat", async () => {
+    // The phone answers with no account; the laptop answers signed in; then
+    // the phone signs in and answers again. That used to collide with the
+    // partial unique index and leave the phone permanently unable to answer.
+    const fresh = await post("/api/group", { invite: [] }, "u_maya");
+    const id = ((await fresh.json()) as { session: { id: string } }).session.id;
+    expect((await post(`/api/group/${id}/needs`, { participant_token: "pt-phone-anon1" })).status).toBe(201);
+    expect(
+      (await post(`/api/group/${id}/needs`, { participant_token: "pt-laptop-0001", outlets: true }, "u_dev"))
+        .status,
+    ).toBe(201);
+    const again = await post(
+      `/api/group/${id}/needs`,
+      { participant_token: "pt-phone-anon1", wifi: true },
+      "u_dev",
+    );
+    expect(again.status, await again.text()).toBe(201);
+    const v = sessionView(db, CALENDAR, id, { now: NOW })!;
+    expect(v.answers).toHaveLength(1);
+    expect(v.answers[0]).toMatchObject({ wifi: true, outlets: false });
+  });
+
   it("one person holds one seat however many tabs they open", async () => {
     const fresh = await post("/api/group", { invite: [] }, "u_maya");
     const id = ((await fresh.json()) as { session: { id: string } }).session.id;

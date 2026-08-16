@@ -136,9 +136,20 @@ export function submitNeeds(
   now = new Date(),
 ): boolean {
   const rows = needRowsOf(db, sessionId);
-  const mine = rows.find(
-    (r) => r.participant_token === input.participantToken || (input.userId && r.user_id === input.userId),
-  );
+  const byToken = rows.find((r) => r.participant_token === input.participantToken);
+  const byUser = input.userId ? rows.find((r) => r.user_id === input.userId) : undefined;
+  // Somebody who answered anonymously on one device and signed in on another
+  // has TWO rows, and stamping their user_id onto the anonymous one collides
+  // with the partial unique index — which used to be a 500 and left that
+  // browser permanently unable to answer. One person is one seat: the
+  // account's row wins and the anonymous one is folded into it.
+  if (byToken && byUser && byToken.participant_token !== byUser.participant_token) {
+    db.prepare("DELETE FROM group_needs WHERE session_id = ? AND participant_token = ?").run(
+      sessionId,
+      byToken.participant_token,
+    );
+  }
+  const mine = byUser ?? byToken;
   if (!mine && rows.length >= MAX_PARTICIPANTS) return false;
   db.prepare(
     `INSERT INTO group_needs
@@ -231,7 +242,20 @@ export interface GroupView {
   seated: boolean;
   /** One line per person who has answered, in arrival order. */
   answers: Array<{
-    participant: string;
+    /**
+     * An opaque per-response seat id — NEVER the participant token.
+     *
+     * The token is the seat's only write credential: anybody holding it can
+     * replace that person's answer, and `POST .../needs` takes no auth by
+     * design. Publishing it to every reader of a public link meant a
+     * link-holder could overwrite a signed-in friend's answer under her name,
+     * null her `user_id` (which silently dropped her ranked list out of the
+     * arithmetic and changed the group's answer), and step past the
+     * four-seat cap. This id is enough for a React key and for joining
+     * `constraints[].askedBy` back to a seat, which is all the client used it
+     * for; whether the reader owns a seat is `is_you`, computed here.
+     */
+    seat: string;
     display_name: string | null;
     /** True for the participant this request is from — the only one they may edit. */
     is_you: boolean;
@@ -296,10 +320,16 @@ export interface GroupView {
  * becomes a way to introduce two private lists.
  */
 export function mayJoin(db: DatabaseSync, sessionId: string, userId: string): boolean {
-  const others = needRowsOf(db, sessionId)
-    .map((r) => r.user_id)
-    .filter((id): id is string => !!id && id !== userId);
-  return others.every((id) => areFriends(db, userId, id));
+  const session = sessionById(db, sessionId);
+  if (!session) return false;
+  // The host counts even before answering — `server/db/seed.ts` has always
+  // written the invariant that way. Without them, the FIRST signed-in arrival
+  // passed vacuously, and somebody the host has not agreed to know could take
+  // a seat and lock the host out of the table started in their own name.
+  const others = new Set<string>([session.created_by]);
+  for (const r of needRowsOf(db, sessionId)) if (r.user_id) others.add(r.user_id);
+  others.delete(userId);
+  return [...others].every((id) => areFriends(db, userId, id));
 }
 
 export function sessionView(
@@ -387,6 +417,10 @@ export function sessionView(
   const byKey = new Map<string, number>();
   for (const r of answer.ruledOut) for (const k of r.failed) byKey.set(k, (byKey.get(k) ?? 0) + 1);
 
+  // Seats are numbered in arrival order; the tokens never leave the server.
+  const seatOf = new Map(rows.map((r, i) => [r.participant_token, `seat-${i + 1}`]));
+  const seats = (tokens: string[]) => tokens.flatMap((t) => (seatOf.has(t) ? [seatOf.get(t)!] : []));
+
   return {
     session,
     starter: starter && {
@@ -399,7 +433,7 @@ export function sessionView(
     state: sessionState(needs.length, invited),
     seated,
     answers: rows.map((r) => ({
-      participant: r.participant_token,
+      seat: seatOf.get(r.participant_token)!,
       display_name: r.display_name,
       // Whoever is reading this — by their browser's token, or by their
       // account, because a person who answered on their phone and opened it
@@ -416,7 +450,7 @@ export function sessionView(
       wifi: !!r.need_wifi,
       max_noise: r.max_noise,
     })),
-    constraints: answer.constraints,
+    constraints: answer.constraints.map((c) => ({ ...c, askedBy: seats(c.askedBy) })),
     picks: answer.picks.slice(0, MAX_SHOWN).map((p) => ({
       shop_id: p.place.id,
       // A by-link seat gets the count and no positions (see ShownPick).
@@ -436,14 +470,25 @@ export function sessionView(
       .map(([key, n]) => ({ key: key as GroupAnswer["constraints"][number]["key"], n }))
       .sort((a, b) => b.n - a.n || a.key.localeCompare(b.key)),
     ruled_out_total: answer.ruledOut.length,
-    funnel: funnel(needs, places),
+    // EVERY askedBy is mapped through `seats` — the constraint list, the
+    // ledger, the near-misses and the prices all carry the same field, and
+    // three of the four were still shipping raw participant tokens after the
+    // first pass. A partial redaction is not one.
+    funnel: (() => {
+      const f = funnel(needs, places);
+      return { ...f, steps: f.steps.map((st) => ({ ...st, askedBy: seats(st.askedBy) })) };
+    })(),
     one_need_away: oneNeedAway(answer)
       .slice(0, 3)
       .map((n) => {
         const c = answer.constraints.find((x) => x.key === n.key)!;
-        return { shop_id: n.place.id, key: n.key, detail: c.detail, askedBy: c.askedBy };
+        return { shop_id: n.place.id, key: n.key, detail: c.detail, askedBy: seats(c.askedBy) };
       }),
-    costs: priceOfEachNeed(needs, places).map((c) => ({ ...c, example: c.example?.id ?? null })),
+    costs: priceOfEachNeed(needs, places).map((c) => ({
+      ...c,
+      askedBy: seats(c.askedBy),
+      example: c.example?.id ?? null,
+    })),
     costliest: answer.costliest,
     places: named,
     members,

@@ -36,7 +36,7 @@ persistence layer uses the built-in `node:sqlite`). The bun lockfiles are gone.
 | Serve existing build | `npm run serve:prod` | skips the rebuild |
 | Typecheck | `./node_modules/.bin/tsc -b` | project refs: app / node / server |
 | Unit tests | `npm test` | Vitest, single run (~11 s warm, 241 tests) |
-| Lint | `npm run lint` | ESLint flat config (8 pre-existing warnings, 0 errors) |
+| Lint | `npm run lint` | ESLint flat config (6 pre-existing warnings, 0 errors) |
 | Bulk shop entry | `npm run import:shops -- f.csv [--dry-run]` | merges by id into `seed/shops.json` |
 | Shops → spreadsheet | `npm run export:shops -- f.csv` | round-trips back through import |
 | Share-page e2e | `npx playwright test share.spec.ts` | 24 tests, mobile + desktop; needs the prod server up |
@@ -86,12 +86,41 @@ in PowerShell) to be sure.
   hides this; a bare `await locator.count()` or `innerText()` does not, and
   finds the loading screen every time. Use `loaded(page, "[data-x]")` from
   `e2e/fixtures.ts`, which waits for `:not([data-state="loading"])`.
-- **An e2e that answers something CONSUMES it.** The seeded pending friend
-  request (Lena → Maya) made the feed tests pass on the first run and fail on
-  the second, because answering it is the thing being tested. Anything a test
-  *answers* — a friend request, a group invite, a re-verify prompt — must be
-  created by that test. `signInAsNewUser` and `askedBySomebodyNew` in
-  `e2e/social.spec.ts` are the pattern.
+- **An e2e that answers something CONSUMES it — including for the OTHER
+  project.** `workers: 1` runs mobile then desktop against one database, so a
+  fixture the mobile run answers is gone by the time desktop reaches the same
+  test. Phase 5B hit this twice: the seeded pending friend request (Lena →
+  Maya) made the feed tests pass on the first run and fail on the second, and
+  the re-rank test's own fixture was consumed across projects. Anything a test
+  *answers* — a friend request, a group invite, a re-verify prompt, an
+  out-of-date list — must be created by that test, and keyed on
+  `test.info().project.name` if the two projects would fight over it.
+  `signInAsNewUser` and `askedBySomebodyNew` in `e2e/social.spec.ts` are the
+  pattern.
+- **An evidence script that writes must not write to the database it is about
+  to photograph.** `phase5b-evidence.sh`'s transcript re-ranked both
+  collaborative lists before Playwright started, so the "before" and "after"
+  screenshots were the same file and the assertion behind them sat inside an
+  `if` that was false. The demos have their own `$DEMO` database now.
+- **`kill $!` on `npm run …` kills the wrapper and returns 0.** Four phases of
+  evidence scripts claimed to clean up after themselves and left a node
+  process holding :8787 — which the next run's preflight catches loudly, but
+  an ad-hoc `npx playwright test` silently measures the stale server. Kill by
+  port (`Get-NetTCPConnection -LocalPort 8787 -State Listen`).
+- **`lastIndexOf("/*")` on a raw line finds the one inside `"/img/*"`.** The
+  no-bait scanner opened a block comment that never closed and skipped 13.5%
+  of the tree, including 282 of `schema.sql`'s 285 lines. Any source scanner
+  here must strip string literals and line comments (`//` and `--`) first.
+- **Two surfaces added in Phase 5B leaked what the brief says they never do,
+  and both are worth knowing as a shape.** `GET /api/lists/:id` computed the
+  merged order from every contributor's ranking — which is correct — and then
+  let *what the order was computed from* travel with it, so a caller who could
+  read the LIST could read positions out of rankings they had no right to. And
+  `sessionView` published each seat's `participant_token`, which is that seat's
+  only write credential, to every reader of a public link. The shape both
+  times: a value the server legitimately needs internally, shipped because it
+  was already in the object. `derivedOrderFor` and the opaque seat id are the
+  fixes; `integrity.test.ts` asserts both.
 - **`.cs-ledger` is for counts, not for prose.** Its value column is
   `white-space: nowrap`, so a sentence in it makes the whole page scroll
   sideways. `e2e/social.spec.ts` asserts no page in the phase overflows
@@ -279,7 +308,7 @@ in PowerShell) to be sure.
   `evidence/phase2/`. `scripts/boot-smoke.mjs` still drives chromium directly.
 - **Windows dev machine.** Paths contain a space (`Vineet Sista`) — always quote.
   Git Bash is available for POSIX scripts; PowerShell 5.1 is the primary shell.
-- **394 kB main JS chunk** after build (382 kB before Phase 4; 345 kB before
+- **446 kB main JS chunk** after build (400 kB before Phase 5B; 382 kB before Phase 4; 345 kB before
   Phase 3's two pages; 672 kB
   before the external SDKs left). Code-splitting is still unaddressed; the share
   page must not ship this bundle at all — `e2e/share.spec.ts` asserts it requests

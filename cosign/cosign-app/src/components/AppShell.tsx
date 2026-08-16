@@ -105,7 +105,9 @@ const Shelf = () => {
             {tab.key === "you" && asks > 0 && (
               <span data-waiting={asks} className="cs-figures ml-2 text-gold">
                 {asks}
-                <span className="sr-only"> people waiting on an answer from you</span>
+                <span className="sr-only">
+                  {asks === 1 ? " person waiting on an answer from you" : " people waiting on an answer from you"}
+                </span>
               </span>
             )}
           </Link>

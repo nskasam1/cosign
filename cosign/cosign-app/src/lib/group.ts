@@ -397,7 +397,10 @@ export function funnel(
  */
 export function oneNeedAway(answer: GroupAnswer): Array<{ place: GroupPlace; key: ConstraintKey }> {
   return answer.ruledOut
-    .filter((r) => r.failed.length === 1 && r.place.positions.length > 0)
+    // `table` is nobody's need — it has no askedBy — so a place that misses
+    // only that one cannot be described as "out on somebody's". The page
+    // printed "Out on 's somewhere to sit" for every mug-only counter.
+    .filter((r) => r.failed.length === 1 && r.failed[0] !== "table" && r.place.positions.length > 0)
     .map((r) => ({ ...r, pick: pickOf(r.place) }))
     .sort((a, b) => b.pick.coverage - a.pick.coverage || b.pick.worstPct - a.pick.worstPct || a.place.walk_min - b.place.walk_min)
     .map((r) => ({ place: r.place, key: r.failed[0] }));

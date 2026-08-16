@@ -133,6 +133,35 @@ describe("two places the contributors cannot separate share a standing", () => {
     ]);
   });
 
+  it("does not chain a standing through pairs that were never level", () => {
+    // "Level" is not transitive. a≡b and b≡c does not make a≡c, and joining a
+    // standing by comparing against the row ABOVE alone collapsed three rows
+    // under one numeral while the contributors had put the first decisively
+    // above the third — a brace asserting an agreement nobody made.
+    //
+    // x beats everything. a and b split; b and c split; a beats c 1-0.
+    const order = collabOrder(items("x", "a", "b", "c"), [
+      who("u_1", "x", "a", "b", "c"),
+      who("u_2", "x", "b", "a", "c"),
+      who("u_3", "x", "b", "c", "a"),
+    ]);
+    const standings = order.ranked.map((r) => [r.shop_id, r.standing, r.tied_with_previous]);
+    // whatever the order, no row may share a standing with a row it beat
+    for (const row of order.ranked) {
+      if (!row.tied_with_previous) continue;
+      const i = order.ranked.indexOf(row);
+      for (const above of order.ranked.slice(0, i).filter((r) => r.standing === row.standing)) {
+        const decided = order.disagreements.some(
+          (d) =>
+            (d.a === above.shop_id && d.b === row.shop_id) || (d.b === above.shop_id && d.a === row.shop_id),
+        );
+        // a shared standing is only ever a DRAW, never a contested pair with
+        // a majority on one side
+        expect({ standings, pair: [above.shop_id, row.shop_id], decided }).toMatchObject({ decided: true });
+      }
+    }
+  });
+
   it("silence is not a tie — an unjudged pair gets its own standing", () => {
     // nobody has ordered a against b, so there is nothing level about them
     const order = collabOrder(items("a", "b"), [who("u_x", "a"), who("u_y", "b")]);

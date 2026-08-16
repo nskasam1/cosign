@@ -29,8 +29,23 @@ const SEEDED_SESSION = "g_Qm7xZLd4nS1bVpKe"; // maya asked; maya and june have a
 const COLLAB = "l_our-campus-ranking"; // maya + dev + june, six places
 const COLLAB_TWO = "l_still-open-when-we-are"; // dev + theo, and one place neither has ranked
 
+/**
+ * A full-column capture, with the sticky shelf scrolled to where it belongs.
+ *
+ * `position: sticky; bottom: 0` lands a `fullPage` shot's shelf across the
+ * middle of whatever row the scroll happened to be on — a capture artifact,
+ * not the design, and CLAUDE.md has recorded it since Phase 4. Fourteen of
+ * this phase's committed screenshots had it pasted over the actionable half
+ * of the surface they were evidence for.
+ */
 const shot = async (page: Page, name: string) => {
+  // Scroll to the bottom and STAY there. A sticky footer is painted where the
+  // viewport is, so a full-page capture taken from the top lands it across
+  // the middle of the column — and scrolling down and back up again is the
+  // same picture. Phase 4's rule, which this suite got wrong twice.
+  await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
   await settled(page);
+  await page.waitForTimeout(150);
   return page.screenshot({ path: join(EVIDENCE, `${name}-${test.info().project.name}.png`), fullPage: true });
 };
 
@@ -62,11 +77,16 @@ async function fullTable(request: APIRequestContext, tag: string): Promise<strin
   const made = await request.post("/api/group", { data: { invite: ["dev", "june", "theo"] } });
   expect(made.status()).toBe(201);
   const { session } = (await made.json()) as { session: { id: string } };
+  // Deliberately no `open_now`. The seeded campus has nothing open between
+  // 02:00 and 06:15 on Monday to Wednesday, so a fixture that asks for it
+  // makes these tests fail for 4.25 hours a night — the trap CLAUDE.md has
+  // recorded three times. One test below asks for it on purpose and accepts
+  // either branch; every other test wants an answer to exist.
   const needs: Record<string, Record<string, unknown>> = {
-    u_maya: { intent_tag: "group_project", outlets: true, open_now: true, wifi: true },
-    u_dev: { intent_tag: "deep_work", outlets: true, open_now: true, wifi: true, max_noise: "conversational" },
-    u_june: { intent_tag: "reading", open_now: true, max_noise: "conversational" },
-    u_theo: { intent_tag: "late_night", outlets: true, open_now: true },
+    u_maya: { intent_tag: "group_project", outlets: true, wifi: true },
+    u_dev: { intent_tag: "deep_work", outlets: true, wifi: true, max_noise: "conversational" },
+    u_june: { intent_tag: "reading", max_noise: "conversational" },
+    u_theo: { intent_tag: "late_night", outlets: true },
   };
   for (const uid of FOUR) await answer(request, session.id, uid, needs[uid], tag);
   return session.id;
@@ -315,7 +335,21 @@ test.describe("group mode", () => {
 // ───────────────────────────────────────────────────────────────────────────
 
 test.describe("a list two or more people keep", () => {
-  test("re-ranks from the contributors' own lists, and only when told to", async ({ page, context }) => {
+  test("re-ranks from the contributors' own lists, and only when told to", async ({
+    page,
+    context,
+    request,
+  }) => {
+    // Its own out-of-date fixture, and a DIFFERENT one per project: adding a
+    // place a contributor has ranked makes the stored order differ from the
+    // derived one, whatever any earlier run left behind. Consuming a fixture
+    // works exactly once — which is how the evidence run first captured the
+    // same PNG twice, and then how the desktop project inherited the mobile
+    // project's re-rank and found nothing left to do.
+    const extraPlace = test.info().project.name === "mobile" ? "s_bramble" : "s_copper-kettle";
+    await request.post("/api/auth/switch", { data: { userId: "u_maya" } });
+    await request.post(`/api/lists/${COLLAB}/items`, { data: { shop_id: extraPlace } });
+
     await signIn(context, "u_maya");
     await page.goto(`/lists/${COLLAB}`);
     await loaded(page, "[data-list]");
@@ -327,20 +361,19 @@ test.describe("a list two or more people keep", () => {
     );
     await shot(page, "list-before");
 
-    // nothing has moved on its own: the page says so and offers the act
-    const offered = await page.locator("[data-out-of-date]").count();
-    if (offered > 0) {
-      await page.locator("[data-redraw]").click();
-      await expect(page.locator("[data-said]")).toContainText(/moved/i);
-      // the list re-reads itself after the write, so wait for the page to
-      // say it is settled before reading the order back off it
-      await expect(page.locator("[data-list][data-settled]")).toBeVisible();
-      const after = await page.locator("[data-item]").evaluateAll((els) =>
-        els.map((e) => e.getAttribute("data-shop-id")),
-      );
-      expect(after).not.toEqual(before);
-    }
+    // Nothing has moved on its own: the page says so and offers the act.
+    // No `if` around this — a guard that can skip the assertion is how the
+    // one UI-level proof of this criterion stopped being able to fail.
+    await expect(page.locator("[data-out-of-date]")).toBeVisible();
+    await page.locator("[data-redraw]").click();
+    await expect(page.locator("[data-said]")).toContainText(/moved/i);
+    // the list re-reads itself after the write, so wait for the page to say
+    // it is settled before reading the order back off it
     await expect(page.locator("[data-list][data-settled]")).toBeVisible();
+    const after = await page.locator("[data-item]").evaluateAll((els) =>
+      els.map((e) => e.getAttribute("data-shop-id")),
+    );
+    expect(after).not.toEqual(before);
     await shot(page, "list-after");
   });
 
@@ -540,7 +573,7 @@ test.describe("the notification feed", () => {
 
 test.describe("accessibility", () => {
   const SURFACES = [
-    { name: "group-join", path: `/g/${SEEDED_SESSION}`, as: null },
+    { name: "group-join", path: null, as: null },
     { name: "group-answer", path: null, as: "u_maya" },
     { name: "list", path: `/lists/${COLLAB}`, as: "u_maya" },
     { name: "feed", path: "/maya", as: "u_maya" },
@@ -549,10 +582,17 @@ test.describe("accessibility", () => {
 
   test("axe finds no serious or critical violations", async ({ page, context, request }, testInfo) => {
     const answered = await fullTable(request, "axe");
+    // Its own two-seat session, so the join form is on screen in BOTH
+    // projects — reusing the seeded one meant mobile filled the last seat and
+    // desktop audited a full table with no form on it at all.
+    await request.post("/api/auth/switch", { data: { userId: "u_maya" } });
+    const made = await request.post("/api/group", { data: { invite: ["dev"] } });
+    const { session } = (await made.json()) as { session: { id: string } };
+    await answer(request, session.id, "u_maya", { intent_tag: "reading" }, "axejoin");
     for (const s of SURFACES) {
       if (s.as) await signIn(context, s.as);
       else await context.clearCookies();
-      await page.goto(s.path ?? `/g/${answered}`);
+      await page.goto(s.path ?? (s.name === "group-join" ? `/g/${session.id}` : `/g/${answered}`));
       await settled(page);
       const results = await new AxeBuilder({ page })
         .withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"])

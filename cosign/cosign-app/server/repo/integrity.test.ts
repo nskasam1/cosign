@@ -127,6 +127,85 @@ describe("friends-only is the default, and the client cannot talk its way out", 
     }
   });
 
+  it("a shared list never says where anybody has anything, to anybody who may not read it", async () => {
+    // The order comes from everybody's list; what each list SAYS is gated on
+    // rank.canViewRanking. Being a friend of the owner is not being a friend
+    // of the editors, and this route answers logged-out callers.
+    const positionsFor = async (as?: string) => {
+      const res = await call("/api/lists/l_our-campus-ranking", as ? { as } : {});
+      if (res.status !== 200) return null;
+      const v = (await res.json()) as {
+        derived: { ranked: Array<{ positions: Array<{ user_id: string }> }> };
+      };
+      return new Set(v.derived.ranked.flatMap((r) => r.positions.map((p) => p.user_id)));
+    };
+
+    // Maya owns it; Dev and June edit it; all three rankings are friends-only.
+    const mine = await positionsFor("u_maya");
+    expect(mine!.size).toBeGreaterThan(0);
+    // u_sam is Maya's friend, so she may READ the list, and is a friend of
+    // neither Dev nor June. Dev's ranking is friends-only and must not be on
+    // the payload; June's is one of the three the seed marks PUBLIC (Phase 2),
+    // so it may be — which is the check working rather than a hole in it.
+    const sam = await positionsFor("u_sam");
+    expect([...(sam ?? [])]).not.toContain("u_dev");
+    expect(
+      (db.prepare("SELECT visibility FROM rankings WHERE user_id = 'u_dev'").get() as { visibility: string })
+        .visibility,
+    ).toBe("friends");
+
+    // a public list is readable by anybody, and still says nothing
+    const publicList = await post("/api/lists", { title: "open house" }, "u_maya");
+    const { list } = (await publicList.json()) as { list: { id: string } };
+    db.prepare("UPDATE lists SET visibility = 'public' WHERE id = ?").run(list.id);
+    await post(`/api/lists/${list.id}/items`, { shop_id: "s_lantern-lane" }, "u_maya");
+    const anon = await call(`/api/lists/${list.id}`);
+    expect(anon.status).toBe(200);
+    const body = await anon.text();
+    const shown = (await (await call(`/api/lists/${list.id}`)).json()) as {
+      derived: { ranked: Array<{ positions: unknown[] }>; unranked: Array<{ positions: unknown[] }> };
+    };
+    // Who KEEPS a list is the list's own membership and stays. Where anybody
+    // has anything does not.
+    for (const row of [...shown.derived.ranked, ...shown.derived.unranked]) {
+      expect(row.positions).toEqual([]);
+    }
+    // and the denominator is never on the wire at all
+    expect(body).not.toMatch(/"of"\s*:\s*[1-9]/);
+  });
+
+  it("a group session never hands out a seat's write credential", async () => {
+    const start = await post("/api/group", { invite: ["dev"] }, "u_maya");
+    const { session } = (await start.json()) as { session: { id: string } };
+    // taps something, so there are constraints for the askedBy check below
+    await post(
+      `/api/group/${session.id}/needs`,
+      { participant_token: "pt-secret-000001", outlets: true, open_now: true, max_noise: "conversational" },
+      "u_maya",
+    );
+    const seen = await (await call(`/api/group/${session.id}`)).text();
+    // the token is the only thing standing between a link-holder and
+    // overwriting somebody's answer under their name — and it appears in FOUR
+    // places on this payload (the seats, the constraints, the ledger, the
+    // prices), three of which were missed on the first pass
+    expect(seen).not.toContain("pt-secret-000001");
+    expect(seen).toMatch(/"seat"\s*:\s*"seat-1"/);
+    const v = JSON.parse(seen) as {
+      constraints: Array<{ askedBy: string[] }>;
+      funnel: { steps: Array<{ askedBy: string[] }> };
+      one_need_away: Array<{ askedBy: string[] }>;
+      costs: Array<{ askedBy: string[] }>;
+    };
+    const everyAsker = [
+      ...v.constraints.flatMap((c) => c.askedBy),
+      ...v.funnel.steps.flatMap((s) => s.askedBy),
+      ...v.one_need_away.flatMap((n) => n.askedBy),
+      ...v.costs.flatMap((c) => c.askedBy),
+    ];
+    expect(everyAsker.length).toBeGreaterThan(0);
+    for (const a of everyAsker) expect(a).toMatch(/^seat-\d+$/);
+  });
+
   it("nothing Phase 5B added opens a friends-only record to a stranger", async () => {
     // a group session names its own members and the places on the table, and
     // nothing else about anybody

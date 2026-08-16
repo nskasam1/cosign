@@ -29,6 +29,13 @@ export interface CollabInput {
 export interface ContributorPosition {
   user_id: string;
   position: number;
+  /**
+   * How long that contributor's whole ranking is. Used HERE, to turn a
+   * position into a percentile for the tiebreak — and stripped before the
+   * row leaves the server, because a position paired with a denominator is
+   * the closest thing to a score this product could print. `server/repo/
+   * lists.ts` does the stripping; `integrity.test.ts` asserts it.
+   */
   of: number;
 }
 
@@ -227,12 +234,27 @@ export function collabOrder(items: CollabInput[], contributors: Contributor[]): 
   // Competition standings: 1, 2, 3, 3, 5. Two rows share one only when the
   // contributors ordered them against each other and came out LEVEL — an
   // unjudged pair is silence, not a tie, and silence does not create one.
+  //
+  // "Level" is NOT transitive, so a row joins a standing only when it is
+  // level against EVERY row already in it. Comparing against the row above
+  // alone collapsed A and C into one standing when A≡B and B≡C but the
+  // contributors had put A decisively above C — a brace asserting agreement
+  // that does not exist, and a note naming two of the three rows it covers.
+  const group: CollabRow[] = [];
   sorted.forEach((row, i) => {
-    const above = sorted[i - 1];
-    const level =
-      !!above && copeland(above) === copeland(row) && pair.get(above.shop_id)?.get(row.shop_id) === 0;
-    row.tied_with_previous = level;
-    row.standing = level ? above.standing : i + 1;
+    const levelWithGroup =
+      group.length > 0 &&
+      group.every((g) => copeland(g) === copeland(row) && pair.get(g.shop_id)?.get(row.shop_id) === 0);
+    if (levelWithGroup) {
+      row.tied_with_previous = true;
+      row.standing = group[0].standing;
+      group.push(row);
+    } else {
+      row.tied_with_previous = false;
+      row.standing = i + 1;
+      group.length = 0;
+      group.push(row);
+    }
   });
 
   return {

@@ -52,12 +52,19 @@ const Profile = () => {
       .finally(() => setLoading(false));
   }, [username]);
 
+  const [askFailed, setAskFailed] = useState(false);
+
   const askToBeFriends = async () => {
     if (!data || asking) return;
     setAsking(true);
+    setAskFailed(false);
     try {
       await api.requestFriend(data.user.username);
       setStanding("asked");
+    } catch {
+      // A try/finally with no catch put the button back and said nothing,
+      // which reads as "I asked" to the person who did not.
+      setAskFailed(true);
     } finally {
       setAsking(false);
     }
@@ -177,9 +184,16 @@ const Profile = () => {
               <button type="button" data-ask-friend disabled={asking} onClick={askToBeFriends} className="cs-pill-ghost">
                 {asking ? "Asking…" : `Add ${first}`}
               </button>
-              <p className="mt-3 text-xs text-muted">
-                One line on {first}'s page saying you asked. Nothing else is sent, and nothing is sent again.
-              </p>
+              {askFailed ? (
+                <p data-ask-failed className="cs-caps mt-3 text-ember-ink">
+                  That didn't send. Nobody was asked — tap it again.
+                </p>
+              ) : (
+                <p className="mt-3 text-xs text-muted">
+                  One line on {first}'s page saying you asked. Nothing else is sent, and nothing is sent
+                  again.
+                </p>
+              )}
             </>
           )}
           {standing === "asked" && (

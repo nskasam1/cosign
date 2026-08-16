@@ -1,4 +1,4 @@
-# Phase 5B acceptance evidence — 2026-08-16T20:31:21Z
+# Phase 5B acceptance evidence — 2026-08-16T22:49:08Z
 # node v24.11.0, npm 11.6.1
 # scratch database: /tmp/cosign-phase5b.db (server/data/cosign.db untouched)
 
@@ -7,9 +7,9 @@ exit=0
 
 ## npm test
 [2m Test Files [22m [1m[32m28 passed[39m[22m[90m (28)[39m
-[2m      Tests [22m [1m[32m431 passed[39m[22m[90m (431)[39m
-[2m   Start at [22m 16:31:44
-[2m   Duration [22m 12.84s[2m (transform 4.06s, setup 22.81s, collect 24.41s, tests 12.98s, environment 2.49s, prepare 15.49s)[22m
+[2m      Tests [22m [1m[32m437 passed[39m[22m[90m (437)[39m
+[2m   Start at [22m 18:49:35
+[2m   Duration [22m 21.00s[2m (transform 4.66s, setup 41.17s, collect 36.72s, tests 19.69s, environment 4.26s, prepare 26.00s)[22m
 
 
 ## npm run lint
@@ -19,7 +19,7 @@ exit=0
 
 ## the two source audits, over every .ts/.tsx/.css/.sql under src/ and server/
 [2m Test Files [22m [1m[32m2 passed[39m[22m[90m (2)[39m
-[2m      Tests [22m [1m[32m16 passed[39m[22m[90m (16)[39m
+[2m      Tests [22m [1m[32m18 passed[39m[22m[90m (18)[39m
 
 ## npm run seed — notifications are DERIVED, never authored
    seeded C:/Users/Vineet Sista/AppData/Local/Temp/cosign-phase5b.db
@@ -84,25 +84,25 @@ $ every route that takes a position, then a sweep of every table:
 
 ## playwright
 $ COSIGN_EVIDENCE=phase5b                   npx playwright test social.spec.ts   # phase 5B
-      ✓  46 [desktop] › e2e\social.spec.ts:626:3 › accessibility › no page in this phase scrolls sideways (866ms)
+      ✓  46 [desktop] › e2e\social.spec.ts:666:3 › accessibility › no page in this phase scrolls sideways (584ms)
     
-      46 passed (1.3m)
+      46 passed (1.1m)
 $ COSIGN_EVIDENCE=phase5b/share-regression   npx playwright test share.spec.ts    # phase 2
-      ✓  24 [desktop] › e2e\share.spec.ts:222:3 › open graph image › the share page points social previews at that image (527ms)
+      ✓  24 [desktop] › e2e\share.spec.ts:222:3 › open graph image › the share page points social previews at that image (554ms)
     
-      24 passed (26.5s)
+      24 passed (24.2s)
 $ COSIGN_EVIDENCE=phase5b/profile-regression npx playwright test profile.spec.ts  # phase 5A
-      ✓  46 [desktop] › e2e\profile.spec.ts:412:3 › google takeout import › is also offered where a ranking is empty (941ms)
+      ✓  46 [desktop] › e2e\profile.spec.ts:412:3 › google takeout import › is also offered where a ranking is empty (739ms)
     
-      46 passed (40.2s)
+      46 passed (34.3s)
 $ COSIGN_EVIDENCE=phase5b/home-regression    npx playwright test home.spec.ts     # phase 4
     
       2 skipped
-      42 passed (1.8m)
+      42 passed (1.2m)
 $ COSIGN_EVIDENCE=phase5b/log-regression     npx playwright test log.spec.ts      # phase 3, last (it writes most)
     
       1 skipped
-      35 passed (2.3m)
+      35 passed (1.9m)
 $ COSIGN_EVIDENCE_DIR=phase5b/spa node scripts/boot-smoke.mjs
     ok    auth  /shop/there-is-no-such-place/x  (175 chars)
     
@@ -130,7 +130,7 @@ $ axe violations per surface (serious/critical):
    axe-feed-mobile.json               0 (23 passes)
    axe-group-answer-desktop.json      0 (24 passes)
    axe-group-answer-mobile.json       0 (24 passes)
-   axe-group-join-desktop.json        0 (19 passes)
+   axe-group-join-desktop.json        0 (23 passes)
    axe-group-join-mobile.json         0 (23 passes)
    axe-group-new-desktop.json         0 (20 passes)
    axe-group-new-mobile.json          0 (20 passes)

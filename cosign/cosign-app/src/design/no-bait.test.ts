@@ -119,14 +119,40 @@ interface Finding {
  */
 function isProse(line: string, inBlock: boolean): boolean {
   if (inBlock) return !/\*\/\s*\S/.test(line);
-  return /^\s*(?:\/\/|\*|\/\*)/.test(line) && !/\*\/\s*\S/.test(line);
+  // `--` is SQL's line comment, and schema.sql is scanned like everything else.
+  return /^\s*(?:\/\/|--|\*|\/\*)/.test(line) && !/\*\/\s*\S/.test(line);
+}
+
+/**
+ * Strip what only LOOKS like a comment delimiter before hunting for one.
+ *
+ * `line.lastIndexOf("/*")` on raw text found the `/*` inside the string
+ * `"/img/*"` and inside a `--` comment containing the path `server/repo/*`,
+ * opened a block that never closed, and the scanner then treated everything
+ * after it as prose. That silently skipped **282 of schema.sql's 285 lines**
+ * and 58 lines of server/index.ts — 13.5% of the tree — including the one
+ * `.sql` file PLAN names as covered, and the same walk backs the "only the
+ * repo and the seeder may write the notifications table" bottleneck.
+ *
+ * Quotes are removed rather than parsed: a scanner is allowed to be blunt as
+ * long as it is blunt in the direction of seeing more, and the fixtures below
+ * hold it to that.
+ */
+function withoutStringsAndLineComments(line: string): string {
+  return line
+    .replace(/"(?:[^"\\]|\\.)*"/g, '""')
+    .replace(/'(?:[^'\\]|\\.)*'/g, "''")
+    .replace(/`(?:[^`\\]|\\.)*`/g, "``")
+    .replace(/\/\/.*$/, "")
+    .replace(/--.*$/, "");
 }
 
 /** Does this line leave a block comment open behind it? */
 function opensBlock(line: string, inBlock: boolean): boolean {
-  const opens = line.lastIndexOf("/*");
-  const closes = line.lastIndexOf("*/");
-  if (inBlock) return closes === -1 || (opens > closes);
+  const bare = inBlock ? line : withoutStringsAndLineComments(line);
+  const opens = bare.lastIndexOf("/*");
+  const closes = bare.lastIndexOf("*/");
+  if (inBlock) return closes === -1 || opens > closes;
   return opens !== -1 && opens > closes;
 }
 
@@ -236,6 +262,30 @@ describe("the scanner itself", () => {
     // a second streak outside the promise is still a streak
     const twice = "<p>There is no streak to keep, nothing to earn.</p><p>Your streak is 4 days.</p>";
     expect(scan(twice, "fixture").map((f) => f.rule)).toContain("a streak");
+  });
+
+  it("a `/*` inside a string or a line comment does not open a block", () => {
+    // Both of these are real lines from the tree, and each one blinded the
+    // scanner to every line beneath it in its file.
+    const sneaky = [
+      'app.use("/img/*", serveStatic({ root: "./seed/images" }));',
+      "const t = setInterval(poll, 1000);",
+    ].join("\n");
+    expect(scan(sneaky, "fixture")).toHaveLength(1);
+
+    const sql = ["-- RLS policies become explicit checks in server/repo/*.", "CREATE TABLE streaks (n INT);"].join("\n");
+    // nothing in the SQL is bait, but the second line must be SEEN
+    expect(codeLines(sql)).toHaveLength(1);
+    expect(codeLines(sql)[0].n).toBe(2);
+  });
+
+  it("scans every line of the schema, which is the file the bottleneck rests on", () => {
+    const schema = readFileSync(join(APP, "server", "db", "schema.sql"), "utf-8");
+    const total = schema.split(/\r?\n/).length;
+    const seen = codeLines(schema).length;
+    // roughly half of schema.sql is comment prose; the failure this catches
+    // was 3 lines of 285 being scanned
+    expect(seen).toBeGreaterThan(total * 0.4);
   });
 
   it("but code after a block closes on the same line is still code", () => {

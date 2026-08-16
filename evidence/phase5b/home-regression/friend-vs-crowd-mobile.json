@@ -1,17 +1,25 @@
 {
   "viewer": "u_lena",
-  "moved": 2,
-  "of": 4,
+  "moved": 7,
+  "of": 8,
   "friendsOrder": [
     "s_terrazzo",
     "s_tulip-tree",
     "s_percolate",
-    "s_petal-and-bean"
+    "s_cardinal-and-vine",
+    "s_petal-and-bean",
+    "s_juniper",
+    "s_marginalia",
+    "s_hackberry"
   ],
   "crowdOrder": [
+    "s_marginalia",
+    "s_hackberry",
     "s_tulip-tree",
+    "s_cardinal-and-vine",
     "s_terrazzo",
     "s_percolate",
+    "s_juniper",
     "s_petal-and-bean"
   ]
 }

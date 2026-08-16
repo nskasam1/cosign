@@ -1115,7 +1115,7 @@ deliberately does not have.
       places share third and there is no fourth. A second seeded list (Dev +
       Theo) carries a place neither has ranked, which gets no numeral at all.
       Evidence: `evidence/phase5b/{list-before,list-after,list-unranked}-*.png`,
-      `src/lib/collab.test.ts` (16) + `server/repo/collab.test.ts` (10)
+      `src/lib/collab.test.ts` (17) + `server/repo/collab.test.ts` (10)
 - [x] **Notification feed human-action-only; no engagement-bait anywhere** —
       37 notifications in the evidence run, **0 pointing at a record that does
       not exist**, 0 where the recipient is the actor, and exactly the five types
@@ -1125,7 +1125,7 @@ deliberately does not have.
       `server/` and `e2e/` for timers, schedulers, push channels and the
       vocabulary of bait, and asserts that only the repo and the seeder may write
       the table at all. Evidence: `evidence/phase5b/{commands.txt,feed-*.png}`,
-      `server/repo/notifications.test.ts` (14) + `no-bait.test.ts` (11)
+      `server/repo/notifications.test.ts` (14) + `no-bait.test.ts` (13)
 - [x] **North-star query verified on seeded events** — 4 people returned without
       logging in the week of 2026-08-03 (Dev, Lena, Maya, Sam), 0 in the weeks
       either side. The predicate is recomputed in the test by a second, dumber
@@ -1139,7 +1139,7 @@ deliberately does not have.
       hits**; **135 columns, 0 that could hold a payment or a promotion**; and
       every write route in the product is handed a bribe (`sponsored`, `boost`,
       `rank`, `paid`, `priority`…) and Home's order is byte-identical afterwards.
-      Evidence: `evidence/phase5b/commands.txt`, `server/repo/integrity.test.ts` (13)
+      Evidence: `evidence/phase5b/commands.txt`, `server/repo/integrity.test.ts` (15)
 - [x] a11y **0 serious/critical axe violations** across 5 surfaces × 2 viewports
       (10 reports, 19–25 passes each), headings run 1→2→3 with no jumps on every
       new surface, 44 px targets swept, `prefers-reduced-motion` leaves every
@@ -1251,14 +1251,123 @@ deliberately does not have.
   unanimous-crowd-of-fifty tests against a real SQLite file. `testTimeout` is
   20 s now. Same lesson as the Lighthouse medians: a number that moves with load
   needs headroom, not a quieter machine.
-- **Main JS bundle 400 kB → ~418 kB** with the three surfaces. Neither public
+- **Main JS bundle 400 kB → 446 kB** with the three surfaces. Neither public
   page ships any of it.
 - **Known gap, deliberately not closed:** the Wrapped-style semester recap stays
   reserved (logs still carry `semester` for it), and code-splitting is still
   unaddressed — it is on no acceptance criterion and the two public SSR pages
   load none of the bundle.
 
-**What the review caught (fixed before commit — worth knowing, not repeating):**
+- [x] Reviewed adversarially: four independent lenses (brief compliance /
+      correctness / test scepticism / design + a11y), each of the 50 findings
+      then handed to a separate agent instructed to refute it. **28 survived,
+      collapsing to 22 distinct defects, and all 22 are fixed** — see below.
+      Five were raised independently by two or three lenses.
+
+**What the review caught (all fixed — the two that matter most):**
+- **`GET /api/lists/:id` handed out friends-only ranking positions, to
+  anonymous callers.** The route's only gate was `canViewList`, which admits
+  every friend of the list's OWNER and never consults `rank.canViewRanking` —
+  PLAN's own "single read gate". So an anonymous request for Maya's public list
+  came back with "Lantern Lane, u_maya, position 1 **of 22**", while the same
+  caller's `/api/users/maya` correctly answered `can_see_ranking: false`. Worse
+  in the cross-friend case: Sam, who is Maya's friend and nobody else's, could
+  read Dev's positions off a list Maya had made Dev an editor of. This is the
+  Phase 1 cosigner leak, one surface over, and it shipped because the ORDER
+  legitimately needs every contributor's ranking and I let what the order was
+  computed FROM travel with it. `derivedOrderFor` redacts per contributor
+  through the same read gate; the denominator (`of`) is stripped entirely; and
+  `integrity.test.ts` now hits the route anonymously and as a non-friend.
+- **Every seat's write credential was broadcast to every reader of a group
+  session.** `sessionView` put `participant_token` on the payload, and that
+  token is the only thing `POST .../needs` checks — so anybody holding the
+  link could replay it, overwrite a signed-in friend's answer under her name,
+  null her `user_id` (which silently dropped her ranked list out of the
+  arithmetic and *changed the group's answer*), discharge her "waiting on you"
+  count, and step past the four-seat cap. The token never leaves the server
+  now; the payload carries an opaque per-response seat id, which is all the
+  client ever used it for.
+
+**And the rest, in the shape every phase's tail takes:**
+- **`mayJoin` built its list of "everybody else at the table" from answered
+  seats only**, so the first signed-in arrival passed vacuously and the host
+  was never in it — somebody the host has not agreed to know could take a seat
+  and then lock the host out of the table started in their own name. The
+  seeder had written the invariant correctly (with `created_by`) since it was
+  added; the server had not.
+- **A shared standing chained through pairs that were never level.** "Level" is
+  not transitive, and joining a standing by comparing against the row above
+  alone collapsed three rows under one numeral while the contributors had put
+  the first decisively above the third — a brace asserting an agreement nobody
+  made, over a note naming only two of the three rows it covered. A row joins a
+  standing only when it is level against every row already in it.
+- **The shelf count did not move when you answered**, which is the one moment
+  the whole design says it must: the feed fetched into local state and never
+  invalidated the react-query key the shelf reads. It was stale for thirty
+  seconds or until a reload — and `social.spec.ts` reloaded, which is why the
+  test named "answering discharges it" was green.
+- **"Out on 's somewhere to sit."** `table` is the one constraint nobody asks
+  for, so it has no `askedBy`, and `oneNeedAway` did not exclude it the way
+  `priceOfEachNeed` and `costliestConstraint` both do. It is in the committed
+  evidence of the first run, over Cricket & Crow.
+- **Every server refusal on the group page read as a dropped connection.**
+  403 (you and somebody here aren't friends) and 409 (the table is settled or
+  full) are standing states, and "tap it again" is advice that can never work.
+  `settled` was computed and gated nothing, so a resolved table still offered
+  the form.
+- **`app.onError` did not match node:sqlite's `UNIQUE constraint failed`**, so
+  two editors adding the same place from stale pages, or one person answering a
+  session from two browsers, got a 500. The regex is wider and `addItem` is
+  idempotent.
+- **`no-bait.test.ts` was 13.5% blind**, including 282 of `schema.sql`'s 285
+  lines: `lastIndexOf("/*")` found the `/*` inside the string `"/img/*"` and
+  inside a `--` comment containing `server/repo/*`, opened a block comment that
+  never closed, and everything below was treated as prose. Nothing was hiding
+  in the dead zone, but the guard's coverage is the entire basis on which the
+  no-bait criterion was checked off. Strings and line comments are stripped
+  before the search now, and two fixtures hold it there.
+- **The re-rank evidence was the same PNG twice.** The transcript's demo
+  re-ranked both lists against the same database the suite then photographed,
+  so `canRedraw` was false by the time Playwright ran and the whole body of the
+  test — the click, the message, `expect(after).not.toEqual(before)` — sat
+  behind an `if` that was false. The demos have their own database now, the
+  spec builds its own out-of-date fixture, and the `if` is gone.
+- **The group e2e depended on the wall clock.** Its fixture asked for "open
+  now", and the seeded campus has nothing open 02:00–06:15 on Monday to
+  Wednesday — 78 of a week's 672 quarter-hours. The shared fixture no longer
+  asks; one test still does, on purpose, and accepts either branch.
+- **Fourteen committed screenshots had the sticky shelf pasted across the
+  middle of the page** — the trap `e2e/fixtures.ts` has documented since Phase
+  4, sprung a fourth time, over the "ADD LENA / not now" pair on the feed and
+  over the first half of the tie on the list.
+- **The desktop `group-join` axe report audited a different screen from the
+  mobile one**, because the suite's first test fills a seat on the seeded
+  session and mobile runs first. The a11y sweep gets its own session.
+- **Two new handlers were `try/finally` with no `catch`** — the exact shape
+  `ShopDetail.tsx` carries a comment about, as Phase 4's fix for the same bug.
+- **The group page promised "nothing about it is kept" while the schema keeps
+  all of it.** The clause about location is true and stays; the rest is now
+  what is actually true.
+- **The phase's only text input was invisible at 1.70:1** — a bare
+  `--rule-strong` bottom border with no placeholder, on the one branch only an
+  anonymous joiner sees, while every other input in the app uses a bordered
+  surface. axe ships no input-boundary rule and reported nothing.
+- Plus: `leadFor` told an unseated reader "the one place that clears
+  everything" directly above a sentence saying there were seventeen; "Somewhere
+  all two of you can work tonight"; a screen-reader count with no singular; and
+  `participantToken.ts` still describing a votes table deleted in Phase 1.
+
+**Refuted, and worth not re-raising:** that the invite gate and `mayJoin` should
+agree (they answer two different questions — *may I message you* versus *may my
+ranked list join this table* — and PLAN records the asymmetry as the design);
+that dropping `friend_logged` deviates from brief #11 (the five were fixed in
+Phase 0, and "only from human actions" is an upper bound you cannot breach by
+shipping fewer); and that "2 of 4 have answered" is the banned denominator (the
+ban is a position paired with the length of a private ranked list, which is why
+`social.spec.ts`'s regex matches "21st of 22" and deliberately does not match
+"of the 4 lists").
+
+**Earlier in the phase, before the review:**
 - **The boot smoke was still aimed at a signed-off phase.** `scripts/boot-smoke.mjs`
   fell back to `evidence/phase1/` when `COSIGN_EVIDENCE_DIR` was unset, and a bare
   run of it during 5B rewrote twelve committed Phase 1 screenshots with Phase 5B's

@@ -1,6 +1,6 @@
 import { Fragment, useCallback, useEffect, useMemo, useState } from "react";
 import { Link, useParams } from "react-router-dom";
-import { api, type GroupView } from "@/lib/api";
+import { ApiError, api, type GroupView } from "@/lib/api";
 import { getParticipantToken } from "@/lib/participantToken";
 import { paletteOf, paletteStyle } from "@/lib/palette";
 import { readPosition } from "@/lib/geo";
@@ -132,8 +132,18 @@ const GroupSession = () => {
       setAnswering(false);
       setSaid(null);
       await load();
-    } catch {
-      setSaid("That didn't send. Nothing was answered — tap it again.");
+    } catch (err) {
+      // Three of these are standing states, not races: 403 is a friendship,
+      // 409 is a settled or full table. Telling somebody to "tap it again"
+      // when tapping it again can never work is the failure this product has
+      // already caught itself in twice.
+      setSaid(
+        err instanceof ApiError && err.status === 403
+          ? "You and somebody at this table haven't agreed to know each other. Sign out and you can still answer as a stranger — you just won't bring your list."
+          : err instanceof ApiError && err.status === 409
+            ? "That table is settled, or all four seats are taken. Nothing was answered."
+            : "That didn't send. Nothing was answered — tap it again.",
+      );
     } finally {
       setBusy(false);
     }
@@ -174,9 +184,11 @@ const GroupSession = () => {
   const best = view.picks[0] ?? null;
   const bestPlace = best ? view.places[best.shop_id] : null;
   const full = view.answers.length >= 4 && !mine;
-  const showForm = answering || (!mine && !full);
   const starter = view.starter?.display_name.split(" ")[0] ?? "Somebody";
   const settled = view.session.status !== "open";
+  // A settled table takes no answers (the route 409s), so it never offers
+  // the form or the "change what you need" word.
+  const showForm = !settled && (answering || (!mine && !full));
   // Whoever was asked, or whoever turned up — a link can be forwarded, so
   // the table is as big as the larger of the two.
   const party = Math.max(view.invited, view.answers.length);
@@ -193,7 +205,9 @@ const GroupSession = () => {
       <h1 className="cs-display mt-4 text-balance text-xl text-line">
         {party === 1
           ? "Somewhere you can work tonight."
-          : `Somewhere all ${NUMBER_WORDS[party] ?? party} of you can work tonight.`}
+          : party === 2
+            ? "Somewhere both of you can work tonight."
+            : `Somewhere all ${NUMBER_WORDS[party] ?? party} of you can work tonight.`}
       </h1>
       <div className="mt-4 h-px bg-ember" />
       <p data-state-line className="cs-caps mt-4 text-muted">
@@ -213,7 +227,7 @@ const GroupSession = () => {
         <h2 className="cs-caps text-gold">Who is at the table</h2>
         <ul className="mt-3">
           {view.answers.map((a) => (
-            <li key={a.participant} data-seat className="border-t border-rule py-3 first:border-t-0">
+            <li key={a.seat} data-seat className="border-t border-rule py-3 first:border-t-0">
               <p className="cs-caps text-line">
                 {a.display_name ?? "The fourth"}
                 {a.is_you && " (you)"}
@@ -277,7 +291,12 @@ const GroupSession = () => {
             <>
               <section data-answer className="mt-9 border-t border-rule-strong pt-5">
                 <h2 className="cs-caps text-gold">
-                  {view.state === "complete" ? "The one that clears everything" : "Clears everything so far"}
+                  {/* "The one" only when it is the one. */}
+                  {view.funnel.left === 1
+                    ? "The one that clears everything"
+                    : view.state === "complete"
+                      ? "The best of what clears everything"
+                      : "Clears everything so far"}
                 </h2>
                 <p className="cs-display mt-2 text-balance text-4xl text-ink">{bestPlace.name}</p>
                 {/* The PLACE's facts, not a restatement of what was asked. */}
@@ -361,15 +380,12 @@ const GroupSession = () => {
                   <ul className="mt-4">
                     {view.one_need_away.map((n) => {
                       const p = view.places[n.shop_id];
-                      const who = n.askedBy
-                        .map((t) => view.answers.find((a) => a.participant === t)?.display_name ?? "somebody")
-                        .join(" and ");
+                      const who = namesFor(view, n.askedBy);
                       return (
                         <li key={n.shop_id} style={paletteStyle(paletteOf(p.palette))}>
                           <Link to={`/shop/${p.slug}`} className="cs-row block py-4">
                             <span className="cs-caps block text-gold">
-                              Out on {who}
-                              {"'s "}
+                              {who ? `Out on ${who}'s ` : "Out on "}
                               {NEED_WORDS[n.key] ?? n.detail}
                             </span>
                             <span className="cs-display mt-1 block text-lg text-ink">{p.name}</span>
@@ -402,14 +418,17 @@ const GroupSession = () => {
                 <Link to={`/shop/${bestPlace.slug}`} className="cs-pill-ghost">
                   {bestPlace.name} · {bestPlace.walk_min} min
                 </Link>
-                <button
-                  type="button"
-                  data-change
-                  onClick={() => setAnswering(true)}
-                  className="cs-word text-sm text-muted underline underline-offset-4"
-                >
-                  change what you need
-                </button>
+                {/* A settled table takes no answers, so it offers none. */}
+                {!settled && (
+                  <button
+                    type="button"
+                    data-change
+                    onClick={() => setAnswering(true)}
+                    className="cs-word text-sm text-muted underline underline-offset-4"
+                  >
+                    change what you need
+                  </button>
+                )}
               </div>
             </>
           ) : view.unknown_to_all.length > 0 ? (
@@ -480,16 +499,13 @@ const GroupSession = () => {
                 </p>
                 <ul className="mt-4">
                   {view.costs.map((c) => {
-                    const who = c.askedBy
-                      .map((t) => view.answers.find((a) => a.participant === t)?.display_name ?? "somebody")
-                      .join(" and ");
+                    const who = namesFor(view, c.askedBy);
                     const example = c.example ? view.places[c.example] : null;
-                    const isMine = mine ? c.askedBy.includes(mine.participant) : false;
+                    const isMine = mine ? c.askedBy.includes(mine.seat) : false;
                     return (
                       <li key={c.key} className="border-t border-rule py-4 first:border-t-0">
                         <p className="cs-caps text-gold">
-                          Drop {who}
-                          {"'s "}
+                          {who ? `Drop ${who}'s ` : "Drop "}
                           {c.detail}
                         </p>
                         {c.unlocks === 0 ? (
@@ -530,11 +546,13 @@ const GroupSession = () => {
                 </p>
               </section>
 
-              <div className="mt-8">
-                <button type="button" data-change onClick={() => setAnswering(true)} className="cs-pill-ghost">
-                  Change what you need
-                </button>
-              </div>
+              {!settled && (
+                <div className="mt-8">
+                  <button type="button" data-change onClick={() => setAnswering(true)} className="cs-pill-ghost">
+                    Change what you need
+                  </button>
+                </div>
+              )}
             </>
           )}
 
@@ -560,14 +578,37 @@ const GroupSession = () => {
       {said && <p data-said className="cs-caps mt-6 text-ember-ink">{said}</p>}
 
       <p className="mt-10 border-t border-rule pt-5 text-xs text-muted">
-        This table lives in this browser and in nobody's history. Nothing about it is kept — not where any
-        of you were, not what any of you needed. Cosign will not nudge anybody about it: there is no timer on
-        this page and it sends nothing on its own.
+        Nothing about where any of you are is kept — Cosign never asked, and the walking times are
+        measured from campus. What each of you tapped stays with this table, on this machine, and is on
+        nobody's profile and in nobody's history. Cosign will not nudge anybody about it: there is no timer
+        on this page and it sends nothing on its own.
       </p>
       <p className="cs-caps mt-4 text-muted">Nothing here is scored, and nothing here was paid for.</p>
     </main>
   );
 };
+
+/**
+ * The people behind a set of seats, in the roster's own words. An unnamed
+ * by-link seat is "the fourth" there, so it is "the fourth" here too —
+ * "somebody and somebody's wifi" named nobody.
+ */
+function namesFor(view: GroupView, seats: string[]): string {
+  // Empty means NOBODY asked — the table constraint — and the callers all
+  // guard on the empty string. "somebody asked" for a need nobody asked for
+  // is worse than saying nothing.
+  if (seats.length === 0) return "";
+  const names = seats.map((t, i) => {
+    const a = view.answers.find((x) => x.seat === t);
+    if (a?.display_name) return a.display_name;
+    // Unnamed seats are told apart by their place at the table, so three of
+    // them do not all read "the fourth".
+    const at = a ? view.answers.indexOf(a) + 1 : i + 1;
+    return `${["the first", "the second", "the third", "the fourth"][at - 1] ?? "somebody"} seat`;
+  });
+  if (names.length === 1) return names[0];
+  return `${names.slice(0, -1).join(", ")} and ${names.at(-1)}`;
+}
 
 /** "open till 2" / "shuts in 40 min" — a fact, in the words a person uses. */
 function closesIn(minutes: number): string {
@@ -582,7 +623,14 @@ function closesIn(minutes: number): string {
  * shape Phase 5A's `computeFinding` established.
  */
 function leadFor(view: GroupView, best: GroupView["picks"][number]): string {
-  if (!view.seated) return "The one place that clears everything.";
+  if (!view.seated) {
+    // No positions on this payload, so the lead can only speak to coverage —
+    // and it must not contradict the sentence directly under it, which says
+    // how many places cleared everything.
+    if (best.coverage === 0) return "Nobody at this table has been.";
+    if (best.coverage === 1) return "One of you has been.";
+    return `${best.coverage} of you have been.`;
+  }
   if (best.coverage === 0) return "Nobody here has been.";
   const firsts = best.positions.filter((p) => p.position === 1);
   const names = best.positions.map((p) => view.members[p.user_id] ?? "Somebody");
@@ -606,9 +654,7 @@ const Ledger = ({ view }: { view: GroupView }) => (
         <dd className="cs-figures text-line">{view.funnel.total}</dd>
       </Fragment>
       {view.funnel.steps.map((s) => {
-        const who = s.askedBy
-          .map((t) => view.answers.find((a) => a.participant === t)?.display_name ?? "somebody")
-          .join(" and ");
+        const who = namesFor(view, s.askedBy);
         return (
           <Fragment key={s.key}>
             <dt className="text-line">
@@ -755,7 +801,8 @@ const NeedsForm = ({
           maxLength={24}
           onChange={(e) => setDraft((d) => ({ ...d, name: e.target.value }))}
           aria-label="A first name, if you want one"
-          className="mt-3 w-full border-b border-rule-strong bg-transparent py-3 text-lg text-ink outline-none focus-visible:border-ember"
+          placeholder="Your first name"
+          className="mt-3 w-full rounded-[var(--radius-sm)] border border-rule-strong bg-surface p-3 text-lg text-ink outline-none placeholder:text-muted"
         />
         <p className="mt-4 text-xs text-muted">
           You are not signed in, and nothing here is going to ask you to be. What you need counts exactly as

@@ -74,7 +74,12 @@ const me = (c: { get: (k: "userId") => string | null }) => c.get("userId");
 // caller's problem and get the same opaque 400 — the constraint text names
 // columns. Anything else is ours: logged here, never described to the client.
 app.onError((err, c) => {
-  if (err instanceof SyntaxError || /SQLITE_CONSTRAINT|CHECK constraint|FOREIGN KEY/i.test(err.message)) {
+  // node:sqlite spells these "UNIQUE constraint failed: …" and "CHECK
+  // constraint failed: …" without the SQLITE_CONSTRAINT prefix, so the
+  // original pattern missed the one an ordinary user hits: two people adding
+  // the same place to a shared list from stale pages, or one person answering
+  // a group session from two browsers. Those are bad requests, not 500s.
+  if (err instanceof SyntaxError || /SQLITE_CONSTRAINT|UNIQUE constraint|CHECK constraint|FOREIGN KEY/i.test(err.message)) {
     return c.json({ error: "bad request" }, 400);
   }
   console.error(err);
@@ -483,7 +488,13 @@ app.get("/api/lists/:id", (c) => {
   // The derived order is computed for the reader and written nowhere: a list
   // only moves when an editor says so (POST .../rerank), because a list that
   // silently re-ordered itself would be a change nobody made.
-  const derived = lists.derivedOrder(db, list);
+  //
+  // `derivedOrderFor` — not `derivedOrder`. The ORDER comes from everybody;
+  // what each contributor's ranking says is gated on `rank.canViewRanking`,
+  // because being a friend of this list's owner is not being a friend of its
+  // editors, and this route answers logged-out callers.
+  const derived = lists.derivedOrderFor(db, list, uid);
+  const coverage = lists.coverageOf(db, list);
   const owner = social.userById(db, list.owner_id);
   return c.json({
     list,
@@ -497,12 +508,17 @@ app.get("/api/lists/:id", (c) => {
     can_edit: uid ? lists.canEditList(db, uid, list) : false,
     is_owner: uid === list.owner_id,
     contributors: [
-      ...(owner ? [{ user_id: owner.id, display_name: owner.display_name, username: owner.username }] : []),
-      ...lists
-        .editorUsersOf(db, list.id)
-        .filter((u) => u.id !== list.owner_id)
-        .map((u) => ({ user_id: u.id, display_name: u.display_name, username: u.username })),
-    ],
+      ...(owner ? [owner] : []),
+      ...lists.editorUsersOf(db, list.id).filter((u) => u.id !== list.owner_id),
+    ].map((u) => ({
+      user_id: u.id,
+      display_name: u.display_name,
+      username: u.username,
+      // A count about THIS list, which survives the redaction above — the
+      // page can still say where the order came from without saying what
+      // anybody's private ordering is.
+      ranked: coverage[u.id] ?? 0,
+    })),
     // Is the list already in the order its contributors imply?
     derived: { ...derived, settled: lists.isSettled(db, list) },
     last_rerank: lists.lastRerank(db, list.id),

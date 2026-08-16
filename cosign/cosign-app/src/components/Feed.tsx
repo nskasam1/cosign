@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
 import { api, type FeedEntry } from "@/lib/api";
 import Nothing from "@/components/Nothing";
@@ -81,6 +82,11 @@ function when(iso: string): string {
 }
 
 const Feed = () => {
+  // The shelf reads the same feed through react-query. Without this the
+  // number beside YOU is stale for thirty seconds after an answer — the one
+  // moment the whole design says it must move, because it is lowered by
+  // answering and by nothing else.
+  const qc = useQueryClient();
   const [entries, setEntries] = useState<FeedEntry[] | null>(null);
   const [reachable, setReachable] = useState(true);
   const [busy, setBusy] = useState<string | null>(null);
@@ -91,9 +97,10 @@ const Feed = () => {
       .then((v) => {
         setEntries(v.entries);
         setReachable(true);
+        void qc.invalidateQueries({ queryKey: ["notifications"] });
       })
       .catch(() => setReachable(false));
-  }, []);
+  }, [qc]);
 
   useEffect(load, [load]);
 
@@ -114,6 +121,10 @@ const Feed = () => {
     try {
       await api.markNotificationsRead([e.id]);
       load();
+    } catch {
+      // Same shape as `accept` ten lines up. A try/finally with no catch is
+      // the defect this codebase names in a comment on ShopDetail.tsx.
+      setReachable(false);
     } finally {
       setBusy(null);
     }

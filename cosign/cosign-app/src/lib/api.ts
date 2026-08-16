@@ -106,7 +106,9 @@ export interface ListView {
   editors: string[];
   can_edit: boolean;
   is_owner: boolean;
-  contributors: Array<{ user_id: string; display_name: string; username: string }>;
+  /** `ranked` is how many of THIS list's places that person has put in order
+   *  — a count about the list, never about their ordering. */
+  contributors: Array<{ user_id: string; display_name: string; username: string; ranked: number }>;
   /** Computed for the reader and written nowhere: a list only moves when an
    *  editor says so, because a change nobody made has nobody to name. */
   derived: CollabOrder & { settled: boolean };
@@ -154,7 +156,9 @@ export interface GroupView {
   /** The reader is a signed-in member, so `positions` are populated. */
   seated: boolean;
   answers: Array<{
-    participant: string;
+    /** Opaque per-response seat id. The participant token — which is a write
+     *  credential — never leaves the server. */
+    seat: string;
     display_name: string | null;
     is_you: boolean;
     brings_a_list: boolean;

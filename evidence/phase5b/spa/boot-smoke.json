@@ -25,42 +25,42 @@
     {
       "route": "/",
       "auth": true,
-      "chars": 4696,
+      "chars": 4733,
       "title": "Cosign",
       "errors": []
     },
     {
       "route": "/search",
       "auth": true,
-      "chars": 4345,
+      "chars": 4305,
       "title": "Search — Cosign",
       "errors": []
     },
     {
       "route": "/maya",
       "auth": true,
-      "chars": 4421,
+      "chars": 4264,
       "title": "Maya Okafor — Cosign",
       "errors": []
     },
     {
       "route": "/shop/oval-grounds",
       "auth": true,
-      "chars": 1054,
+      "chars": 1087,
       "title": "Oval Grounds — Cosign",
       "errors": []
     },
     {
       "route": "/shop/oval-grounds",
       "auth": false,
-      "chars": 926,
+      "chars": 959,
       "title": "Oval Grounds — Cosign",
       "errors": []
     },
     {
       "route": "/lists/l_our-campus-ranking",
       "auth": true,
-      "chars": 2208,
+      "chars": 2385,
       "title": "our ranking of campus coffee — Cosign",
       "errors": []
     },
