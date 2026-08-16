@@ -1096,13 +1096,200 @@ actually close it is beyond this phase: subsetting Young Serif (26.6 kB of the 5
 on the wire) to the glyphs the product uses, which needs a font toolchain this repo
 deliberately does not have.
 
-### Phase 5B — Social/notifications/metrics/integrity ☐
-- [ ] Group intersection-best for 4 seeded users (test)
-- [ ] Collab list with ≥ 2 contributors re-ranks (test)
-- [ ] Notification feed human-action-only; no engagement-bait anywhere (audit)
-- [ ] North-star query verified on seeded events (test)
-- [ ] Integrity tests: friends-only defaults, no persisted coordinates, no
-      pay-for-rank
+### Phase 5B — Social/notifications/metrics/integrity ✅
+- [x] **Group intersection-best for 4 seeded users** — the four who are pairwise
+      accepted friends (Maya, Dev, June, Theo) answer through the real routes and
+      the page answers **Lantern Lane Cafe**, which is on two of the four lists
+      and in nobody's bottom half. Nobody votes: `group_needs` has no vote column
+      and no tally exists anywhere. The needs union into constraints (`3 outlets`
+      because three of them asked; `no louder than conversational` because that
+      is the strictest ceiling anybody set; `a table for 4`, which nobody has to
+      ask for), and the arithmetic is printed on the page: 22 → 11 ruled out →
+      5 held because nobody has logged how loud they get at this hour → 6 clear
+      everything. Evidence: `evidence/phase5b/{commands.txt,group-*.png}`,
+      `src/lib/group.test.ts` (23) + `server/repo/group.test.ts` (20)
+- [x] **Collab list with ≥ 2 contributors re-ranks** — "our ranking of campus
+      coffee" (Maya + Dev + June) re-ranks from their own head-to-head lists,
+      **4 of 6 move**, the other two contributors are told and the one who did it
+      is not, and a second re-rank is refused because it would move nothing. Two
+      places share third and there is no fourth. A second seeded list (Dev +
+      Theo) carries a place neither has ranked, which gets no numeral at all.
+      Evidence: `evidence/phase5b/{list-before,list-after,list-unranked}-*.png`,
+      `src/lib/collab.test.ts` (16) + `server/repo/collab.test.ts` (10)
+- [x] **Notification feed human-action-only; no engagement-bait anywhere** —
+      37 notifications in the evidence run, **0 pointing at a record that does
+      not exist**, 0 where the recipient is the actor, and exactly the five types
+      the brief allows. The database refuses a sixth (including `friend_logged`,
+      which was in the CHECK and was cut). The audit is a mechanism, not a claim:
+      `src/design/no-bait.test.ts` walks every `.ts/.tsx/.css/.sql` under `src/`,
+      `server/` and `e2e/` for timers, schedulers, push channels and the
+      vocabulary of bait, and asserts that only the repo and the seeder may write
+      the table at all. Evidence: `evidence/phase5b/{commands.txt,feed-*.png}`,
+      `server/repo/notifications.test.ts` (14) + `no-bait.test.ts` (11)
+- [x] **North-star query verified on seeded events** — 4 people returned without
+      logging in the week of 2026-08-03 (Dev, Lena, Maya, Sam), 0 in the weeks
+      either side. The predicate is recomputed in the test by a second, dumber
+      implementation over the raw events table and the two have to agree.
+      Evidence: `evidence/phase5b/commands.txt`, `server/repo/northstar.test.ts` (6)
+- [x] **Integrity tests: friends-only defaults, no persisted coordinates, no
+      pay-for-rank** — a list posted `{visibility:"public"}` is stored `friends`;
+      a log posted as public and attributed to somebody else is stored `friends`
+      and owned by the poster; every route that takes a position is called with a
+      coordinate nobody would produce by accident and **every table is swept: 0
+      hits**; **135 columns, 0 that could hold a payment or a promotion**; and
+      every write route in the product is handed a bribe (`sponsored`, `boost`,
+      `rank`, `paid`, `priority`…) and Home's order is byte-identical afterwards.
+      Evidence: `evidence/phase5b/commands.txt`, `server/repo/integrity.test.ts` (13)
+- [x] a11y **0 serious/critical axe violations** across 5 surfaces × 2 viewports
+      (10 reports, 19–25 passes each), headings run 1→2→3 with no jumps on every
+      new surface, 44 px targets swept, `prefers-reduced-motion` leaves every
+      computed animation/transition at 0 s, **no page scrolls sideways** (a new
+      assertion, added because the first cut of the group roster did), anti-slop
+      self-review done against the committed screenshots
+- [x] Regressions: Phase 2 (24), Phase 3 (35), Phase 4 (42), Phase 5A (46) e2e
+      suites re-run against the clean seed into their own subdirectories, plus
+      the SPA boot smoke over 13 routes with zero console errors and every
+      request on localhost
+
+**Phase 5B decisions & assumptions (new — don't relitigate):**
+- **Direction chosen by panel again, then judged.** Three independent directions
+  for the three surfaces were generated against the real seeded data (the minutes
+  of a meeting; one question at a time; the table itself), each rendered as
+  working standalone mockups and screenshotted at 390 and 1280, then scored by
+  three lenses (literal brief compliance / a sophomore in a queue / the designer
+  who shipped the share page) and synthesised. Two of the panel's findings are
+  in the product rather than in a document: the shared standing on a
+  collaborative list, and the subtraction ledger.
+- **Group mode is an intersection, and the ordering took three tries.** Coverage
+  first answered with the place all four had been to and one of them ranks LAST
+  of ten; the worst position first answered with one person's #2 that nobody else
+  had heard of. What ships is a band, then coverage, then the worst position:
+  first "is anybody putting up with this" — is it in the bottom half of any
+  member's own list — then "how many of us actually want it". A member who has
+  never been is **neutral, not a zero** (the distinction Phase 4 drew on Home),
+  and both are printed, so a thin agreement cannot pass itself off as a thick one.
+- **The arithmetic is on the page, and a need that costs nothing says so.**
+  `ruled_out` is what each need costs *on its own*, which does not add up when two
+  needs rule out the same places; `funnel()` charges each need only for what the
+  ones before it left. "Wifi cost nothing tonight" is the most useful line on the
+  surface, because it is the only way anybody learns which of their needs is cheap.
+- **A session id is a link, so it is a token** — 12 random bytes, base64url, no
+  clock in it, and the seeder refuses a readable one exactly as it refuses a
+  readable share token. `/g/:token`, no shell, no auth check.
+- **Sitting at a table is not a friendship.** Every signed-in seat must be an
+  accepted friend of every OTHER signed-in seat, not merely of whoever started it
+  — otherwise a host with two friends who do not know each other puts each of
+  their rankings in front of the other. A by-link seat is anonymous: needs only,
+  no ranked list, and it never reads a position. **The length of anybody's list
+  never leaves the server**: "21st of 22" is a position and a denominator, and a
+  denominator is the closest thing to a score this surface could print.
+- **A tie is never broken and the numeral column is never invented into.** Two
+  places the contributors ordered in opposite directions share one standing, the
+  brace says which rows the numeral covers, and the column jumps from 3 to 5. A
+  place no contributor has ranked gets **no numeral cell at all** — not a dash,
+  not a zero; a placeholder in that column is one refactor from being a rank.
+  Sorting them needed care: Copeland ties are broken by the pair itself, and a
+  pairwise comparator that disagrees with itself around a cycle gives an order
+  the language does not define, so tied groups are re-sorted on a LOCAL score.
+- **A re-rank is an act, not a recomputation on read.** A list that quietly
+  re-ordered itself would be a change nobody made, and there would be nobody to
+  name in the notification the other editors get. `list_reranks` is its own table
+  because it is the action record a `list_reranked` notification points at, and
+  two re-ranks are two events. A re-rank that moves nothing is refused (409) and
+  tells nobody.
+- **`seed/lists.json` gains "still open when we are"** (Dev + Theo, six places,
+  one of them Copper Kettle). Maya has ranked all 22 shops, so no list she can
+  edit can ever reach the "added, not in the order" state — the design panel
+  proposed trimming her ranking, which the seeder forbids (the hero must rank
+  every shop for the Phase 2 gate). A second collaborative list is the fix that
+  breaks nothing.
+- **The notification feed lives at the top of your own page, and the shelf gains
+  a number.** No fifth tab, no `/notices` route, no bell, no dot. This
+  **supersedes** Phase 4's "no badges, because nothing here notifies you without a
+  person behind it" rather than contradicting it: what makes a badge bait is that
+  the product can raise it on its own. This one can be raised only by a friend
+  request or a friend asking where to sit, is never raised by news, is never
+  raised by elapsed time, and is lowered only by answering — where "not now" is
+  an answer, which is why `needs_answer` is false once a row is read. Gold,
+  because a count is a label; never ember, which has two jobs and this is neither.
+  Nothing at all at zero.
+- **`friend_logged` is cut from the schema's CHECK.** It is the one of the six
+  that fires without anybody choosing to tell you anything — a feed of other
+  people's activity, which is the shape the brief bans. The five that remain each
+  point at a persisted action record, and the feed renders from THAT record: a
+  request answered elsewhere reads as answered without the notification row being
+  touched, and a record that is gone takes its sentence with it.
+- **There is no `seed/notifications.json` and there must never be one.** All 31
+  seeded rows are derived from action records already in the seed files — the
+  friendships, the list editors, the group session's invitations. A hand-written
+  notification would be the one row in the database that nobody did anything to
+  cause.
+- **The product says, in words, what it will not do — and the guard cuts those
+  sentences out before scanning.** `no-bait.test.ts` caught Feed.tsx promising
+  "there is no streak to keep, nothing to earn" and GroupSession.tsx promising
+  "Cosign will not nudge anybody about it". The carve-out removes the exact
+  promise text from the line and scans everything else, so a promise beside a real
+  badge or a real `setInterval` buys neither any amnesty. `expectNoRatingScale`
+  got the same treatment for "a vote is a rating with extra steps".
+- **`src/components/ui/{badge,sidebar}.tsx` and `hooks/use-mobile` deleted.**
+  Badge is the unread count this phase decided against; sidebar is a hamburger
+  maze the brief bans and it ships a `SidebarMenuBadge` inside it. Same reasoning
+  as Phase 1's slider and Phase 3's progress/radio-group/chart.
+- **A table of people who have all been nowhere gets its own answer.** With no
+  member having ranked anything, `picks` is empty and `unknownToAll` is not —
+  and the empty-intersection copy ("nothing clears all of it") would have been a
+  lie that sent four people home over a full campus. It says what is true instead:
+  N places clear everything, none of you has been to any of them, and Cosign will
+  not put them in an order it has no reason to believe.
+- **The empty intersection is unit-tested rather than screenshotted**, because
+  the seeded campus does have quiet places with outlets and wifi: four people
+  asking for everything at once still get an answer, and the e2e records which
+  branch the hour it ran produced (`group-strict-*.png`). `src/lib/group.test.ts`
+  covers the empty branch and `costliestConstraint`'s tie-break directly.
+- **Two pre-existing tests were timing out at Vitest's 5 s default** when the
+  evidence script ran them beside a build and a server — both are Phase 4's
+  unanimous-crowd-of-fifty tests against a real SQLite file. `testTimeout` is
+  20 s now. Same lesson as the Lighthouse medians: a number that moves with load
+  needs headroom, not a quieter machine.
+- **Main JS bundle 400 kB → ~418 kB** with the three surfaces. Neither public
+  page ships any of it.
+- **Known gap, deliberately not closed:** the Wrapped-style semester recap stays
+  reserved (logs still carry `semester` for it), and code-splitting is still
+  unaddressed — it is on no acceptance criterion and the two public SSR pages
+  load none of the bundle.
+
+**What the review caught (fixed before commit — worth knowing, not repeating):**
+- **The boot smoke was still aimed at a signed-off phase.** `scripts/boot-smoke.mjs`
+  fell back to `evidence/phase1/` when `COSIGN_EVIDENCE_DIR` was unset, and a bare
+  run of it during 5B rewrote twelve committed Phase 1 screenshots with Phase 5B's
+  app. Third time this trap has been sprung (Phase 3 found `share.spec.ts`, Phase 4
+  found `playwright.config.ts` and `e2e/fixtures.ts`); this was the last default
+  pointing backwards. It is `evidence/scratch/spa/` now, and the artifacts were
+  restored to the bytes Phase 1 was accepted on.
+- **The suite was consuming a seeded fixture.** The feed tests used the seeded
+  pending Lena → Maya request, and answering it CONSUMES it: the first run passed
+  and the second found the state its own first run had created. They sign up their
+  own asker now — the Phase 3 lesson, learned a third time.
+- **Assertions were reading the DOM through the loading screen.** `[data-group]`
+  and `[data-feed]` mark their own loading state, so a non-retrying
+  `await locator.count()` found an empty page every time. Exactly the Phase 4
+  `[data-home]` bug. `loaded(page, selector)` in `e2e/fixtures.ts` waits for
+  `:not([data-state="loading"])`.
+- **The first cut of the group roster made the page scroll sideways** — a person's
+  needs are prose and they were in a `.cs-ledger`'s figure column, which is
+  `white-space: nowrap`. A seat is two lines now, and the suite asserts no page in
+  the phase overflows horizontally.
+- **`.cs-word` still sets a minimum height and nothing about width**, so the
+  list's "off" control was a 40 px target — the same finding Phase 4 recorded, on
+  a new control. It has `min-w-[var(--tap)]` now.
+- **A `.contents` wrapper breaks a CSS grid's `:nth-child`.** The ledger's
+  hairlines and right-aligned figures target `:nth-child(even)`, and a `<div
+  className="contents">` per row made every wrapper the child. Fragments.
+- **The list could not tell "friends-only" from "cannot reach the server"** and
+  said the first for both — the Phase 3 `PlaceFlow` defect and the Phase 4 Search
+  defect, a third time. It gates on the response status now.
+- **"a iced oat latte"** was on the share page, the public profile and the in-app
+  profile for a phase and a half. One `article()` helper, three call sites.
 
 ---
 

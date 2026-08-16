@@ -177,6 +177,9 @@ const GroupSession = () => {
   const showForm = answering || (!mine && !full);
   const starter = view.starter?.display_name.split(" ")[0] ?? "Somebody";
   const settled = view.session.status !== "open";
+  // Whoever was asked, or whoever turned up — a link can be forwarded, so
+  // the table is as big as the larger of the two.
+  const party = Math.max(view.invited, view.answers.length);
 
   return (
     <main data-group data-session={view.session.id} data-state={view.state} className="cs-wrap pb-16 pt-[max(var(--space-4),env(safe-area-inset-top))]">
@@ -188,7 +191,9 @@ const GroupSession = () => {
       </div>
 
       <h1 className="cs-display mt-4 text-balance text-xl text-line">
-        Somewhere all {NUMBER_WORDS[view.invited] ?? view.invited} of you can work tonight.
+        {party === 1
+          ? "Somewhere you can work tonight."
+          : `Somewhere all ${NUMBER_WORDS[party] ?? party} of you can work tonight.`}
       </h1>
       <div className="mt-4 h-px bg-ember" />
       <p data-state-line className="cs-caps mt-4 text-muted">
@@ -406,6 +411,49 @@ const GroupSession = () => {
                   change what you need
                 </button>
               </div>
+            </>
+          ) : view.unknown_to_all.length > 0 ? (
+            // Everything the group asked for is met — by places none of them
+            // has ever put in order. That is a different answer from "nothing
+            // clears it", and saying the wrong one would be the page's worst
+            // failure: it would send four people home over a full campus.
+            <>
+              <section data-none-been className="mt-9 border-t border-rule-strong pt-5">
+                <h2 className="cs-caps text-gold">Clears everything, and nobody here has been</h2>
+                <p className="cs-display mt-2 text-balance text-3xl text-ink">
+                  {view.places[view.unknown_to_all[0]].name}
+                </p>
+                <p className="mt-3 text-sm text-line">
+                  {view.funnel.left === 1
+                    ? "One place meets everything asked for at this table"
+                    : `${view.funnel.left} places meet everything asked for at this table`}
+                  , and none of you has put any of them in order. So there is nothing here to say which is
+                  better — only that each one clears what you said you needed
+                  {view.funnel.left > view.unknown_to_all.length
+                    ? `. The ${view.unknown_to_all.length} nearest are below.`
+                    : "."}
+                </p>
+                <ul className="mt-5">
+                  {view.unknown_to_all.map((id) => {
+                    const p = view.places[id];
+                    return (
+                      <li key={id} style={paletteStyle(paletteOf(p.palette))}>
+                        <Link to={`/shop/${p.slug}`} className="cs-row block py-4">
+                          <span className="cs-display block text-lg text-ink">{p.name}</span>
+                          <span className="cs-caps cs-figures mt-1 block text-muted">
+                            {p.walk_min} min walk
+                          </span>
+                        </Link>
+                      </li>
+                    );
+                  })}
+                </ul>
+                <p className="mt-4 text-xs text-muted">
+                  Cosign will not put them in an order it has no reason to believe. Log one and it starts
+                  having a reason.
+                </p>
+              </section>
+              <Ledger view={view} />
             </>
           ) : (
             <>

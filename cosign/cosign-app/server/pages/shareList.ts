@@ -12,6 +12,7 @@ import type { DatabaseSync } from "node:sqlite";
 import type { ShareToken } from "../../src/types/cosign.ts";
 import { loadShareData, inlineSvg, type ShareData, type ShareEntry } from "./shareData.ts";
 import { tokensCss } from "./tokens.ts";
+import { article } from "../../src/lib/placeCopy.ts";
 
 export { loadShareData } from "./shareData.ts";
 
@@ -192,7 +193,7 @@ export function renderShare(data: ShareData, origin = ""): string {
 
   const meta = [
     `<b>${data.entries.length} places</b>, ranked head to head — never scored, never bought`,
-    a.signatureOrder ? `usually orders a <b>${e(a.signatureOrder)}</b>` : null,
+    a.signatureOrder ? `usually orders ${article(a.signatureOrder)} <b>${e(a.signatureOrder)}</b>` : null,
     updated ? `last put in order ${e(updated)}` : null,
   ]
     .filter(Boolean)

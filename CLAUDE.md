@@ -70,7 +70,45 @@ The Phase 2/5A Lighthouse gates run against `npm run prod` — **never**
 the local TypeScript; call `./node_modules/.bin/tsc` (or `.\node_modules\.bin\tsc.cmd`
 in PowerShell) to be sure.
 
-## Gotchas (verified on this machine, updated 2026-08-16 after Phase 5A)
+## Gotchas (verified on this machine, updated 2026-08-16 after Phase 5B)
+
+- **Every default that pointed at a signed-off phase is now `scratch` — and
+  `scripts/boot-smoke.mjs` was the last one.** It fell back to
+  `evidence/phase1/` and a bare run of it during Phase 5B rewrote twelve
+  committed Phase 1 screenshots with Phase 5B's app. That is the *third* time
+  this trap has been sprung (Phase 3: `share.spec.ts`; Phase 4:
+  `playwright.config.ts` and `e2e/fixtures.ts`). Still check
+  `git status evidence/` before committing a phase — it is how all three were
+  caught.
+- **A surface marks its own loading state with its own attribute**, so
+  `[data-group]`, `[data-feed]`, `[data-list]` and `[data-home]` are all on
+  screen before there is anything on them. Playwright's `expect()` retries and
+  hides this; a bare `await locator.count()` or `innerText()` does not, and
+  finds the loading screen every time. Use `loaded(page, "[data-x]")` from
+  `e2e/fixtures.ts`, which waits for `:not([data-state="loading"])`.
+- **An e2e that answers something CONSUMES it.** The seeded pending friend
+  request (Lena → Maya) made the feed tests pass on the first run and fail on
+  the second, because answering it is the thing being tested. Anything a test
+  *answers* — a friend request, a group invite, a re-verify prompt — must be
+  created by that test. `signInAsNewUser` and `askedBySomebodyNew` in
+  `e2e/social.spec.ts` are the pattern.
+- **`.cs-ledger` is for counts, not for prose.** Its value column is
+  `white-space: nowrap`, so a sentence in it makes the whole page scroll
+  sideways. `e2e/social.spec.ts` asserts no page in the phase overflows
+  horizontally; a person's needs are two lines, not a ledger row.
+- **A `<div className="contents">` wrapper breaks `:nth-child` in a grid.**
+  `.cs-ledger` styles its hairlines and right-aligned figures with
+  `:nth-child(even)`; wrapping each `dt`/`dd` pair makes the wrapper the child
+  and the rule matches nothing. Use a `<Fragment key>`.
+- **Vitest's 5 s default is not enough beside a build and a server.** Phase 4's
+  two unanimous-crowd-of-fifty tests run in 1–3 s idle and time out inside
+  `phase5b-evidence.sh`, which reported a red suite for a machine-load
+  artifact. `vitest.config.ts` sets `testTimeout: 20_000`.
+- **`.cs-word` still sets a minimum HEIGHT and nothing about width.** Phase 4
+  recorded this and Phase 5B hit it again on a new control ("off" at 11 px is
+  40 px wide). Any short word used as a target needs `min-w-[var(--tap)]`.
+
+## Older gotchas (Phase 5A)
 
 - **The Lighthouse LCP number depends on which side of the first paint the fonts
   land on, and on localhost that is a coin flip.** Lantern's pessimistic graph
@@ -294,6 +332,15 @@ in PowerShell) to be sure.
   the ground exist where no stylesheet can reach — `index.html`'s and
   `manifest.json`'s theme colour, and the `<meta name="theme-color">` on each SSR
   page — and the same test guards all of them.
+- **Phase 5B added exactly two shapes and no person-shape.** `.cs-ledger` (a
+  two-column hairline table of counts that subtracts to an answer — the group
+  page's "how 22 became 6", the shared list's "who keeps it") and `.cs-brace`
+  (the bracket joining two entries that share one standing). A person is
+  `.cs-caps` in `--line` plus a value in `--muted`, which the vocabulary
+  already draws; **no avatar or monogram appears on any 5B surface**, because
+  those pages put three to six people on one page and a column of monograms is
+  an avatar row by another name. A solid ember chip is permitted **only** where
+  the field is single-select, and there is one solid `.cs-pill` per page.
 - **There are two public SSR surfaces and they share a vocabulary, not a template.**
   `server/pages/shareList.ts` is one person's ranked list at `/s/:token`;
   `server/pages/shareProfile.ts` is who that person is about coffee at `/p/:token`,

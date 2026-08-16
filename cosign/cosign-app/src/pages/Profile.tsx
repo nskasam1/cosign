@@ -3,6 +3,7 @@ import { Link, useParams } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { api, type ProfileView } from "@/lib/api";
 import { paletteOf, paletteStyle } from "@/lib/palette";
+import { article } from "@/lib/placeCopy";
 import { track } from "@/lib/analytics";
 import { useTitle } from "@/lib/title";
 import type { ShareToken } from "@/types/cosign";
@@ -160,7 +161,9 @@ const Profile = () => {
 
       {user.taste_line && <p className="mt-4 text-base text-line">“{user.taste_line}”</p>}
       {user.signature_order && (
-        <p className="cs-caps mt-2 text-gold">Usually orders a {user.signature_order}</p>
+        <p className="cs-caps mt-2 text-gold">
+          Usually orders {article(user.signature_order)} {user.signature_order}
+        </p>
       )}
 
       {/* Asking somebody to be a friend is one of the five human actions that

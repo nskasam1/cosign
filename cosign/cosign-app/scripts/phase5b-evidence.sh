@@ -65,7 +65,7 @@ done
   echo "   (there is no seed/notifications.json — see server/db/seed.ts)"
 
   echo; echo "## acceptance 1: group intersection-best for four seeded users"
-  ./node_modules/.bin/tsx -e "
+  COSIGN_DB="$SCRATCH" ./node_modules/.bin/tsx -e "
     import { readFileSync } from 'node:fs';
     import { join } from 'node:path';
     import { getDb } from './server/db/db.ts';
@@ -84,11 +84,11 @@ done
     for (const [uid, n] of Object.entries(NEEDS)) {
       submitNeeds(db, s.id, { participantToken: 'ev-' + uid, userId: uid, displayName: null, ...n });
     }
-    const v = sessionView(db, cal, s.id, { now: NOW })!;
+    const v = sessionView(db, cal, s.id, { now: NOW, viewerId: 'u_maya' })!;
     console.log('   four people, Wednesday 19:30. state=' + v.state + ' invited=' + v.invited);
     console.log('   constraints: ' + v.constraints.map((c) => c.key + '(' + c.detail + ') asked by ' + c.askedBy.length).join(', '));
     for (const [i, p] of v.picks.entries()) {
-      const w = p.worst ? v.members[p.worst.user_id] + ' ' + p.worst.position + '/' + p.worst.of : '—';
+      const w = p.worst ? v.members[p.worst.user_id] + ' has it ' + p.worst.position : '—';
       console.log('   ' + (i === 0 ? '->' : '  '), v.places[p.shop_id].name.padEnd(22),
         'on ' + p.coverage + ' of the four lists', '| worst: ' + w.padEnd(12),
         '| never been: ' + (p.never_been.join(', ') || '—'));
@@ -99,7 +99,7 @@ done
   " 2>&1 | grep -Ev "ExperimentalWarning|trace-warnings"
 
   echo; echo "## acceptance 2: a collaborative list with two or more contributors re-ranks"
-  ./node_modules/.bin/tsx -e "
+  COSIGN_DB="$SCRATCH" ./node_modules/.bin/tsx -e "
     import { getDb } from './server/db/db.ts';
     import * as lists from './server/repo/lists.ts';
     import * as shops from './server/repo/shops.ts';
@@ -118,14 +118,14 @@ done
       for (const x of d.disagreements.slice(0, 2)) {
         console.log('     disagreement: ' + name(x.a) + ' / ' + name(x.b) + ' — ' + x.forA.join('+') + ' one way, ' + x.forB.join('+') + ' the other');
       }
-      console.log('     moved ' + rr!.moved + '; told ' + who.filter((c) => c.user_id !== who[1].user_id).length + ' other contributors, and not the one who did it');
+      const told = feedFor(db, who[0].user_id).filter((e) => e.type === 'list_reranked').length;
+      console.log('     moved ' + rr!.moved + '; ' + told + ' line(s) told to the owner, 0 to ' + who[1].display_name + ' — the one who did it');
       console.log('     a second re-rank moves nothing: ' + (lists.rerank(db, list, who[0].user_id) === null ? 'refused, and nobody was told' : 'WROTE AGAIN'));
     }
-    void feedFor;
   " 2>&1 | grep -Ev "ExperimentalWarning|trace-warnings"
 
   echo; echo "## acceptance 3: the feed, human actions only"
-  ./node_modules/.bin/tsx -e "
+  COSIGN_DB="$SCRATCH" ./node_modules/.bin/tsx -e "
     import { getDb } from './server/db/db.ts';
     import { feedFor } from './server/repo/notifications.ts';
     import { userById } from './server/repo/social.ts';
@@ -150,7 +150,7 @@ done
   " 2>&1 | grep -Ev "ExperimentalWarning|trace-warnings"
 
   echo; echo "## acceptance 4: the north star, on the seeded events"
-  ./node_modules/.bin/tsx -e "
+  COSIGN_DB="$SCRATCH" ./node_modules/.bin/tsx -e "
     import { getDb } from './server/db/db.ts';
     import { northStarWeekly } from './server/repo/analytics.ts';
     import { userById } from './server/repo/social.ts';
@@ -179,7 +179,7 @@ done
       const v = JSON.parse(require('node:fs').readFileSync(0, 'utf8'));
       console.log('   POST /api/logs  {visibility:\"public\", user_id:\"u_maya\"} -> stored ' + v.log.visibility + ', owned by ' + v.log.user_id);
     "
-  echo "\$ every route that takes a position, then a sweep of all 21 tables:"
+  echo "\$ every route that takes a position, then a sweep of every table:"
   curl -s -o /dev/null "http://localhost:8787/api/discover?lat=41.987654&lng=-87.123456"
   curl -s -o /dev/null -b ./cj.tmp "http://localhost:8787/api/discover?lat=41.987654&lng=-87.123456"
   rm -f ./cj.tmp

@@ -96,6 +96,15 @@ export async function shotViewport(page: Page, name: string, project: string, sc
  * screen — a scale that appears on step 3 is exactly what an end-state check
  * misses.
  */
+/**
+ * The one carve-out, and it is exact rather than clever: the product SAYS
+ * why it has no ratings, on the surfaces where somebody would wonder, so the
+ * word appears inside the sentence that rules it out. The promise is cut out
+ * of the text and everything else is still checked — a promise sitting beside
+ * a real "4.5/5" buys it nothing.
+ */
+const REFUSALS = ["A vote is a rating with extra steps", "a vote is a rating with extra steps"];
+
 export async function expectNoRatingScale(page: Page, where: string): Promise<void> {
   const controls = await page
     .locator(
@@ -106,10 +115,26 @@ export async function expectNoRatingScale(page: Page, where: string): Promise<vo
     )
     .count();
   expect(controls, `rating-scale control on ${where}`).toBe(0);
-  const body = await page.locator("body").innerText();
+  const raw = await page.locator("body").innerText();
+  const body = REFUSALS.reduce((s, p) => s.split(p).join(" "), raw);
   expect(body, where).not.toMatch(/★|☆|⭐|👍|👎/u);
   expect(body, where).not.toMatch(/\b\d(?:\.\d)?\s*(?:\/|out of)\s*(?:5|10)\b/i);
   expect(body, where).not.toMatch(/\brat(?:e|ing)\b/i);
+}
+
+/**
+ * Wait for a surface to have finished loading, by its own `data-state`.
+ *
+ * Every screen in this product marks its loading state with the same
+ * attribute it marks itself with, so `[data-group]` and `[data-feed]` are on
+ * screen before there is anything on them. Phase 4 shipped that bug on Home
+ * (`[data-home]` also marked the loader) and it failed only under load; an
+ * assertion that reads the DOM once, without Playwright's retry, finds the
+ * loading screen every time.
+ */
+export async function loaded(page: Page, selector: string): Promise<void> {
+  await page.locator(`${selector}:not([data-state="loading"])`).first().waitFor({ state: "visible" });
+  await settled(page);
 }
 
 /**

@@ -415,7 +415,7 @@ const ListDetail = () => {
                           type="button"
                           data-remove
                           onClick={() => remove(row.shop_id)}
-                          className="cs-word cs-caps px-2 text-muted"
+                          className="cs-word cs-caps min-w-[var(--tap)] justify-center px-4 text-muted"
                         >
                           <span className="sr-only">Take {it.shop.name} off this list</span>
                           <span aria-hidden="true">off</span>

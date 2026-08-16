@@ -29,6 +29,7 @@ import { VB_H, VB_W, numberWord, ordinal, profileMapSvg } from "./profileMap.ts"
 import { inlineSvg } from "./shareData.ts";
 import { escapeHtml } from "./shareList.ts";
 import { fontFaceCss, tokensCss } from "./tokens.ts";
+import { article } from "../../src/lib/placeCopy.ts";
 
 export { loadProfileData } from "./profileData.ts";
 
@@ -282,7 +283,7 @@ export function renderProfile(data: ProfileData, origin = ""): string {
   const ogUrl = `${origin}/og/p/${data.token}`;
   const desc =
     `${a.name}, ${a.school}. ${data.counts.places} places near campus, put in order and drawn where they ` +
-    `actually stand.` + (a.signatureOrder ? ` Usually orders a ${a.signatureOrder}.` : "");
+    `actually stand.` + (a.signatureOrder ? ` Usually orders ${article(a.signatureOrder)} ${a.signatureOrder}.` : "");
 
   const lead = data.entries[0];
   const restLine = data.rest.length

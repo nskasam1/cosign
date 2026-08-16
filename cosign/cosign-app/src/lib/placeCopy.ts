@@ -161,3 +161,17 @@ export function isLastThroughTheDoor(lastVisit: string | null, lastVerifiedAt: s
   if (!lastVerifiedAt) return true;
   return new Date(lastVisit).getTime() > new Date(lastVerifiedAt).getTime();
 }
+
+/**
+ * "a cortado" but "an iced oat latte".
+ *
+ * One user in the seed orders something beginning with a vowel, and three
+ * surfaces printed "a iced oat latte" for a phase and a half — the share
+ * page, the public profile and the in-app one. It is one line of code and
+ * three call sites, which is exactly why it is here rather than at any of
+ * them. Sound rather than spelling is beyond what this needs: the strings are
+ * drink names, and none of them starts with a silent h or a long u.
+ */
+export function article(word: string): string {
+  return /^[aeiou]/i.test(word.trim()) ? "an" : "a";
+}
