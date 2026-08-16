@@ -21,6 +21,7 @@ import type {
   User,
 } from "@/types/cosign";
 import type { ConstraintKey as GroupConstraintKey } from "@/lib/group";
+import type { CollabOrder } from "@/lib/collab";
 
 export class ApiError extends Error {
   status: number;
@@ -95,32 +96,20 @@ export interface ProfileView {
   logs_count: number;
 }
 
-/** One place's standing in the order its contributors' rankings imply. */
-export interface CollabRow {
-  shop_id: string;
-  wins: number;
-  losses: number;
-  draws: number;
-  positions: Array<{ user_id: string; position: number; of: number }>;
-}
+// One definition of what a merged order is: the page reads the same shapes
+// the server computed it with (src/lib/collab.ts).
+export type { CollabRow } from "@/lib/collab";
 
 export interface ListView {
   list: List;
-  items: Array<ListItem & { shop: Shop }>;
+  items: Array<ListItem & { shop: Shop & { photo: string | null } }>;
   editors: string[];
   can_edit: boolean;
   is_owner: boolean;
   contributors: Array<{ user_id: string; display_name: string; username: string }>;
   /** Computed for the reader and written nowhere: a list only moves when an
    *  editor says so, because a change nobody made has nobody to name. */
-  derived: {
-    source: "owner" | "contributors";
-    contributors: number;
-    ranked: CollabRow[];
-    unranked: CollabRow[];
-    disagreements: Array<{ a: string; b: string; forA: string[]; forB: string[] }>;
-    settled: boolean;
-  };
+  derived: CollabOrder & { settled: boolean };
   last_rerank: { id: string; list_id: string; actor_id: string; moved: number; created_at: string } | null;
 }
 
@@ -148,8 +137,11 @@ export interface FriendsView {
 
 export interface GroupAnswerLine {
   shop_id: string;
-  positions: Array<{ user_id: string; position: number; of: number }>;
-  worst: { user_id: string; position: number; of: number } | null;
+  /** Empty unless the reader is a signed-in member of this session. The
+   *  LENGTH of anybody's list is never sent — a denominator is the closest
+   *  thing to a score this surface could print. */
+  positions: Array<{ user_id: string; position: number }>;
+  worst: { user_id: string; position: number } | null;
   coverage: number;
   never_been: string[];
 }
@@ -159,6 +151,8 @@ export interface GroupView {
   starter: { id: string; username: string; display_name: string; avatar: string | null } | null;
   invited: number;
   state: "alone" | "partial" | "complete";
+  /** The reader is a signed-in member, so `positions` are populated. */
+  seated: boolean;
   answers: Array<{
     participant: string;
     display_name: string | null;

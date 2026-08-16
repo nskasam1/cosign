@@ -9,6 +9,7 @@
 //     request, is used to compute a walk for this one response, and is
 //     written nowhere (decision 12 — no persistent location history).
 
+import { randomBytes } from "node:crypto";
 import type { DatabaseSync } from "node:sqlite";
 import type { AcademicCalendar } from "../../src/lib/calendar.ts";
 import { CAMPUS_CENTER, haversineMeters, walkingMinutes, type LatLng } from "../../src/lib/geo.ts";
@@ -28,7 +29,7 @@ import type { GroupSession, IntentTag, NoiseLevel, User } from "../../src/types/
 import { localDayMinute } from "../lib/hours.ts";
 import { notify } from "./notifications.ts";
 import * as shops from "./shops.ts";
-import { userById } from "./social.ts";
+import { areFriends, userById } from "./social.ts";
 
 interface NeedRow {
   session_id: string;
@@ -80,12 +81,22 @@ export function invitedCount(db: DatabaseSync, sessionId: string): number {
   return Math.min(row.n + 1, MAX_PARTICIPANTS);
 }
 
+/**
+ * A session id is a LINK, so it is a token: unguessable, url-safe, and
+ * carrying no timestamp. It is addressed exactly the way a share token is
+ * (decision 4) — anybody who holds it can sit down, which is the whole point
+ * and also the reason it must not be enumerable.
+ */
+function newSessionToken(): string {
+  return `g_${randomBytes(12).toString("base64url")}`;
+}
+
 export function createSession(
   db: DatabaseSync,
   input: { createdBy: string; schoolId: string; invite: string[] },
   now = new Date(),
 ): GroupSession {
-  const id = `g_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 7)}`;
+  const id = newSessionToken();
   db.prepare(
     "INSERT INTO group_sessions (id, created_by, school_id, status, resolved_shop_id, created_at) VALUES (?,?,?,'open',NULL,?)",
   ).run(id, input.createdBy, input.schoolId, now.toISOString());
@@ -189,11 +200,22 @@ export const MAX_SHOWN = 6;
 
 export interface ShownPick {
   shop_id: string;
-  /** Only the members of THIS session, only for the places on the table. */
-  positions: Array<{ user_id: string; position: number; of: number }>;
-  worst: { user_id: string; position: number; of: number } | null;
+  /**
+   * Where each member of THIS session has it — and only for a viewer who is
+   * themself a signed-in member. A by-link seat is anonymous: it contributes
+   * needs, it sees the answer and the arithmetic, and it never sees a
+   * position, because `rankings.visibility` defaults to friends and sitting
+   * at a table is not a friendship.
+   *
+   * The LENGTH of anybody's list is never sent to anybody. "Maya 21st of 22"
+   * is a position and a denominator, and a denominator is the closest thing
+   * to a score this surface could print.
+   */
+  positions: Array<{ user_id: string; position: number }>;
+  worst: { user_id: string; position: number } | null;
+  /** How many of the members have it in their list. Safe for everyone. */
   coverage: number;
-  /** Members who answered and have never ranked it. */
+  /** Members who answered and have never ranked it. Names only. */
   never_been: string[];
 }
 
@@ -202,6 +224,8 @@ export interface GroupView {
   starter: Pick<User, "id" | "username" | "display_name" | "avatar"> | null;
   invited: number;
   state: SessionState;
+  /** The viewer is a signed-in member, so positions are on this payload. */
+  seated: boolean;
   /** One line per person who has answered, in arrival order. */
   answers: Array<{
     participant: string;
@@ -242,11 +266,25 @@ export interface GroupView {
  * Everything the group page reads, computed for this instant and this
  * position. Nothing here is cached and nothing is written.
  */
+/**
+ * May this signed-in person take a seat? Every signed-in member has to be an
+ * accepted friend of every OTHER signed-in member, not merely of whoever
+ * started it — otherwise a host with two friends who do not know each other
+ * puts each of their rankings in front of the other, and a group session
+ * becomes a way to introduce two private lists.
+ */
+export function mayJoin(db: DatabaseSync, sessionId: string, userId: string): boolean {
+  const others = needRowsOf(db, sessionId)
+    .map((r) => r.user_id)
+    .filter((id): id is string => !!id && id !== userId);
+  return others.every((id) => areFriends(db, userId, id));
+}
+
 export function sessionView(
   db: DatabaseSync,
   calendar: AcademicCalendar,
   sessionId: string,
-  opts: { now?: Date; at?: LatLng; participantToken?: string | null } = {},
+  opts: { now?: Date; at?: LatLng; participantToken?: string | null; viewerId?: string | null } = {},
 ): GroupView | null {
   const session = sessionById(db, sessionId);
   if (!session) return null;
@@ -256,6 +294,10 @@ export function sessionView(
   const rows = needRowsOf(db, sessionId);
   const needs = rows.map(toNeed);
   const memberIds = needs.map((n) => n.user_id).filter((id): id is string => !!id);
+  // Positions are for the people at the table, and only the ones who are
+  // signed in — everybody else reads the answer without reading anybody's
+  // ranked list (see ShownPick, and PLAN's Phase 5B decision on scope).
+  const seated = !!opts.viewerId && memberIds.includes(opts.viewerId);
 
   const { minute } = localDayMinute(now, calendar.timezone);
   const bucket = timeBucketForHour(Math.floor(minute / 60));
@@ -322,6 +364,7 @@ export function sessionView(
     },
     invited,
     state: sessionState(needs.length, invited),
+    seated,
     answers: rows.map((r) => ({
       participant: r.participant_token,
       display_name: r.display_name,
@@ -338,12 +381,15 @@ export function sessionView(
     constraints: answer.constraints,
     picks: answer.picks.slice(0, MAX_SHOWN).map((p) => ({
       shop_id: p.place.id,
-      positions: p.place.positions,
-      worst: p.worst,
+      // A by-link seat gets the count and no positions (see ShownPick).
+      positions: seated ? p.place.positions.map(({ user_id, position }) => ({ user_id, position })) : [],
+      worst: seated && p.worst ? { user_id: p.worst.user_id, position: p.worst.position } : null,
       coverage: p.coverage,
-      never_been: memberIds
-        .filter((uid) => withAList.has(uid) && !p.place.positions.some((x) => x.user_id === uid))
-        .map((uid) => members[uid] ?? uid),
+      never_been: seated
+        ? memberIds
+            .filter((uid) => withAList.has(uid) && !p.place.positions.some((x) => x.user_id === uid))
+            .map((uid) => members[uid] ?? uid)
+        : [],
     })),
     more: Math.max(0, answer.picks.length - MAX_SHOWN),
     unknown_to_all: answer.unknownToAll.slice(0, MAX_SHOWN).map((p) => p.id),

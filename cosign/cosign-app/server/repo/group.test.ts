@@ -89,8 +89,10 @@ beforeAll(async () => {
   }
 });
 
+// Maya is a signed-in member, so this reader is seated and the positions are
+// on the payload. Everything about the unseated view is tested separately.
 const view = (opts: Parameters<typeof sessionView>[3] = {}) =>
-  sessionView(db, CALENDAR, sessionId, { now: NOW, ...opts })!;
+  sessionView(db, CALENDAR, sessionId, { now: NOW, viewerId: "u_maya", ...opts })!;
 
 describe("four seeded users, one table", () => {
   it("unions their needs into the constraints every place has to meet", () => {
@@ -116,7 +118,8 @@ describe("four seeded users, one table", () => {
     // have never been, which is neutral and is said out loud rather than
     // counted as agreement.
     expect(best.coverage).toBe(2);
-    expect(best.worst).toEqual({ user_id: "u_june", position: 4, of: 10 });
+    // a position, and never the length of the list it came out of
+    expect(best.worst).toEqual({ user_id: "u_june", position: 4 });
     expect(best.never_been.sort()).toEqual(["Dev", "Theo"]);
   });
 
@@ -126,7 +129,7 @@ describe("four seeded users, one table", () => {
     expect(grandview.coverage).toBe(4);
     // Dev and June both have it bottom of ten; the one named is the lower id,
     // never whoever happened to answer first
-    expect(grandview.worst).toMatchObject({ user_id: "u_dev", position: 10, of: 10 });
+    expect(grandview.worst).toEqual({ user_id: "u_dev", position: 10 });
     expect(v.picks.indexOf(grandview)).toBeGreaterThan(0);
   });
 
@@ -153,7 +156,7 @@ describe("four seeded users, one table", () => {
           maxNoise: NEEDS[uid].max_noise,
         });
       }
-      const v = sessionView(db, CALENDAR, s.id, { now: NOW })!;
+      const v = sessionView(db, CALENDAR, s.id, { now: NOW, viewerId: "u_maya" })!;
       return v.picks.map((p) => `${v.places[p.shop_id].name}/${p.worst?.user_id ?? "-"}`);
     });
     for (const a of answers) expect(a).toEqual(answers[0]);
@@ -166,7 +169,7 @@ describe("four seeded users, one table", () => {
     // settled. Maya alone, then Maya and Dev:
     const s = createSession(db, { createdBy: "u_maya", schoolId: "osu", invite: ["u_dev", "u_june", "u_theo"] });
     const answer = () => {
-      const v = sessionView(db, CALENDAR, s.id, { now: NOW })!;
+      const v = sessionView(db, CALENDAR, s.id, { now: NOW, viewerId: "u_maya" })!;
       return { state: v.state, best: v.picks[0] ? v.places[v.picks[0].shop_id].name : null };
     };
     const add = (uid: (typeof FOUR)[number]) =>
@@ -272,6 +275,61 @@ describe("a session is not a way to reach people you do not know", () => {
   });
 });
 
+describe("sitting at a table is not a friendship", () => {
+  it("a by-link seat gets the answer and nobody's position", () => {
+    const seated = view();
+    expect(seated.seated).toBe(true);
+    expect(seated.picks[0].positions.length).toBeGreaterThan(0);
+
+    // the same page, read by whoever holds the link
+    const anon = sessionView(db, CALENDAR, sessionId, { now: NOW })!;
+    expect(anon.seated).toBe(false);
+    expect(anon.picks.map((p) => p.shop_id)).toEqual(seated.picks.map((p) => p.shop_id));
+    for (const p of anon.picks) {
+      expect(p.positions).toEqual([]);
+      expect(p.worst).toBeNull();
+      expect(p.never_been).toEqual([]);
+      // the count survives, because it names nobody
+      expect(p.coverage).toBeGreaterThanOrEqual(0);
+    }
+    // …and so does everything the page is actually for
+    expect(anon.constraints.length).toBe(seated.constraints.length);
+    expect(anon.funnel.left).toBe(seated.funnel.left);
+  });
+
+  it("a signed-in stranger to the table reads no positions either", () => {
+    // u_sam is friends with Maya but not with Dev, June or Theo
+    const outsider = sessionView(db, CALENDAR, sessionId, { now: NOW, viewerId: "u_sam" })!;
+    expect(outsider.seated).toBe(false);
+    expect(outsider.picks.every((p) => p.positions.length === 0)).toBe(true);
+  });
+
+  it("and cannot take a seat, because everybody at it has to know everybody", async () => {
+    // u_sam is an accepted friend of Maya, who started it, and of nobody else
+    const res = await post(`/api/group/${sessionId}/needs`, { participant_token: "pt-sam-000001" }, "u_sam");
+    expect(res.status).toBe(403);
+    // but the link still works for a seat with no account and no list
+    const anon = await post(`/api/group/${sessionId}/needs`, { participant_token: "pt-anon-000001" });
+    expect([201, 409]).toContain(anon.status); // 409 only if the table is full
+  });
+
+  it("the length of anybody's ranked list never leaves the server", () => {
+    const v = view();
+    const wire = JSON.stringify(v);
+    expect(wire).not.toMatch(/"of"\s*:/);
+    for (const p of v.picks) for (const pos of p.positions) expect(Object.keys(pos).sort()).toEqual(["position", "user_id"]);
+  });
+
+  it("a session id is a link, so it is unguessable and carries no clock", () => {
+    expect(sessionId).toMatch(/^g_[A-Za-z0-9_-]{16,}$/);
+    const a = createSession(db, { createdBy: "u_maya", schoolId: "osu", invite: [] });
+    const b = createSession(db, { createdBy: "u_maya", schoolId: "osu", invite: [] });
+    expect(a.id).not.toBe(b.id);
+    // nothing in it counts up, so two made in the same second do not sort
+    expect(a.id.slice(0, 6)).not.toBe(b.id.slice(0, 6));
+  });
+});
+
 describe("a link-holder reads no more of anybody's list than the page prints", () => {
   it("caps the survivors it names, however wide the constraints are", async () => {
     // nobody taps anything: every open place qualifies, which without a cap
@@ -290,7 +348,7 @@ describe("a link-holder reads no more of anybody's list than the page prints", (
         maxNoise: null,
       });
     }
-    const v = sessionView(db, CALENDAR, id, { now: NOW })!;
+    const v = sessionView(db, CALENDAR, id, { now: NOW, viewerId: "u_maya" })!;
     expect(v.picks.length).toBeLessThanOrEqual(6);
     expect(v.more).toBeGreaterThan(0);
     const named = new Set(v.picks.flatMap((p) => p.positions.map((x) => x.user_id)));

@@ -487,7 +487,12 @@ app.get("/api/lists/:id", (c) => {
   const owner = social.userById(db, list.owner_id);
   return c.json({
     list,
-    items: lists.itemsOf(db, list.id).map((it) => ({ ...it, shop: shops.shopById(db, it.shop_id) })),
+    items: lists.itemsOf(db, list.id).map((it) => ({
+      ...it,
+      // The lead photograph, so a shared list reads like the share page and
+      // the designed plate stays the exception rather than the default.
+      shop: { ...shops.shopById(db, it.shop_id)!, photo: shops.photosOf(db, it.shop_id)[0]?.path ?? null },
+    })),
     editors: lists.editorsOf(db, list.id),
     can_edit: uid ? lists.canEditList(db, uid, list) : false,
     is_owner: uid === list.owner_id,
@@ -498,15 +503,8 @@ app.get("/api/lists/:id", (c) => {
         .filter((u) => u.id !== list.owner_id)
         .map((u) => ({ user_id: u.id, display_name: u.display_name, username: u.username })),
     ],
-    derived: {
-      source: derived.source,
-      contributors: derived.contributors,
-      ranked: derived.ranked,
-      unranked: derived.unranked,
-      disagreements: derived.disagreements,
-      // Is the list already in the order its contributors imply?
-      settled: lists.isSettled(db, list),
-    },
+    // Is the list already in the order its contributors imply?
+    derived: { ...derived, settled: lists.isSettled(db, list) },
     last_rerank: lists.lastRerank(db, list.id),
   });
 });
@@ -700,6 +698,8 @@ app.get("/api/group/:id", (c) => {
   const view = group.sessionView(getDb(), calendar, c.req.param("id"), {
     at: positionFrom(c.req.query("lat"), c.req.query("lng")),
     participantToken: c.req.query("pt") ?? null,
+    // Decides whether anybody's position appears on the payload at all.
+    viewerId: me(c),
   });
   return view ? c.json(view) : c.json({ error: "not found" }, 404);
 });
@@ -729,6 +729,12 @@ app.post("/api/group/:id/needs", async (c) => {
   }
   const uid = me(c);
   const user = uid ? social.userById(db, uid) : null;
+  // A signed-in seat brings a ranked list, so it has to be a seat everybody
+  // already at the table has agreed to sit next to — see server/repo/group.ts.
+  // Anybody may still join anonymously; that seat carries no list.
+  if (user && !group.mayJoin(db, session.id, user.id)) {
+    return c.json({ error: "you and somebody at this table aren't friends yet" }, 403);
+  }
   const ok = group.submitNeeds(db, session.id, {
     participantToken: body.participant_token,
     userId: user?.id ?? null,

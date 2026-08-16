@@ -69,6 +69,11 @@ export interface CollabOrder {
    */
   source: "owner" | "contributors";
   contributors: number;
+  /** Pairs at least one contributor has ordered both halves of. */
+  pairs_judged: number;
+  /** Of those, the ones MORE THAN ONE contributor has an opinion about —
+   *  the only pairs where the list can be said to agree or disagree. */
+  pairs_contested: number;
   /** Derived order, best first. Empty when `source` is `owner`. */
   ranked: CollabRow[];
   /**
@@ -126,6 +131,8 @@ export function collabOrder(items: CollabInput[], contributors: Contributor[]): 
     return {
       source: "owner",
       contributors: rankers.length,
+      pairs_judged: 0,
+      pairs_contested: 0,
       ranked: [],
       unranked: [...items]
         .sort((a, b) => a.position - b.position)
@@ -136,6 +143,8 @@ export function collabOrder(items: CollabInput[], contributors: Contributor[]): 
 
   const ranked = items.filter((it) => rows.get(it.shop_id)!.positions.length > 0);
   const disagreements: Disagreement[] = [];
+  let pairsJudged = 0;
+  let pairsContested = 0;
   /** `pair.get(a)!.get(b)` is +1 when a leads b, -1 when b leads, 0 for a
    *  draw, and absent when no contributor has ordered both. */
   const pair = new Map<string, Map<string, number>>();
@@ -162,6 +171,8 @@ export function collabOrder(items: CollabInput[], contributors: Contributor[]): 
         (ia < ib ? forA : forB).push(c.display_name);
       }
       if (forA.length === 0 && forB.length === 0) continue;
+      pairsJudged++;
+      if (forA.length + forB.length > 1) pairsContested++;
       if (forA.length > forB.length) {
         rows.get(a)!.wins++;
         rows.get(b)!.losses++;
@@ -227,6 +238,8 @@ export function collabOrder(items: CollabInput[], contributors: Contributor[]): 
   return {
     source: "contributors",
     contributors: rankers.length,
+    pairs_judged: pairsJudged,
+    pairs_contested: pairsContested,
     ranked: sorted,
     unranked: items
       .filter((it) => rows.get(it.shop_id)!.positions.length === 0)
@@ -234,6 +247,44 @@ export function collabOrder(items: CollabInput[], contributors: Contributor[]): 
       .map((it) => rows.get(it.shop_id)!),
     disagreements,
   };
+}
+
+/**
+ * The one sentence a shared list can say about itself that a private one
+ * cannot — computed, never asserted, in the shape Phase 5A's `computeFinding`
+ * established: five rules, the first that qualifies wins, and no pronouns
+ * anywhere because Cosign has never been told anybody's.
+ *
+ * `named` turns a shop id into its name, so this stays pure.
+ */
+export function collabFinding(order: CollabOrder, named: (shopId: string) => string): string {
+  if (order.source === "owner") {
+    return "One person has put these in order, so this is that order.";
+  }
+  const tied = order.ranked.find((r) => r.tied_with_previous);
+  if (order.pairs_judged === 0) {
+    return "Nobody here has been to two of these, so nothing has been held up against anything.";
+  }
+  // Only a pair MORE THAN ONE of them has ordered can be agreed or disagreed
+  // about; the rest are one person's word, which is evidence, not consensus.
+  if (order.pairs_contested > 0 && order.disagreements.length === order.pairs_contested) {
+    return "You agree on the places. You have never once agreed on the order.";
+  }
+  if (tied) {
+    const above = order.ranked[order.ranked.indexOf(tied) - 1];
+    return `${named(above.shop_id)} and ${named(tied.shop_id)} cannot be separated — so this list has two of them at ${ordinal(tied.standing)}.`;
+  }
+  if (order.disagreements.length === 0) {
+    return "Nowhere on this list has anybody put two of these the other way up.";
+  }
+  return `${order.pairs_contested} of these pairs have been ranked by more than one of you, and ${order.disagreements.length} of them come out opposite ways up.`;
+}
+
+/** 1st, 2nd, 3rd… — for a standing, which is a place in a list and not a score. */
+export function ordinal(n: number): string {
+  const teen = n % 100 >= 11 && n % 100 <= 13;
+  const suffix = teen ? "th" : (["th", "st", "nd", "rd"][n % 10] ?? "th");
+  return `${n}${suffix}`;
 }
 
 /** Does applying this order actually move anything? A re-rank that changes

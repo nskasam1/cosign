@@ -294,6 +294,53 @@
     color: hsl(var(--ember-ink));
   }
 
+  /* ── two shapes for the surfaces where several people are in the room
+     (Phase 5B). Both are hairline structures, which is the only kind of
+     structure this product has: no card appeared here either.
+
+     The LEDGER is a column of counts that subtracts to an answer — "how
+     twenty-two became two" on the group page, "where this order comes from"
+     on a shared list. Every figure in it is a count of something a person
+     did or a place that exists, never a score, and it is a table of facts
+     rather than anything that could be drawn as a chart. */
+  .cs-ledger {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    align-items: baseline;
+    column-gap: var(--space-4);
+  }
+  .cs-ledger > * {
+    border-top: 1px solid hsl(var(--rule));
+    padding-block: var(--space-3);
+  }
+  .cs-ledger > :nth-child(-n + 2) {
+    border-top: 0;
+  }
+  .cs-ledger > :nth-child(even) {
+    font-variant-numeric: lining-nums tabular-nums;
+    text-align: right;
+    white-space: nowrap;
+  }
+
+  /* The BRACE joins the two entries that share one standing. It is
+     structural, not decorative: it says which rows the numeral covers, on
+     the one surface where a number deliberately does not increment. */
+  .cs-brace {
+    position: relative;
+    padding-left: var(--space-4);
+  }
+  .cs-brace::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: var(--space-3);
+    bottom: var(--space-3);
+    width: 0.5rem;
+    border: 1px solid hsl(var(--rule-strong));
+    border-right: 0;
+    border-radius: var(--radius-xs) 0 0 var(--radius-xs);
+  }
+
   /* The save stamp: one ember hairline drawing itself across the column,
      which then stays put above every comparison as proof the log is safe. */
   .cs-stamp {

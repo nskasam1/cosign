@@ -174,6 +174,24 @@ export function runSeed(dbPath: string = DB_PATH, seedDir: string = DEFAULT_SEED
   }
   for (const s of sessions) {
     requireUser(s.created_by, `group session ${s.id}`);
+    // A session id IS the link (decision 4's reasoning, one surface over):
+    // anybody holding it can sit down, so it must not be guessable and must
+    // not be readable enough to be shared by accident.
+    if (!/^g_[A-Za-z0-9_-]{12,}$/.test(s.id)) fail(`group session ${s.id}: id must be g_ + 12+ random chars`);
+    // Every signed-in seat has to know every other signed-in seat, or the
+    // session introduces two friends-only rankings to each other.
+    const seated = [s.created_by, ...s.needs.map((n) => n.user_id).filter((u): u is string => !!u)];
+    for (const a of seated) {
+      for (const b of seated) {
+        if (a === b) continue;
+        const known = friendships.some(
+          (f) =>
+            f.status === "accepted" &&
+            ((f.user_id === a && f.friend_id === b) || (f.user_id === b && f.friend_id === a)),
+        );
+        if (!known) fail(`group session ${s.id}: ${a} and ${b} are not accepted friends`);
+      }
+    }
     s.invite.forEach((u) => requireUser(u, `group session ${s.id} invite`));
     if (s.invite.includes(s.created_by)) fail(`group session ${s.id}: invited its own starter`);
     if (s.invite.length + 1 > 4) fail(`group session ${s.id}: more than four people`);
