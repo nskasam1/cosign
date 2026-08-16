@@ -10,24 +10,17 @@
 
 import { expect, test, type Page } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
-import { mkdirSync, writeFileSync } from "node:fs";
-import { dirname, join } from "node:path";
-import { fileURLToPath } from "node:url";
+import { writeFileSync } from "node:fs";
+import { join } from "node:path";
+import { EVIDENCE } from "./fixtures.ts";
 
-// Phase 2 by default, so a bare `npx playwright test share.spec.ts` still
-// reproduces the committed Phase 2 record. It follows COSIGN_EVIDENCE when a
-// later phase re-runs this suite as a regression check — otherwise that run
-// would quietly rewrite Phase 2's accepted screenshots and OG image from
-// whatever database it happened to be pointed at.
-const EVIDENCE = join(
-  dirname(fileURLToPath(import.meta.url)),
-  "..",
-  "..",
-  "..",
-  "evidence",
-  process.env.COSIGN_EVIDENCE ?? "phase2",
-);
-mkdirSync(EVIDENCE, { recursive: true });
+// The evidence directory comes from `e2e/fixtures.ts`, which defaults to
+// `evidence/scratch/`. This file used to compute its own with `?? "phase2"`:
+// Phase 3 fixed the hard-coded path and left the FALLBACK pointing at a
+// signed-off phase, which is the same loaded gun one level down — a bare
+// `npx playwright test share.spec.ts` against any database rewrote Phase 2's
+// accepted screenshots and its OG image. Phase 4 fixed the same fallback in
+// two other files and missed this one. One definition now, and it is scratch.
 
 // Seeded tokens (seed/share-tokens.json).
 const LIST_TOKEN = "IofpCInelhr1"; // maya's canonical ranking, 22 entries

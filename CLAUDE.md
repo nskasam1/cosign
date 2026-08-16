@@ -40,6 +40,7 @@ persistence layer uses the built-in `node:sqlite`). The bun lockfiles are gone.
 | Bulk shop entry | `npm run import:shops -- f.csv [--dry-run]` | merges by id into `seed/shops.json` |
 | Shops → spreadsheet | `npm run export:shops -- f.csv` | round-trips back through import |
 | Share-page e2e | `npx playwright test share.spec.ts` | 24 tests, mobile + desktop; needs the prod server up |
+| Profile + import e2e | `COSIGN_EVIDENCE=phase5a npx playwright test profile.spec.ts` | 46 tests; the import half **writes** — point the server at a scratch DB first |
 | Log-flow e2e | `COSIGN_EVIDENCE=phase3 npx playwright test log.spec.ts` | 35 tests; **writes** — point the server at a scratch DB first |
 | Home/discovery e2e | `COSIGN_EVIDENCE=phase4 npx playwright test home.spec.ts` | 44 tests; **writes**; finals tests skip without `COSIGN_FINALS_BASE` |
 | Perf gate | `MSYS_NO_PATHCONV=1 node scripts/lighthouse.mjs /s/<token> phase2 share` | exits non-zero if the gate misses |
@@ -47,6 +48,7 @@ persistence layer uses the built-in `node:sqlite`). The bun lockfiles are gone.
 | Phase 2 evidence | `LH_RUNS=5 bash scripts/phase2-evidence.sh` | transcript + playwright + the gate |
 | Phase 3 evidence | `bash scripts/phase3-evidence.sh` | owns its own server + scratch DB; :8787 must be free |
 | Phase 4 evidence | `bash scripts/phase4-evidence.sh` | owns **two** servers (:8787 + :8788) and a scratch DB; both ports must be free |
+| Phase 5A evidence | `bash scripts/phase5a-evidence.sh` | owns its own server + scratch DB; :8787 must be free; ~8 min (three Lighthouse gates) |
 | SPA boot smoke | `node scripts/boot-smoke.mjs` | `COSIGN_EVIDENCE_DIR=phase2/spa` to target a phase |
 
 `COSIGN_EVIDENCE=<phase>` picks the directory Playwright writes into. It
@@ -66,7 +68,45 @@ The Phase 2/5A Lighthouse gates run against `npm run prod` — **never**
 the local TypeScript; call `./node_modules/.bin/tsc` (or `.\node_modules\.bin\tsc.cmd`
 in PowerShell) to be sure.
 
-## Gotchas (verified on this machine, updated 2026-08-16 after Phase 4)
+## Gotchas (verified on this machine, updated 2026-08-16 after Phase 5A)
+
+- **The Lighthouse LCP number depends on which side of the first paint the fonts
+  land on, and on localhost that is a coin flip.** Lantern's pessimistic graph
+  charges FCP for every font request that *completed before the observed paint*.
+  The fonts are served from :8787 in about a millisecond, so a page whose first
+  paint is TEXT usually loses the race and pays ~450 ms of simulated LCP for a
+  font its text never waits on (`font-display: swap`). Proof, from one
+  `phase5a-evidence.sh` run: the profile measured 1280 ms and the **share page**
+  — which passes at 763 ms — produced a 1433 ms outlier on the one run where
+  *its* fonts landed first. Before optimising a page against this number, run
+  the share page as a control in the same minute and read `observedFirstContentfulPaint`
+  against the last font's `networkEndTime` in the `.report.json`.
+- **Inline SVG is expensive in a way an `<img>` is not.** The profile's map is
+  forty-odd nodes; inline it cost **737 ms of throttled style+layout** against
+  218 ms for the same page without it. It is served as a `data:image/svg+xml`
+  URI instead. If you do that, the SVG is a *separate document with no `:root`*
+  — every `hsl(var(--token))` must be substituted for a literal
+  (`profileMapSvg(model, { literal: true })`), because an unresolved `var()`
+  draws nothing at all and a mark that silently vanishes from a map is worse
+  than a wrong one.
+- **HTML positioned over a scaling drawing does not scale with it.** The plate is
+  `aspect-ratio`-sized from ~354 to 512 px while its labels stay at a fixed 11 px.
+  A box sized in SVG user units is therefore too small for its text at one end and
+  hollow at the other — the imprint's border is a CSS border on the label, and the
+  scale bar that used to sit inside it was struck through its own caption before
+  it was removed. Anything drawn *near* HTML text needs clearance measured at the
+  narrow end.
+- **`/tmp` is two different directories.** Under Git Bash `curl -o /tmp/x` writes
+  to `C:\Users\<you>\AppData\Local\Temp\x`; `node` reads `/tmp/x` as `C:\tmp\x`.
+  An evidence script that hands a path from one to the other silently splits them.
+  Use a relative path (`./thing.tmp.html`) when both tools touch the same file.
+- **A `\b` in a regex does not survive a heredoc into a `python -` or `node -e`
+  one-liner** — it arrives as a literal backspace (0x08) and the regex then
+  matches nothing while still *looking* right in a diff. Prefer the Write/Edit
+  tools for source, and if you must patch programmatically, assert afterwards
+  that the guard can still fail.
+
+## Older gotchas (Phase 4)
 
 - **A default that points at a signed-off phase is a loaded gun.** Phase 3
   fixed `share.spec.ts`'s hard-coded `evidence/phase2/`, but the *fallbacks*
@@ -245,9 +285,19 @@ in PowerShell) to be sure.
   cannot afford). Every colour is a bare `H S% L%` triple so `hsl(var(--x))` and
   Tailwind's `/ <alpha-value>` both work. Rationale in `tokens.md`, enforcement
   in `tokens.test.ts`. **Do not re-decide aesthetics ad hoc, and do not define a
-  colour anywhere else** — the one unavoidable duplication (satori has no CSS
-  variables, so `server/pages/og.ts` repeats a dozen hex values) is guarded by a
-  test.
+  colour anywhere else** — the one unavoidable duplication lives in
+  `server/pages/tokenHex.ts` (satori and an SVG inside an `<img>` both lack CSS
+  custom properties), and `tokens.test.ts` guards it *and* fails on a literal hex
+  appearing anywhere else under `server/pages/`. Four more hand-written copies of
+  the ground exist where no stylesheet can reach — `index.html`'s and
+  `manifest.json`'s theme colour, and the `<meta name="theme-color">` on each SSR
+  page — and the same test guards all of them.
+- **There are two public SSR surfaces and they share a vocabulary, not a template.**
+  `server/pages/shareList.ts` is one person's ranked list at `/s/:token`;
+  `server/pages/shareProfile.ts` is who that person is about coffee at `/p/:token`,
+  with `profileMap.ts` (pure geometry) and `profileData.ts` behind it. Same reading
+  column, same tokens, same `escapeHtml`/`smart`, same tombstone
+  (`renderTombstone(kind)`). A token opens exactly one of them; the other 404s.
 - **The SPA's design vocabulary is the `cs-*` layer in `src/index.css`** (Phase 3,
   extended in Phase 4): `.cs-wrap` (the reading column), `.cs-caps` (the small-caps
   voice), `.cs-display` / `.cs-figures`, `.cs-row` (a hairline row whose press state

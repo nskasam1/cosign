@@ -4,6 +4,7 @@ import { api } from "@/lib/api";
 import { paletteOf, paletteStyle } from "@/lib/palette";
 import { useTitle } from "@/lib/title";
 import type { Log, RankingEntry, Shop } from "@/types/cosign";
+import ImportTakeout from "@/components/ImportTakeout";
 import PlacePlate from "@/components/log/PlacePlate";
 import Nothing from "@/components/Nothing";
 
@@ -99,6 +100,14 @@ const RankingFlow = () => {
               </Link>
             }
           />
+          {/* The other empty state this product has to design (brief #9). A
+              ranking cannot be imported — an order comes from the head-to-head
+              and from nowhere else — but the places to walk into can be, and
+              somebody staring at an empty ranking is exactly who has been
+              saving pins for two years. */}
+          <div className="mt-10">
+            <ImportTakeout title="Saved in Maps" />
+          </div>
         </div>
       ) : (
         <ol className="mt-6">

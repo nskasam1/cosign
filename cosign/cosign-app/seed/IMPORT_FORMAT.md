@@ -138,10 +138,50 @@ Copy-paste these. Don't improvise ("busy", "cozy", "med") — the seeder will bo
 the file and point at the bad value.
 
 Also in this folder: `academic-calendar.json` (OSU term dates — the app uses it to
-know it's finals week) and `takeout/` (sample Google Takeout exports for testing
-the saved-places import).
+know it's finals week).
 
-## 3. How to run it
+## 3. Google Maps saved places: `takeout/`
+
+This one isn't yours to fill in — it's what a *student* hands the app when they
+sign up. Google Takeout (takeout.google.com → Maps (your places)) gives them two
+kinds of file, and Cosign reads both:
+
+| File | What it carries | What it doesn't |
+|---|---|---|
+| `Saved Places.json` | GeoJSON: name, street address, a map pin, the Maps URL | their notes |
+| a saved-list CSV | `Title,Note,URL` — **their own words** about each place | any coordinate |
+
+Neither is a superset of the other, so hand over both if you have both: one file
+supplies the pin, the other supplies the note, and they're joined on the name.
+
+`takeout/saved-places.geojson` and `takeout/saved-places.csv` are committed
+fixtures of exactly that shape, and they are deliberately not tidy. Between them
+they hold fifteen saved places: ten Cosign recognises outright, one saved under a
+short name (`Hackberry` for Hackberry Roasters) that it asks about instead of
+assuming, and four it doesn't have — two of which sit **within fifty metres of a
+place it does** (a bakery beside Bramble; a bar beside Juniper Coffee Club).
+
+Those two exist to hold down the one rule this import has:
+
+> **A coordinate is never, on its own, a reason to say two records are the same
+> place.** The name is the identity. The pin can corroborate it, or veto it when
+> the name matches something a mile away. Nothing else.
+
+Match a saved place by proximity and you write a bakery somebody has never been
+to into their list, under a coffee shop's name, with no undo anywhere in the
+flow. `server/import/takeout.test.ts` runs the real fixtures through the real
+matcher and fails if either trap is ever taken.
+
+**What is kept.** The shop ids that matched, and the notes they wrote. **What is
+not:** every coordinate and address in the file. They're read in memory to tell
+two places apart and dropped — decision 12, no persistent location history — and
+the API response doesn't carry them either, so there is nothing to leak later.
+
+**What it makes.** A *list*, never a ranking. An order on Cosign comes from
+head-to-head comparisons and from nowhere else; a place you once saved a pin on
+is a place you meant to try, which is a different sentence entirely.
+
+## 4. How to run it
 
 ```
 npm run seed
@@ -154,7 +194,7 @@ never *merges* — the seed files are the source of truth and the db is disposab
 
 (Corollary: never hand-edit the db. Edit the files, re-seed.)
 
-## 4. The round-trip guarantee
+## 5. The round-trip guarantee
 
 Import → export → import is lossless. If you seed the db from these files, export
 it back out, and seed again from the export, you get byte-for-byte the same data.

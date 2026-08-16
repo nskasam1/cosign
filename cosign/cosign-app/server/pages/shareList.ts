@@ -264,7 +264,14 @@ ${data.entries.map((x) => entryHtml(x, a.firstName)).join("\n")}
 </html>`;
 }
 
-export function renderTombstone(): string {
+/**
+ * A revoked link, for either public surface. One function with one noun
+ * swapped, so the two cannot drift — and neither variant names the person,
+ * their school, or anything that was on the page. A tombstone that leaks the
+ * content is not a tombstone.
+ */
+export function renderTombstone(kind: "list" | "profile" = "list"): string {
+  const what = kind === "profile" ? "This page" : "This list";
   return `<!doctype html>
 <html lang="en">
 <head>
@@ -277,7 +284,7 @@ export function renderTombstone(): string {
 </head>
 <body><main>
 <p class="k">Cosign</p>
-<h1>This list isn’t shared anymore</h1>
+<h1>${what} isn’t shared anymore</h1>
 <p>The person who sent it turned the link off. That’s the whole point of the link — it was theirs to take back.</p>
 </main></body>
 </html>`;

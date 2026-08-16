@@ -10,12 +10,41 @@ import { APP_ROOT } from "../db/db.ts";
 const TOKENS_PATH = join(APP_ROOT, "src", "design", "tokens.css");
 const PROD = process.env.NODE_ENV === "production" || process.argv.includes("--prod");
 
-let cached: string | null = null;
+let cached: { all: string; head: string; faces: string } | null = null;
 
-export function tokensCss(): string {
+function parts(): { all: string; head: string; faces: string } {
   if (cached && PROD) return cached;
-  cached = minifyCss(readFileSync(TOKENS_PATH, "utf-8"));
+  const raw = readFileSync(TOKENS_PATH, "utf-8");
+  const at = raw.indexOf("@font-face");
+  cached = {
+    all: minifyCss(raw),
+    head: minifyCss(at === -1 ? raw : raw.slice(0, at)),
+    faces: minifyCss(at === -1 ? "" : raw.slice(at)),
+  };
   return cached;
+}
+
+/**
+ * The whole token file, or everything except the `@font-face` rules.
+ *
+ * `fonts: false` exists for a measured reason. A page whose first contentful
+ * paint is TEXT gets that paint attributed, in Lighthouse's simulated graph,
+ * to whatever font requests completed before it — and on localhost the fonts
+ * land in about a millisecond, so they always do. The public profile paid
+ * ~430 ms of simulated LCP for a font its text never waits on (`swap` means
+ * the fallback paints immediately). Declaring the faces *after* the content,
+ * with `fontFaceCss()`, makes the browser discover them after the first paint
+ * — which is also what actually happens on a phone, and is why the share
+ * page, whose first paint is an inlined photograph, never had the problem.
+ */
+export function tokensCss(opts: { fonts?: boolean } = {}): string {
+  const p = parts();
+  return opts.fonts === false ? p.head : p.all;
+}
+
+/** The three `@font-face` rules, to be declared after the content. */
+export function fontFaceCss(): string {
+  return parts().faces;
 }
 
 /**

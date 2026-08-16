@@ -912,9 +912,189 @@ ships none of it, and the public profile page in 5A must ship none of it
 either); the eight `react-refresh/only-export-components` lint warnings, all in
 generated shadcn primitives that `components.json` says not to hand-edit.
 
-### Phase 5A — Profile + import ☐
-- [ ] `/p/:token` logged-out + own OG + **hard perf gate** (numbers: ___)
-- [ ] Takeout fixtures import in onboarding + empty states (test)
+### Phase 5A — Profile + import ◐ (built and evidenced; the perf gate is NOT met)
+- [x] **`/p/:token` renders logged out, with every 5A element** — map of places as a
+      local SVG, the top five in their own words, signature order, running counts and
+      the taste line, all first-class and all asserted rather than screenshotted
+      (`e2e/profile.spec.ts`, **46 tests** across mobile 390×844 and desktop 1280).
+      Every state is a seeded fixture and every one is in the evidence: 22 places
+      (Maya), a campus with nothing on it (Noah), a profile whose ranking link has
+      been revoked so the onward door is closed (Dev), and a revoked profile token
+      (Lena → 410 tombstone). A `ranking` token 404s at `/p/` exactly as a `profile`
+      token has 404'd at `/s/` since Phase 2 — a token opens one surface, never two.
+      Evidence: `evidence/phase5a/{commands.txt,profile-*.png}`
+- [x] **Its own OG card**, and visibly not the list card: the list card is a column of
+      type between palette rails, this one *is* the map — 1200×630, the drawing at
+      400 px centred (so a square centre crop keeps all of it), then the name, the
+      count and `RANKED, NEVER RATED · NEVER BOUGHT`. `renderProfileOgImage` in
+      `server/pages/og.ts`; the e2e asserts the two cards are different bytes.
+      Evidence: `evidence/phase5a/og-profile.png`
+- [x] a11y **0 serious/critical axe violations** across 2 surfaces × 2 viewports
+      (4 reports, 12–24 passes each), headings run 1→2→3 with no jumps and nothing is
+      a styled div, 44 px targets swept, `prefers-reduced-motion` leaves every
+      computed animation/transition at 0 s, anti-slop self-review done against the
+      committed screenshots
+- [x] **Takeout fixtures import in onboarding + empty states (test)** — offered in
+      stub onboarding *and* on an empty ranking; `server/import/takeout.ts` +
+      **47 unit tests** against the committed fixtures. Of 15 saved places it knows
+      10 outright, asks about 1, and names the 4 it does not have. It creates a
+      **list, never a ranking**, and the e2e proves the ranking stays empty.
+      Evidence: `evidence/phase5a/{commands.txt,import-*.png}`
+- [ ] **Perf gate NOT met: LCP 1280 ms against the 1000 ms budget** (performance 100,
+      a11y 100, FCP 1205 ms, TBT 0 ms, CLS 0.027, document 25.9 kB raw / 6.9 kB
+      gzipped — well inside the 30 kB budget the e2e asserts). Median of 5,
+      Lighthouse 13.4.1, mobile + simulated Slow-4G, against `npm run prod`.
+      `scripts/lighthouse.mjs` exits non-zero and the transcript records
+      `gate exit=1`. **Diagnosis and the two control experiments are below.**
+
+**Phase 5A decisions & assumptions (new — don't relitigate):**
+- **Direction chosen by panel again, then judged.** Three independent directions for
+  `/p/:token` were generated against the real seeded data (the map as the artifact;
+  the person as a printed document; their year in places), each rendered as a working
+  standalone mockup, screenshotted at 390 and 1280 and audited, then scored by three
+  lenses (literal brief compliance / a sophomore who was just sent the link / the
+  designer who shipped the share page). What shipped is a synthesis: the survey
+  sheet's frame and computed finding, the dossier's fold — **the taste line, unquoted,
+  as the largest thing on the page** — and its five-row anatomy, plus one section of
+  arrival history set as prose.
+- **`--ink` is their voice; `--line` is ours.** On `/s/` the taste line is a 19 px
+  citation in `--line`; here it is the document, in `--ink`, at 28/34 px. That
+  escalation is the whole difference between a list's header and a profile, and it is
+  asserted in the e2e (the taste line is set larger than the name).
+- **Ember appears exactly three times on the page:** the one line from the Oval to
+  their first place, the CTA, and `:focus-visible`. Every other coloured mark takes
+  the place's own imagery palette, so a numeral in the list and its disc on the sheet
+  are visibly the same place.
+- **NO PRONOUNS ANYWHERE, and it is a test.** Cosign asks for a name and a school and
+  has never been told anybody's pronouns; this is a public page about a real person.
+  Every sentence the page or the map can emit is built from the first name instead
+  (`computeFinding(places, first, who)`), and both a unit test and the e2e sweep the
+  rendered text for `she|he|her|his|him` outside the author's own quoted sentence.
+  The design panel's copy used "she" throughout; that was the first thing cut.
+- **The map says something the list cannot, or it is wallpaper.** `computeFinding` has
+  five rules and the first that qualifies wins. Maya's three nearest places are her
+  9th, 17th and 19th and her top five average a fourteen-minute walk — so the sheet
+  brackets those three and the caption says so in words. It is derived, never
+  asserted: `server/pages/profileMap.test.ts` (28 tests) proves the rule fires on the
+  seeded data and that a relabelled ranking flips it to the opposite sentence.
+- **The three ordinals are printed ascending by RANK, deliberately not in the order
+  the three marks lie on the sheet.** Three numbers beside three places invites a
+  reader to pair them up one for one, and that pairing would be invented.
+- **A map that leaves a place out to look tidier is lying.** The extent only ever
+  grows: it is the bounding box of every ranked place ∪ the campus, floored at ±600 m,
+  padded 10 %, then fitted to the plate's aspect by growing the short axis. The frame
+  is therefore drawn by where that person goes — Maya's campus is 2164 m across,
+  Lena's 1763 m — which is the page's whole claim.
+- **The projection uses the cosine of the MEAN latitude, not the origin's.** That is
+  the first-order match to the haversine the rest of the app uses; the origin-only
+  version drifts ~3 m at a kilometre, which is invisible on the sheet but means the
+  picture and the walking time printed beside it come from two different Earths.
+- **Marks are a drawing, labels are HTML — and the drawing is an `<img>`, not inline
+  SVG.** Measured, not assumed: inline, its forty-odd nodes cost **737 ms of style and
+  layout** under Lighthouse's 4× CPU throttle, against 218 ms for the same page with
+  no sheet on it. As a data URI it costs the DOM nothing. Labels stay HTML because SVG
+  `<text>` in a 390-unit viewBox renders at 11 px on a phone and 14.4 px on a desktop
+  with no way to override it — the one figure on the page would be the one place whose
+  type escaped the token scale.
+- **`server/pages/tokenHex.ts` is now the ONE hand-written copy of the tokens.** Two
+  renderers cannot read CSS custom properties: satori, and an SVG inside an `<img>`
+  (a separate document with no `:root`, where a surviving `var()` draws *nothing* —
+  a mark that silently disappears from a map is the worst failure this page has).
+  `tokens.test.ts` guards that copy and now also fails on a literal hex appearing
+  anywhere else under `server/pages/`.
+- **Concentric rings could read as a target on the one product where nothing is
+  scored.** The defence is three real properties, not a promise: the rings are
+  labelled in *walking minutes* (a measurement, which decision 7 explicitly permits),
+  the top-ranked marks sit *outside* them, and the caption's whole point is that rank
+  runs against distance. The e2e asserts every ring label matches `^\d+ MIN$` and that
+  the drawing carries no scale role, no `aria-value*`, and no `<progress>`/`<meter>`.
+- **The profile is stricter than the share page about other people.** Cosigners are
+  computed by the same `rank.cosignersForShare` — ordered by the author's friendships,
+  named only if their own ranking is public — but with **no faces**. An avatar is a
+  stronger disclosure than a name for somebody who opted only their *ranking* into
+  public, and this page is a stronger context than a shared list. Three images on the
+  whole page, asserted: the author's avatar, the drawn sheet, the closing photograph.
+- **The order past five is not this page's to give away.** PLAN's line item says *top
+  five*, so the five carry their positions and the other seventeen are named
+  alphabetically with no position at all — a legend for the map, not a ranking.
+- **The onward link is derived from a live `ranking` token and addressed by it.**
+  Never a username, never a slug: a readable public URL would quietly undo the
+  tokenised addressing the whole model rests on. Revoking the ranking's link closes
+  this door too, and the e2e proves it on `u_dev` (no `/s/` href anywhere on the page).
+- **"The order has a history" says only what the schema can support.**
+  `ranking_entries` stores `inserted_at` and `position` and *no history of positions*,
+  and `insertIntoRanking` rewrites `inserted_at` on a re-rank. So two sentences compare
+  arrival against *current* position (both derivable) and the third — "walked straight
+  in at eleventh" — is said of the most recent arrival alone, because nothing has been
+  written since it landed. It must never be generalised to any other entry.
+- **The Takeout fixtures were rewritten, and the reason is the finding of this phase.**
+  As committed in Phase 1 their coordinates had been authored independently of
+  `seed/shops.json`: "Wheelhouse Coffee" sat 41 m from *Oval Grounds* and 545 m from
+  Wheelhouse. That is not what a real export looks like. They now agree — and they
+  carry **two deliberate traps**: `Batch & Crumb Bakery` 48 m from Bramble and
+  `Juniper Bar & Kitchen` 24 m from Juniper Coffee Club, sharing a word with it.
+  **A coordinate is never, on its own, a reason to say two records are the same
+  place.** The name is the identity; the pin corroborates it, or vetoes it when the
+  name matches something a mile away. Match on proximity and you write a bakery
+  somebody has never been to into their list under a coffee shop's name, with no undo
+  anywhere in the flow.
+- **A near-miss is offered, not assumed.** `Hackberry` (for Hackberry Roasters) arrives
+  as a `likely` match: unpressed, with the reason spelled out, doing nothing until
+  somebody taps it. And the four places we do not have are *named on screen*, because
+  "we took 10 of your 15" is only honest if you can see which five.
+- **The import reads coordinates and keeps none.** They are used in memory to tell two
+  places apart and dropped; the API response carries no coordinate and no address, so
+  the only thing that outlives the request cannot leak one. The evidence sweeps all 19
+  tables for a coordinate and an address that appear only in the export: 0 hits.
+- **It makes a list, never a ranking** — an order comes from the head-to-head and from
+  nowhere else. `POST /api/lists` now accepts its items, so eleven places land in one
+  request rather than eleven: a dropped connection must not leave half a list with
+  nothing to say which half.
+- **Main JS bundle 392 kB → 400 kB** with the import surface. Neither public page ships
+  any of it, and `profile.spec.ts` asserts the profile requests zero `/assets/*.js`,
+  zero stylesheets and — unlike the share page — **zero script tags at all**, because
+  nothing on it is interactive.
+
+**The perf gate: what was measured, and why it is not met.**
+
+The gate is `LCP ≤ 1.0 s, performance ≥ 90`, median of 5, mobile + simulated Slow-4G,
+against `npm run prod`. Measured: **LCP 1280 ms, performance 100** — the LCP half is
+missed by 280 ms. Two optimisations were made and both are kept: the sheet moved out of
+the DOM into an `<img>` (−520 ms of throttled style+layout), and the `@font-face` rules
+moved out of the head-inlined CSS to after the content (`tokensCss({fonts:false})` +
+`fontFaceCss()`), which took the median from 1280 to 1205 in isolation.
+
+The remaining gap is **not in the page**, and the transcript proves it with two controls
+run on the same machine in the same minute:
+
+| | median LCP | |
+|---|---|---|
+| the share page (identical three fonts) | **763 ms** | passes |
+| the profile, 22 places | **1280 ms** | fails |
+| the profile template with **no map on it at all** | **1206 ms** | fails |
+
+A profile with nothing drawn on it measures the same as one with twenty-two places, so
+the map is not the cost. What decides the number is an ordering accident: Lighthouse's
+pessimistic graph charges FCP for every font request that *completed before the observed
+paint*, and on localhost the fonts arrive in about a millisecond, so which side of the
+paint they land on is a coin flip. The same run's own trace shows it —
+
+```
+share (control)   observed FCP  127 ms | last font at  121 ms | fonts land BEFORE the paint | simulated LCP 1433 ms
+profile           observed FCP  134 ms | last font at  126 ms | fonts land BEFORE the paint | simulated LCP 1280 ms
+```
+
+— the share page's 1433 ms outlier is precisely the run where *its* fonts landed first.
+The profile's own runs contain an 811 ms one for the same reason. Observed (unthrottled)
+FCP is 118–134 ms, and `font-display: swap` means text on a real phone paints in the
+fallback and waits for nothing.
+
+So the honest position is: **the criterion is not met on the median, and the number is
+dominated by a harness artefact rather than by the page.** Per this plan's own rule the
+numbers are logged and the box stays unchecked; it is not claimed as a pass. What would
+actually close it is beyond this phase: subsetting Young Serif (26.6 kB of the 52.9 kB
+on the wire) to the glyphs the product uses, which needs a font toolchain this repo
+deliberately does not have.
 
 ### Phase 5B — Social/notifications/metrics/integrity ☐
 - [ ] Group intersection-best for 4 seeded users (test)

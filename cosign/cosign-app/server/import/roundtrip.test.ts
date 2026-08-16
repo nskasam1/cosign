@@ -1,5 +1,5 @@
 // @vitest-environment node
-// The round-trip guarantee (IMPORT_FORMAT.md §4): seed → export → seed →
+// The round-trip guarantee (IMPORT_FORMAT.md §5): seed → export → seed →
 // export must be a fixpoint, and the founder CSV must survive
 // parse → serialize → parse untouched.
 

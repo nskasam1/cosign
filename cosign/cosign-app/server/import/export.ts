@@ -1,5 +1,5 @@
 // DB → seed-shaped JSON: the other half of the round-trip guarantee
-// (IMPORT_FORMAT.md §4). exportSeed(db) returns objects matching the seed
+// (IMPORT_FORMAT.md §5). exportSeed(db) returns objects matching the seed
 // files exactly, so runSeed on an export reproduces the same database.
 
 import type { DatabaseSync } from "node:sqlite";

@@ -129,6 +129,29 @@ export interface DiscoverView {
   entries: DiscoverEntry[];
 }
 
+/**
+ * One saved place from a Google Takeout export, matched against the places
+ * Cosign knows. Note what this shape does NOT carry: the coordinate and the
+ * address that were in the file. They are read on the server to tell two
+ * places apart and then dropped — decision 12, no persistent location
+ * history — and the response is the only part of that request that outlives
+ * it, so the omission is structural rather than a promise.
+ */
+export interface TakeoutMatch {
+  /** The name they saved it under, which may not be ours. */
+  saved: string;
+  note: string | null;
+  kind: "certain" | "likely" | "unknown";
+  because: string;
+  distance_m: number | null;
+  shop: { id: string; slug: string; name: string; palette: string | null; photo: string | null } | null;
+}
+
+export interface TakeoutReport {
+  counts: { total: number; certain: number; likely: number; unknown: number };
+  matches: TakeoutMatch[];
+}
+
 export interface Meta {
   schools: Array<{ id: string; name: string }>;
   semester: string;
@@ -184,10 +207,18 @@ export const api = {
   // what comes back is the only path that may be sent as a log photo.
   uploadPhoto: (dataUrl: string) => post<{ path: string }>("/api/uploads", { data: dataUrl }),
 
+  // The file's text, matched in memory and never written down.
+  importTakeout: (files: string[]) => post<TakeoutReport>("/api/import/takeout", { files }),
+
   myLists: () => req<{ lists: List[] }>("/api/lists/mine"),
   list: (id: string) => req<ListView>(`/api/lists/${encodeURIComponent(id)}`),
-  createList: (input: { title: string; is_collaborative?: boolean }) =>
-    post<{ list: List }>("/api/lists", input),
+  // `items` lands the whole list in one request: an import is eleven places
+  // at once, and eleven round trips can leave half a list behind.
+  createList: (input: {
+    title: string;
+    is_collaborative?: boolean;
+    items?: Array<{ shop_id: string; note?: string | null }>;
+  }) => post<{ list: List; items?: number }>("/api/lists", input),
   addListItem: (listId: string, shopId: string, note?: string) =>
     post<{ ok: true }>(`/api/lists/${encodeURIComponent(listId)}/items`, { shop_id: shopId, note }),
   removeListItem: (listId: string, shopId: string) =>

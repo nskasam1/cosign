@@ -38,17 +38,22 @@ const Profile = () => {
 
   useEffect(load, [load]);
 
-  const shareUrl = (token: string) => `${window.location.origin}/s/${token}`;
+  // Two public surfaces, two prefixes, and a token only ever opens its own:
+  // /s/ is the ranked list, /p/ is the profile. A profile token 404s at /s/
+  // and a ranking token 404s at /p/ (server/index.ts), so the URL a link is
+  // copied as is not cosmetic.
+  const shareUrl = (t: ShareToken) =>
+    `${window.location.origin}/${t.kind === "profile" ? "p" : "s"}/${t.token}`;
 
-  const createShare = async () => {
-    const { token } = await api.createShareToken({ kind: "ranking" });
-    track("share_created", { kind: "ranking" });
+  const createShare = async (kind: "ranking" | "profile") => {
+    const { token } = await api.createShareToken({ kind });
+    track("share_created", { kind });
     setTokens((prev) => [token, ...prev]);
   };
 
-  const copy = async (token: string) => {
-    await navigator.clipboard.writeText(shareUrl(token));
-    setCopied(token);
+  const copy = async (t: ShareToken) => {
+    await navigator.clipboard.writeText(shareUrl(t));
+    setCopied(t.token);
     setTimeout(() => setCopied(null), 1500);
   };
 
@@ -85,9 +90,23 @@ const Profile = () => {
 
   const { user, entries, is_self, can_see_ranking } = data;
   const first = user.display_name.split(" ")[0];
-  const rankingTokens = tokens.filter((t) => t.kind === "ranking");
-  // Revoking is meant to be reversible: you can always mint a fresh link.
-  const live = rankingTokens.filter((t) => !t.revoked_at);
+  // Two links, two things to say, each revocable on its own. Cutting the
+  // profile link must not close the list's, and vice versa — the whole model
+  // is that a share token is scoped to exactly one surface (decision 12).
+  const SHAREABLE = [
+    {
+      kind: "ranking" as const,
+      title: "Your list",
+      what: "Every place you have put in order, top to bottom, with the line you wrote about each.",
+      make: "Make a list link",
+    },
+    {
+      kind: "profile" as const,
+      title: "Your campus",
+      what: "Who you are about coffee: your usual order, your five, and a drawn map of everywhere you go.",
+      make: "Make a profile link",
+    },
+  ];
 
   return (
     <main data-profile data-username={user.username} className="cs-wrap pt-[max(var(--space-5),env(safe-area-inset-top))]">
@@ -119,38 +138,71 @@ const Profile = () => {
       )}
 
       {is_self && (
-        <section data-share className="mt-8 border-y border-rule-strong py-5">
-          <h2 className="cs-caps text-gold">Your share link</h2>
+        <section data-share className="mt-8 border-t border-rule-strong pt-5">
+          <h2 className="cs-caps text-gold">Your links</h2>
           <p className="mt-2 text-sm text-line">
-            Your list is friends-only until you make one of these. A link is the whole opt-in — one page, no
-            login, nobody else's list on it — and turning it off closes the page for good.
+            Everything here is friends-only until you make one of these. A link is the whole opt-in — one
+            page, no login, nobody else's list on it — and turning it off closes that page for good.
           </p>
-          {live.length === 0 && (
-            <button type="button" data-make-share onClick={createShare} className="cs-pill mt-4">
-              Make a link
-            </button>
-          )}
-          <ul className="mt-3">
-            {rankingTokens.map((t) => (
-              <li key={t.token} className="flex flex-wrap items-center gap-x-4 gap-y-1 border-t border-rule py-3">
-                <span className={`min-w-0 flex-1 truncate text-sm ${t.revoked_at ? "text-muted line-through" : "text-line"}`}>
-                  /s/{t.token}
-                </span>
-                {t.revoked_at ? (
-                  <span className="cs-caps flex-none text-muted">off</span>
-                ) : (
-                  <>
-                    <button type="button" onClick={() => copy(t.token)} className="cs-word cs-caps flex-none text-ember-ink">
-                      {copied === t.token ? "copied" : "copy"}
-                    </button>
-                    <button type="button" onClick={() => revoke(t.token)} className="cs-word cs-caps flex-none text-muted">
-                      turn off
-                    </button>
-                  </>
+
+          {SHAREABLE.map(({ kind, title, what, make }) => {
+            const mine = tokens.filter((t) => t.kind === kind);
+            const live = mine.filter((t) => !t.revoked_at);
+            return (
+              <div key={kind} data-share-kind={kind} className="mt-6 border-t border-rule pt-4">
+                <h3 className="cs-display text-lg text-ink">{title}</h3>
+                <p className="mt-1 text-xs text-muted">{what}</p>
+                {/* Revoking is meant to be reversible: a fresh link is always
+                    one tap away, and it is a NEW address, so the old one
+                    stays dead. */}
+                {live.length === 0 && (
+                  <button
+                    type="button"
+                    data-make-share={kind}
+                    onClick={() => createShare(kind)}
+                    className="cs-pill mt-3"
+                  >
+                    {make}
+                  </button>
                 )}
-              </li>
-            ))}
-          </ul>
+                <ul className="mt-1">
+                  {mine.map((t) => (
+                    <li
+                      key={t.token}
+                      data-token={t.token}
+                      className="flex flex-wrap items-center gap-x-4 gap-y-1 border-t border-rule py-3"
+                    >
+                      <span
+                        className={`min-w-0 flex-1 truncate text-sm ${t.revoked_at ? "text-muted line-through" : "text-line"}`}
+                      >
+                        /{kind === "profile" ? "p" : "s"}/{t.token}
+                      </span>
+                      {t.revoked_at ? (
+                        <span className="cs-caps flex-none text-muted">off</span>
+                      ) : (
+                        <>
+                          <button
+                            type="button"
+                            onClick={() => copy(t)}
+                            className="cs-word cs-caps flex-none text-ember-ink"
+                          >
+                            {copied === t.token ? "copied" : "copy"}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => revoke(t.token)}
+                            className="cs-word cs-caps flex-none text-muted"
+                          >
+                            turn off
+                          </button>
+                        </>
+                      )}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            );
+          })}
         </section>
       )}
 

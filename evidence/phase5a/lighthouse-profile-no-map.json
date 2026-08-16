@@ -1,0 +1,107 @@
+{
+  "url": "http://localhost:8787/p/Xqhqrj14rpKt",
+  "label": "profile-no-map",
+  "lighthouse": "13.4.1",
+  "throttling": {
+    "rttMs": 150,
+    "throughputKbps": 1638.4,
+    "requestLatencyMs": 562.5,
+    "downloadThroughputKbps": 1474.5600000000002,
+    "uploadThroughputKbps": 607.5,
+    "cpuSlowdownMultiplier": 4
+  },
+  "gate": {
+    "lcpMs": 1000,
+    "perf": 90,
+    "a11y": 95
+  },
+  "runs": [
+    {
+      "run": 1,
+      "perf": 99,
+      "a11y": 100,
+      "bestPractices": 100,
+      "seo": 66,
+      "lcpMs": 1212,
+      "fcpMs": 1212,
+      "tbtMs": 0,
+      "cls": 0.0756,
+      "siMs": 1212,
+      "ttfbMs": 10,
+      "bytes": 60227
+    },
+    {
+      "run": 2,
+      "perf": 99,
+      "a11y": 100,
+      "bestPractices": 100,
+      "seo": 66,
+      "lcpMs": 1206,
+      "fcpMs": 1206,
+      "tbtMs": 0,
+      "cls": 0.0756,
+      "siMs": 1206,
+      "ttfbMs": 10,
+      "bytes": 60227
+    },
+    {
+      "run": 3,
+      "perf": 99,
+      "a11y": 100,
+      "bestPractices": 100,
+      "seo": 66,
+      "lcpMs": 1207,
+      "fcpMs": 1207,
+      "tbtMs": 0,
+      "cls": 0.0756,
+      "siMs": 1207,
+      "ttfbMs": 7,
+      "bytes": 60227
+    },
+    {
+      "run": 4,
+      "perf": 99,
+      "a11y": 100,
+      "bestPractices": 100,
+      "seo": 66,
+      "lcpMs": 1203,
+      "fcpMs": 1203,
+      "tbtMs": 0,
+      "cls": 0.0756,
+      "siMs": 1203,
+      "ttfbMs": 6,
+      "bytes": 60227
+    },
+    {
+      "run": 5,
+      "perf": 99,
+      "a11y": 100,
+      "bestPractices": 100,
+      "seo": 66,
+      "lcpMs": 1203,
+      "fcpMs": 1203,
+      "tbtMs": 0,
+      "cls": 0.0756,
+      "siMs": 1203,
+      "ttfbMs": 7,
+      "bytes": 60227
+    }
+  ],
+  "median": {
+    "perf": 99,
+    "a11y": 100,
+    "bestPractices": 100,
+    "seo": 66,
+    "lcpMs": 1206,
+    "fcpMs": 1206,
+    "tbtMs": 0,
+    "cls": 0.0756,
+    "siMs": 1206,
+    "ttfbMs": 7,
+    "bytes": 60227
+  },
+  "lcpElement": null,
+  "passed": false,
+  "a11yPassed": true,
+  "generatedAt": "2026-08-16T10:27:13.159Z"
+}

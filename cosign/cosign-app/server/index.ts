@@ -23,8 +23,10 @@ import * as lists from "./repo/lists.ts";
 import * as share from "./repo/share.ts";
 import * as logsRepo from "./repo/logsRepo.ts";
 import * as analytics from "./repo/analytics.ts";
+import { importSavedPlaces } from "./import/takeout.ts";
 import { renderSharePage, renderTombstone } from "./pages/shareList.ts";
-import { renderOgImage } from "./pages/og.ts";
+import { renderProfilePage } from "./pages/shareProfile.ts";
+import { renderOgImage, renderProfileOgImage } from "./pages/og.ts";
 import { isStale } from "../src/lib/freshness.ts";
 import { phaseForDate, semesterForDate, type AcademicCalendar } from "../src/lib/calendar.ts";
 import { CAMPUS_CENTER, haversineMeters, walkingMinutes, type LatLng } from "../src/lib/geo.ts";
@@ -403,6 +405,65 @@ app.post("/api/uploads", async (c) => {
   return c.json({ path: `/u/${file}` }, 201);
 });
 
+// ── import: Google Maps saved places (brief #9) ─────────────────────────────
+//
+// The file arrives as text, is matched in memory, and is thrown away. What
+// comes back names shops and repeats the person's own notes; it carries no
+// coordinate and no address, because the response is the only thing that
+// survives this request and decision 12 says a position is read momentarily
+// and never stored. The list they build from it holds shop ids and notes.
+const MAX_IMPORT_BYTES = 4_000_000;
+const MAX_IMPORT_FILES = 8;
+
+app.post("/api/import/takeout", async (c) => {
+  const uid = me(c);
+  if (!uid) return c.json({ error: "sign in first" }, 401);
+  const body = await c.req.json<{ files?: unknown }>();
+  const files = Array.isArray(body?.files) ? body.files : null;
+  if (!files || files.length === 0 || files.length > MAX_IMPORT_FILES) {
+    return c.json({ error: "send between 1 and 8 files" }, 400);
+  }
+  if (!files.every((f) => typeof f === "string")) return c.json({ error: "files must be text" }, 400);
+  const texts = files as string[];
+  if (texts.reduce((n, t) => n + t.length, 0) > MAX_IMPORT_BYTES) {
+    return c.json({ error: "that export is too big to read here" }, 413);
+  }
+
+  const db = getDb();
+  let report: ReturnType<typeof importSavedPlaces>;
+  try {
+    report = importSavedPlaces(
+      texts,
+      shops.allShops(db).map((s) => ({ id: s.id, slug: s.slug, name: s.name, lat: s.lat, lng: s.lng })),
+    );
+  } catch (err) {
+    // The parsers throw sentences meant to be read by whoever picked the
+    // wrong file out of a Takeout zip, so this one error is passed through.
+    return c.json({ error: err instanceof Error ? err.message : "that file could not be read" }, 400);
+  }
+
+  analytics.track(db, uid, "import_previewed", { total: report.counts.total, matched: report.counts.certain });
+  return c.json({
+    counts: report.counts,
+    matches: report.matches.map((m) => ({
+      saved: m.place.name,
+      note: m.place.note,
+      kind: m.kind,
+      because: m.because,
+      distance_m: m.distance_m,
+      shop: m.shop
+        ? {
+            id: m.shop.id,
+            slug: m.shop.slug,
+            name: m.shop.name,
+            palette: shops.shopById(db, m.shop.id)?.palette ?? null,
+            photo: shops.photosOf(db, m.shop.id)[0]?.path ?? null,
+          }
+        : null,
+    })),
+  });
+});
+
 // ── lists ───────────────────────────────────────────────────────────────────
 app.get("/api/lists/mine", (c) => {
   const uid = me(c);
@@ -427,10 +488,39 @@ app.get("/api/lists/:id", (c) => {
 app.post("/api/lists", async (c) => {
   const uid = me(c);
   if (!uid) return c.json({ error: "sign in first" }, 401);
-  const body = await c.req.json<{ title: string; is_collaborative?: boolean }>();
+  const body = await c.req.json<{
+    title: string;
+    is_collaborative?: boolean;
+    items?: Array<{ shop_id: string; note?: string | null }>;
+  }>();
   if (!body.title?.trim()) return c.json({ error: "title required" }, 400);
-  const list = lists.createList(getDb(), { owner_id: uid, title: body.title.trim(), is_collaborative: body.is_collaborative });
-  return c.json({ list }, 201);
+  // A list may arrive with its contents. An import is eleven places at once,
+  // and eleven round trips means a dropped connection leaves a list holding
+  // some of what somebody asked for and no way to tell which — so the whole
+  // thing is one request, checked before it opens and written in one go.
+  const items = Array.isArray(body.items) ? body.items : [];
+  if (items.length > 200) return c.json({ error: "too many places" }, 400);
+  const db = getDb();
+  for (const it of items) {
+    if (typeof it?.shop_id !== "string" || !shops.shopById(db, it.shop_id)) {
+      return c.json({ error: "unknown shop" }, 404);
+    }
+    if (it.note != null && (typeof it.note !== "string" || it.note.length > 140)) {
+      return c.json({ error: "note too long" }, 400);
+    }
+  }
+  const seen = new Set<string>();
+  const list = lists.createList(db, {
+    owner_id: uid,
+    title: body.title.trim(),
+    is_collaborative: body.is_collaborative,
+  });
+  for (const it of items) {
+    if (seen.has(it.shop_id)) continue; // list_items is keyed (list, shop)
+    seen.add(it.shop_id);
+    lists.addItem(db, list.id, it.shop_id, uid, it.note?.trim() || undefined);
+  }
+  return c.json({ list, items: seen.size }, 201);
 });
 
 app.post("/api/lists/:id/items", async (c) => {
@@ -517,6 +607,36 @@ app.get("/og/s/:token", async (c) => {
   if (res.status === "missing") return c.notFound();
   if (res.status === "revoked") return c.text("This link isn't shared anymore.", 410);
   const png = await renderOgImage(db, res.token);
+  if (!png) return c.notFound();
+  c.header("Content-Type", "image/png");
+  c.header("Cache-Control", "public, max-age=300, stale-while-revalidate=3600");
+  return c.body(png as unknown as ArrayBuffer);
+});
+
+// ── public SSR profile (Phase 5A; also never touches auth) ──────────────────
+//
+// Scoped strictly, in both directions: a `profile` token has 404'd at /s/
+// since Phase 2, and a `ranking` or `list` token 404s here. A token is one
+// surface's key, not a skeleton key — otherwise revoking the link to your
+// list would leave the same content reachable through your profile's.
+app.get("/p/:token", (c) => {
+  const db = getDb();
+  const res = share.resolveToken(db, c.req.param("token"));
+  if (res.status === "missing") return c.notFound();
+  if (res.status === "revoked") return c.html(renderTombstone("profile"), 410);
+  const html = renderProfilePage(db, res.token, new URL(c.req.url).origin);
+  if (!html) return c.notFound();
+  analytics.track(db, null, "profile_viewed", { token: c.req.param("token") });
+  c.header("Cache-Control", "public, max-age=60, stale-while-revalidate=300");
+  return c.html(html);
+});
+
+app.get("/og/p/:token", async (c) => {
+  const db = getDb();
+  const res = share.resolveToken(db, c.req.param("token"));
+  if (res.status === "missing") return c.notFound();
+  if (res.status === "revoked") return c.text("This link isn't shared anymore.", 410);
+  const png = await renderProfileOgImage(db, res.token);
   if (!png) return c.notFound();
   c.header("Content-Type", "image/png");
   c.header("Cache-Control", "public, max-age=300, stale-while-revalidate=3600");

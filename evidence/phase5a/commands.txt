@@ -1,0 +1,180 @@
+# Phase 5A acceptance evidence — 2026-08-16T10:24:14Z
+# node v24.11.0, npm 11.6.1
+# scratch database: /tmp/cosign-phase5a.db (server/data/cosign.db untouched)
+
+## ./node_modules/.bin/tsc -b (project refs: app / node / server)
+exit=0
+
+## npm test
+[2m Test Files [22m [1m[32m20 passed[39m[22m[90m (20)[39m
+[2m      Tests [22m [1m[32m318 passed[39m[22m[90m (318)[39m
+[2m   Start at [22m 06:24:28
+[2m   Duration [22m 11.01s[2m (transform 4.33s, setup 16.38s, collect 15.89s, tests 8.82s, environment 3.00s, prepare 12.23s)[22m
+
+
+## npm run lint
+
+✖ 8 problems (0 errors, 8 warnings)
+
+
+## no rating-scale input anywhere — now over the profile and the import too
+[2m Test Files [22m [1m[32m1 passed[39m[22m[90m (1)[39m
+[2m      Tests [22m [1m[32m5 passed[39m[22m[90m (5)[39m
+
+## /p/:token — every state, logged out, with no session at all
+   GET /p/Rp7YT1i9S-Ov -> 200   25896 bytes  Maya Okafor — Cosign           35 marks drawn
+   GET /p/Xqhqrj14rpKt -> 200   15889 bytes  Noah Bright — Cosign           3 marks drawn
+   GET /p/8UAJxMmqLWs3 -> 200   24053 bytes  Dev Raghunathan — Cosign       23 marks drawn
+   GET /p/oIxUcrHoBLVq -> 410    4251 bytes  This link isn’t shared anymore — Cosign 
+   GET /p/IofpCInelhr1 -> 404      13 bytes                                 
+   GET /p/not-a-real-token -> 404      13 bytes                                 
+   (a ranking token and an unknown token both 404: a token opens one surface, never two)
+
+## the map is computed from the seed, not drawn by hand
+   u_maya   22 places | 2164 m across | rule=past_the_near_ones | The three closest to the Oval are Maya’s ninth, seventeenth and nineteenth — the line to the fir
+   u_dev    10 places | 2136 m across | rule=past_the_near_ones | The three closest to the Oval are Dev’s fifth, sixth and seventh — the line to the first runs st
+   u_lena    6 places | 1763 m across | rule=flat               | Lena’s first is 3 minutes east of the Oval; the farthest thing on the sheet is 17.
+
+## google takeout: the committed fixtures, through the real route
+   counts: {"total":15,"certain":10,"likely":1,"unknown":4}
+   certain  wheelhouse           | Wheelhouse Coffee          | same name, 24 m apart
+   certain  cricket-and-crow     | Cricket & Crow             | same name, 28 m apart
+   certain  terrazzo             | Terrazzo                   | same name, 37 m apart
+   certain  night-owl            | Night Owl Coffee           | same name, 28 m apart
+   likely   hackberry            | Hackberry                  | you saved it as “Hackberry”, 36 m from ours
+   certain  oval-grounds         | Oval Grounds               | same name, 34 m apart
+   certain  marginalia           | Marginalia                 | same name, 28 m apart
+   certain  all-nighter          | The All-Nighter            | same name, 14 m apart
+   certain  petal-and-bean       | Petal and Bean             | same name, 28 m apart
+   certain  foundry              | the foundry                | same name, 26 m apart
+   unknown  —                    | Batch & Crumb Bakery       | not a place Cosign knows yet
+   unknown  —                    | Juniper Bar & Kitchen      | not a place Cosign knows yet
+   unknown  —                    | The Copper Finch Cafe      | not a place Cosign knows yet
+   unknown  —                    | Iuka Ridge Branch Library  | not a place Cosign knows yet
+   certain  cardinal-and-vine    | Cardinal & Vine            | same name
+
+## the two traps in the fixtures: metres from a place we know, and still unmatched
+   Batch & Crumb Bakery       | nearest place we know: bramble, 48 m                | matched: no
+   Juniper Bar & Kitchen      | nearest place we know: juniper, 24 m                | matched: no
+   The Copper Finch Cafe      | nearest place we know: cricket-and-crow, 445 m      | matched: no
+   Iuka Ridge Branch Library  | nearest place we know: tulip-tree, 388 m            | matched: no
+
+## the import reads coordinates and writes none of them
+$ import the fixtures, then sweep every text column in the database:
+   19 tables swept, 0 containing a coordinate or address from the export
+
+## the perf gate — LCP <= 1.0 s, performance >= 90, mobile + simulated Slow-4G
+$ MSYS_NO_PATHCONV=1 LH_RUNS=5 node scripts/lighthouse.mjs /p/Rp7YT1i9S-Ov phase5a profile
+    
+    Lighthouse 13.4.1 · mobile · simulated Slow-4G · median of 5
+      http://localhost:8787/p/Rp7YT1i9S-Ov
+      PASS  performance            100
+      FAIL  LCP                    1280 ms
+      PASS  accessibility          100
+         FCP                    1205 ms
+         Speed Index            1205 ms
+         TBT                    0 ms
+         CLS                    0.0268
+         total bytes            62.5 kB
+         best-practices / seo   100 / 66
+    
+      runs: 100/811ms  100/1280ms  100/1280ms  100/1279ms  100/1280ms
+      -> evidence/phase5a/lighthouse-profile.json
+   gate exit=1
+
+$ …and two controls, same machine, same minute. The share page carries the
+  IDENTICAL three fonts, so if IT moves, the machine moved; and the same
+  profile template with no map on it at all shows what the map costs.
+    
+    Lighthouse 13.4.1 · mobile · simulated Slow-4G · median of 5
+      http://localhost:8787/s/IofpCInelhr1
+      PASS  performance            100
+      PASS  LCP                    763 ms
+      PASS  accessibility          100
+         FCP                    761 ms
+         Speed Index            761 ms
+         TBT                    0 ms
+         CLS                    0.023
+         total bytes            81.1 kB
+         best-practices / seo   100 / 66
+    
+      runs: 100/909ms  100/761ms  100/763ms  100/743ms  100/1433ms
+      -> evidence/phase5a/lighthouse-share-control.json
+    
+    Lighthouse 13.4.1 · mobile · simulated Slow-4G · median of 5
+      http://localhost:8787/p/Xqhqrj14rpKt
+      PASS  performance            99
+      FAIL  LCP                    1206 ms
+      PASS  accessibility          100
+         FCP                    1206 ms
+         Speed Index            1206 ms
+         TBT                    0 ms
+         CLS                    0.0756
+         total bytes            58.8 kB
+         best-practices / seo   100 / 66
+    
+      runs: 99/1212ms  99/1206ms  99/1207ms  99/1203ms  99/1203ms
+      -> evidence/phase5a/lighthouse-profile-no-map.json
+
+$ the three medians together:
+    share page (control)     median LCP   763 ms | performance 100
+    profile, 22 places       median LCP  1280 ms | performance 100
+    profile, NO map at all   median LCP  1206 ms | performance 99
+    -> the map is not the cost: a profile with none measures the same.
+
+$ what IS the cost — the observed (unthrottled) trace order. NOTE: this reads
+  the LAST of the five runs, not the median, because that is the report the
+  gate leaves behind; the ordering it shows flips run to run, which is
+  exactly the point:
+    share (control)    observed FCP  127 ms | last font at  121 ms | fonts land BEFORE the paint | simulated LCP 1433 ms
+    profile            observed FCP  134 ms | last font at  126 ms | fonts land BEFORE the paint | simulated LCP 1280 ms
+    profile, no map    observed FCP   84 ms | last font at   70 ms | fonts land BEFORE the paint | simulated LCP 1203 ms
+
+## playwright
+$ COSIGN_EVIDENCE=phase5a               npx playwright test profile.spec.ts   # phase 5A
+      ✓  46 [desktop] › e2e\profile.spec.ts:412:3 › google takeout import › is also offered where a ranking is empty (556ms)
+    
+      46 passed (27.9s)
+$ COSIGN_EVIDENCE=phase5a/share-regression npx playwright test share.spec.ts  # phase 2
+      ✓  24 [desktop] › e2e\share.spec.ts:222:3 › open graph image › the share page points social previews at that image (317ms)
+    
+      24 passed (18.4s)
+$ COSIGN_EVIDENCE=phase5a/home-regression  npx playwright test home.spec.ts   # phase 4
+        [desktop] › e2e\home.spec.ts:114:3 › the hero query › follows the position it is given, rather than a place it likes 
+      2 skipped
+      40 passed (1.0m)
+$ COSIGN_EVIDENCE=phase5a/log-regression   npx playwright test log.spec.ts    # phase 3, last (it writes most)
+    
+      1 skipped
+      35 passed (1.6m)
+$ COSIGN_EVIDENCE_DIR=phase5a/spa node scripts/boot-smoke.mjs
+    ok    auth  /group/new  (240 chars)
+    ok    auth  /shop/there-is-no-such-place/x  (175 chars)
+    
+    ok    every request stayed on http://localhost:8787 (zero external services)
+    
+    ok    9 distinct <title> across 12 routes:
+          /                                      Cosign
+          /onboarding                            Start your list — Cosign
+          /onboarding                            Start your list — Cosign
+          /                                      Cosign
+          /search                                Search — Cosign
+          /maya                                  Maya Okafor — Cosign
+          /shop/oval-grounds                     Oval Grounds — Cosign
+          /shop/oval-grounds                     Oval Grounds — Cosign
+          /lists/l_our-campus-ranking            our ranking of campus coffee — Cosign
+          /rank                                  Your list — Cosign
+          /group/new                             Group mode — Cosign
+          /shop/there-is-no-such-place/x         Nothing at this address — Cosign
+    
+    all 12 routes booted clean
+
+$ axe violations per surface (serious/critical):
+   axe-profile-desktop.json       0 (24 passes)
+   axe-profile-empty-desktop.json 0 (12 passes)
+   axe-profile-empty-mobile.json  0 (12 passes)
+   axe-profile-mobile.json        0 (24 passes)
+
+$ document weight (the byte budget behind the gate):
+   profile-bytes-desktop.json     25896 bytes raw, budget 30000
+   profile-bytes-mobile.json      25896 bytes raw, budget 30000

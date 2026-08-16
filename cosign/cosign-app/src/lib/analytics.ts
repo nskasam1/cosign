@@ -9,7 +9,12 @@ export type AnalyticsEvent =
   | "share_created"
   | "shop_viewed"
   | "freshness_confirmed"
-  | "ranking_inserted";
+  | "ranking_inserted"
+  // The Takeout import writes two: `import_previewed` from the server, when a
+  // file is read and matched, and this one when a list actually comes of it.
+  // The gap between them is the only honest measure of whether the import is
+  // worth its screen.
+  | "import_committed";
 
 export function track(event: AnalyticsEvent, props: Record<string, unknown> = {}): void {
   void fetch("/api/events", {

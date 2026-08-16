@@ -7,7 +7,7 @@
 //   3. every font the tokens name is actually committed to the repo.
 
 import { describe, expect, it } from "vitest";
-import { readFileSync } from "node:fs";
+import { readFileSync, readdirSync } from "node:fs";
 import { existsSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -115,10 +115,12 @@ describe("colour contrast (WCAG 2.1)", () => {
 });
 
 describe("no value is defined twice", () => {
-  it("the OG renderer's colour copies still match the token file", () => {
-    // satori has no CSS custom properties, so server/pages/og.ts repeats a
-    // handful of hex values. This is the guard on that duplication.
-    const og = readFileSync(join(APP, "server", "pages", "og.ts"), "utf-8");
+  it("the one hand-written copy of the tokens still matches the token file", () => {
+    // Two renderers cannot read CSS custom properties: satori, and an SVG
+    // served inside an <img> (the profile's map). Both read
+    // server/pages/tokenHex.ts, which is the ONLY place a token value is
+    // repeated. This is the guard on that duplication.
+    const og = readFileSync(join(APP, "server", "pages", "tokenHex.ts"), "utf-8");
     const pick = (key: string) => og.match(new RegExp(`\\b${key}:\\s*"(#[0-9a-fA-F]{6})"`))?.[1]?.toLowerCase();
     const pairs: Array<[string, string]> = [
       ["bg", "bg"],
@@ -131,17 +133,34 @@ describe("no value is defined twice", () => {
       ["gold", "gold"],
     ];
     for (const [ogKey, tokenName] of pairs) {
-      expectSameColour(pick(ogKey), tokenName, `og.ts ${ogKey}`);
+      expectSameColour(pick(ogKey), tokenName, `tokenHex.ts ${ogKey}`);
     }
-    expectSameColour(pick("ruleStrong"), "rule-strong", "og.ts ruleStrong");
+    expectSameColour(pick("ruleStrong"), "rule-strong", "tokenHex.ts ruleStrong");
   });
 
-  it("the OG renderer's place palettes still match the token file", () => {
-    const og = readFileSync(join(APP, "server", "pages", "og.ts"), "utf-8");
+  it("the hand-written place palettes still match the token file", () => {
+    const og = readFileSync(join(APP, "server", "pages", "tokenHex.ts"), "utf-8");
     for (const name of ["warm", "amber", "rose", "moss", "slate", "clay"]) {
       const value = og.match(new RegExp(`\\b${name}:\\s*"(#[0-9a-fA-F]{6})"`))?.[1]?.toLowerCase();
-      expectSameColour(value, `pal-${name}`, `og.ts palette ${name}`);
+      expectSameColour(value, `pal-${name}`, `tokenHex.ts palette ${name}`);
     }
+  });
+
+  it("keeps that copy the ONLY one", () => {
+    // A second literal palette anywhere under server/pages/ is a design
+    // system quietly forking. tokenHex.ts is exempt; it IS the copy.
+    const pages = join(APP, "server", "pages");
+    const offenders: string[] = [];
+    for (const file of readdirSync(pages).filter((f) => f.endsWith(".ts") && f !== "tokenHex.ts")) {
+      const src = readFileSync(join(pages, file), "utf-8");
+      for (const line of src.split(/\r?\n/)) {
+        // a hex literal that is not in a comment and not a theme-color meta
+        if (/^\s*(?:\/\/|\*|\/\*)/.test(line)) continue;
+        if (/theme-color/.test(line)) continue;
+        if (/#[0-9a-fA-F]{6}\b/.test(line)) offenders.push(`${file}: ${line.trim().slice(0, 90)}`);
+      }
+    }
+    expect(offenders.join("\n")).toBe("");
   });
 
   it("every browser-chrome colour is the token ground", () => {
@@ -165,14 +184,21 @@ describe("no value is defined twice", () => {
     expectSameColour(manifest.theme_color?.toLowerCase(), "bg", "manifest theme_color");
     expectSameColour(manifest.background_color?.toLowerCase(), "bg", "manifest background_color");
 
-    // The SSR pages inline the tokens, but their <meta> tag is read before a
-    // stylesheet is, so it is hand-written there too — both of them.
-    const share = readFileSync(join(APP, "server", "pages", "shareList.ts"), "utf-8");
-    const metas = [...share.matchAll(/theme-color" content="(#[0-9a-fA-F]{6})"/g)].map((m) =>
-      m[1].toLowerCase(),
-    );
-    expect(metas.length, "shareList.ts theme-color tags (page + tombstone)").toBe(2);
-    for (const [i, hex] of metas.entries()) expectSameColour(hex, "bg", `shareList.ts theme-color #${i + 1}`);
+    // The SSR pages inline the tokens, but a <meta> tag is read before any
+    // stylesheet is, so it is hand-written there too — in every one of them.
+    // Scanning the directory rather than naming the files is the point: a
+    // sixth public page added later is covered the day it is written.
+    const pages = join(APP, "server", "pages");
+    let metas = 0;
+    for (const file of readdirSync(pages).filter((f) => f.endsWith(".ts") && !f.endsWith(".test.ts"))) {
+      const src = readFileSync(join(pages, file), "utf-8");
+      for (const [i, m] of [...src.matchAll(/theme-color" content="(#[0-9a-fA-F]{6})"/g)].entries()) {
+        expectSameColour(m[1].toLowerCase(), "bg", `${file} theme-color #${i + 1}`);
+        metas++;
+      }
+    }
+    // the share page, its tombstone, and the profile page
+    expect(metas, "hand-written theme-color tags under server/pages").toBe(3);
   });
 });
 

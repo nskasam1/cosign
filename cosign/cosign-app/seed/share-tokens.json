@@ -30,5 +30,29 @@
     "list_id": null,
     "created_at": "2026-06-15T12:00:00-04:00",
     "revoked_at": "2026-08-01T12:00:00-04:00"
+  },
+  {
+    "token": "8UAJxMmqLWs3",
+    "kind": "profile",
+    "user_id": "u_dev",
+    "list_id": null,
+    "created_at": "2026-08-02T09:00:00-04:00",
+    "revoked_at": null
+  },
+  {
+    "token": "Xqhqrj14rpKt",
+    "kind": "profile",
+    "user_id": "u_noah",
+    "list_id": null,
+    "created_at": "2026-08-14T18:20:00-04:00",
+    "revoked_at": null
+  },
+  {
+    "token": "oIxUcrHoBLVq",
+    "kind": "profile",
+    "user_id": "u_lena",
+    "list_id": null,
+    "created_at": "2026-07-28T08:10:00-04:00",
+    "revoked_at": "2026-08-09T21:45:00-04:00"
   }
 ]

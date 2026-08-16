@@ -3,14 +3,18 @@ import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { api, type ShopSummary } from "@/lib/api";
 import { useTitle } from "@/lib/title";
+import ImportTakeout from "@/components/ImportTakeout";
 import PlacePlate from "@/components/log/PlacePlate";
 
 // Stub onboarding — the brief's "signup". A name and a school, then up to
 // three places you already trust, which become your first list. No password,
 // no email, no provider: auth v1 is a signed cookie over local users.
 //
-// Google Takeout import joins this flow in Phase 5A; the empty state below
-// is where it will be offered.
+// Step two has two doors, which is the point of brief #9: tap three places
+// you already trust, or hand over the ones you have been saving in Google
+// Maps for two years. The second door is the honest one for most people —
+// but it is below the first, not instead of it, because somebody with no
+// export at all must not arrive at a screen that only knows how to import.
 const Onboarding = () => {
   useTitle("Start your list");
   const { user, createAccount, refresh } = useAuth();
@@ -24,6 +28,8 @@ const Onboarding = () => {
 
   const [shops, setShops] = useState<ShopSummary[]>([]);
   const [picked, setPicked] = useState<Set<string>>(new Set());
+  /** Places an import already landed — the exit stops saying "skip". */
+  const [imported, setImported] = useState(0);
   const [schools, setSchools] = useState<Array<{ id: string; name: string }>>([]);
   const [schoolId, setSchoolId] = useState<string>("");
 
@@ -159,7 +165,13 @@ const Onboarding = () => {
             starts the first time you log a visit.
           </p>
 
-          <div className="mt-6">
+          <div className="mt-8">
+            <ImportTakeout title="Saved in Maps" onImported={(_list, places) => setImported(places)} />
+          </div>
+
+          <p className="cs-caps mt-10 border-t border-rule pt-4 text-gold">Or pick them here</p>
+
+          <div className="mt-4">
             {shops.map((s) => {
               // At the cap, the other rows genuinely cannot be picked — so
               // they say so, in the markup and on screen. Leaving them
@@ -194,7 +206,13 @@ const Onboarding = () => {
 
           <div className="mt-8 border-t border-rule-strong pt-6">
             <button type="button" onClick={finish} disabled={busy} className="cs-pill">
-              {busy ? "Saving…" : picked.size > 0 ? `Start with ${picked.size}` : "Skip for now"}
+              {busy
+                ? "Saving…"
+                : picked.size > 0
+                  ? `Start with ${picked.size}`
+                  : imported > 0
+                    ? "That's everything"
+                    : "Skip for now"}
             </button>
           </div>
         </>
