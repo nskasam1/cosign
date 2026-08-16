@@ -57,6 +57,11 @@ export type TableSize = "laptop" | "laptop_plus_friend" | "mug_only";
 export type BathroomAccess = "open" | "code" | "customer_only";
 export type Visibility = "friends" | "public";
 
+/** The enums, once. The route guard, the repo whitelist and the log flow all
+ *  read these — a second copy is how a numeric scale eventually sneaks in. */
+export const NOISE_LEVELS: NoiseLevel[] = ["quiet", "conversational", "loud"];
+export const CROWD_LEVELS: CrowdLevel[] = ["empty", "comfortable", "packed"];
+
 export const NOISE_LABELS: Record<NoiseLevel, string> = {
   quiet: "Quiet",
   conversational: "Conversational",
@@ -140,6 +145,10 @@ export interface LogTaps {
   got_a_table?: boolean;
   would_camp?: boolean;
 }
+
+/** The only tap keys that may ever be persisted, all strictly boolean. */
+export const LOG_TAP_KEYS = ["found_outlet", "wifi_held_up", "got_a_table", "would_camp"] as const;
+export type LogTapKey = (typeof LOG_TAP_KEYS)[number];
 
 export interface Log {
   id: string;

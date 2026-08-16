@@ -75,6 +75,12 @@ export interface ShopDetail {
   logs: Log[];
 }
 
+/** The canonical ranking joined to its shops, each with its lead photo —
+ *  the comparison screen judges a photograph against a photograph. */
+export interface RankedEntry extends RankingEntry {
+  shop: Shop & { photo: string | null };
+}
+
 export interface ProfileView {
   user: User;
   is_self: boolean;
@@ -114,7 +120,7 @@ export const api = {
   verifyShop: (id: string) => post<{ ok: true }>(`/api/shops/${encodeURIComponent(id)}/verify`),
   searchPlaces: (q: string) => req<{ results: Shop[] }>(`/api/places/search?q=${encodeURIComponent(q)}`),
 
-  myRanking: () => req<{ entries: Array<RankingEntry & { shop: Shop }> }>("/api/rankings/me"),
+  myRanking: () => req<{ entries: RankedEntry[] }>("/api/rankings/me"),
   insertRanking: (input: {
     shop_id: string;
     position: number;
@@ -132,6 +138,14 @@ export const api = {
     line?: string | null;
     photo?: string | null;
   }) => post<{ log: Log }>("/api/logs", input),
+
+  // The signed-in user's own logs, newest first — /rank reads it to offer a
+  // resume path for a log whose insertion was abandoned.
+  myLogs: () => req<{ logs: Log[] }>("/api/logs/mine"),
+
+  // Posted as a data URL; the server sniffs the bytes and names the file, so
+  // what comes back is the only path that may be sent as a log photo.
+  uploadPhoto: (dataUrl: string) => post<{ path: string }>("/api/uploads", { data: dataUrl }),
 
   myLists: () => req<{ lists: List[] }>("/api/lists/mine"),
   list: (id: string) => req<ListView>(`/api/lists/${encodeURIComponent(id)}`),

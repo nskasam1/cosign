@@ -8,15 +8,17 @@ import { join } from "node:path";
 import type { DatabaseSync } from "node:sqlite";
 import type { IntentTag, ShareToken } from "../../src/types/cosign.ts";
 import { INTENT_TAG_LABELS_SHORT } from "../../src/types/cosign.ts";
+import { PALETTES, initialsOf, paletteOf, type Palette } from "../../src/lib/palette.ts";
 import { APP_ROOT } from "../db/db.ts";
 import * as social from "../repo/social.ts";
 import * as shopsRepo from "../repo/shops.ts";
 import * as rank from "../repo/rank.ts";
 import * as listsRepo from "../repo/lists.ts";
 
-/** The six imagery treatments in seed/images/generate.mjs. */
-export const PALETTES = ["warm", "amber", "rose", "moss", "slate", "clay"] as const;
-export type Palette = (typeof PALETTES)[number];
+// The place-palette treatment is shared with the SPA now (src/lib/palette.ts).
+// Re-exported so the SSR templates keep reading it from here; never import
+// this file from src/, it pulls in node:fs and node:sqlite.
+export { PALETTES, type Palette };
 
 export interface ShareEntry {
   position: number;
@@ -57,24 +59,6 @@ export interface ShareData {
 }
 
 const money = (n: number) => `$${n.toFixed(2)}`;
-
-/** "Cardinal & Vine" -> "C&V"; "Terrazzo" -> "TZ". */
-export function initialsOf(name: string): string {
-  const words = name.replace(/^The\s+/i, "").split(/\s+/).filter(Boolean);
-  if (words.length === 1) {
-    const w = words[0];
-    return (w[0] + (w.slice(1).match(/[aeiou]?([bcdfghjklmnpqrstvwxyz])/i)?.[1] ?? w[1] ?? "")).toUpperCase();
-  }
-  return words
-    .map((w) => (w === "&" ? "&" : w[0]))
-    .join("")
-    .slice(0, 3)
-    .toUpperCase();
-}
-
-function paletteOf(raw: string | null): Palette {
-  return (PALETTES as readonly string[]).includes(raw ?? "") ? (raw as Palette) : "warm";
-}
 
 export function loadShareData(db: DatabaseSync, token: ShareToken): ShareData | null {
   const author = social.userById(db, token.user_id);

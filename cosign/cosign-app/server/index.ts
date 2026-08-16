@@ -9,9 +9,11 @@ import { serve } from "@hono/node-server";
 import { serveStatic } from "@hono/node-server/serve-static";
 import { Hono } from "hono";
 import { compress } from "hono/compress";
-import { readFileSync, existsSync } from "node:fs";
+import { randomUUID } from "node:crypto";
+import { readFileSync, existsSync, mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { getDb, APP_ROOT } from "./db/db.ts";
+import { pathToFileURL } from "node:url";
+import { getDb, APP_ROOT, DATA_DIR } from "./db/db.ts";
 import { COOKIE_NAME, clearSessionCookie, makeSessionCookie, verifySession } from "./auth/cookie.ts";
 import * as social from "./repo/social.ts";
 import * as shops from "./repo/shops.ts";
@@ -25,7 +27,15 @@ import { renderOgImage } from "./pages/og.ts";
 import { isStale } from "../src/lib/timeBucket.ts";
 import { phaseForDate, semesterForDate, type AcademicCalendar } from "../src/lib/calendar.ts";
 import { CAMPUS_CENTER, haversineMeters, walkingMinutes } from "../src/lib/geo.ts";
-import { INTENT_TAGS, type IntentTag } from "../src/types/cosign.ts";
+import {
+  CROWD_LEVELS,
+  INTENT_TAGS,
+  NOISE_LEVELS,
+  type CrowdLevel,
+  type IntentTag,
+  type LogTaps,
+  type NoiseLevel,
+} from "../src/types/cosign.ts";
 
 const PROD = process.argv.includes("--prod") || process.env.NODE_ENV === "production";
 const PORT = Number(process.env.PORT ?? 8787);
@@ -49,6 +59,18 @@ app.use("*", async (c, next) => {
 });
 
 const me = (c: { get: (k: "userId") => string | null }) => c.get("userId");
+
+// ── errors ──────────────────────────────────────────────────────────────────
+// A malformed JSON body and a constraint a route guard missed are both the
+// caller's problem and get the same opaque 400 — the constraint text names
+// columns. Anything else is ours: logged here, never described to the client.
+app.onError((err, c) => {
+  if (err instanceof SyntaxError || /SQLITE_CONSTRAINT|CHECK constraint|FOREIGN KEY/i.test(err.message)) {
+    return c.json({ error: "bad request" }, 400);
+  }
+  console.error(err);
+  return c.json({ error: "server error" }, 500);
+});
 
 // ── auth: dev user-switcher over seeded users (signed cookie) ───────────────
 app.get("/api/me", (c) => {
@@ -163,10 +185,12 @@ app.get("/api/rankings/me", (c) => {
   const uid = me(c);
   if (!uid) return c.json({ error: "sign in first" }, 401);
   const db = getDb();
-  const entries = rank.rankingOf(db, uid).map((e) => ({
-    ...e,
-    shop: shops.shopById(db, e.shop_id),
-  }));
+  const entries = rank.rankingOf(db, uid).map((e) => {
+    const shop = shops.shopById(db, e.shop_id);
+    // with the lead photo folded in, a comparison is a photograph against a
+    // photograph rather than two names
+    return { ...e, shop: shop && { ...shop, photo: shops.photosOf(db, e.shop_id)[0]?.path ?? null } };
+  });
   return c.json({ entries });
 });
 
@@ -179,7 +203,9 @@ app.post("/api/rankings/insert", async (c) => {
     comparisons: Array<{ winner_shop_id: string; loser_shop_id: string }>;
   }>();
   const db = getDb();
-  if (!shops.shopById(db, body.shop_id)) return c.json({ error: "unknown shop" }, 404);
+  if (typeof body?.shop_id !== "string" || !shops.shopById(db, body.shop_id)) {
+    return c.json({ error: "unknown shop" }, 404);
+  }
   const current = rank.rankingOf(db, uid);
   // re-ranking an existing shop doesn't grow the list, so it has one fewer slot
   const alreadyRanked = current.some((e) => e.shop_id === body.shop_id);
@@ -187,7 +213,22 @@ app.post("/api/rankings/insert", async (c) => {
   if (!(Number.isInteger(body.position) && body.position >= 1 && body.position <= maxPosition)) {
     return c.json({ error: "bad position" }, 400);
   }
-  rank.insertIntoRanking(db, uid, body.shop_id, body.position, body.comparisons ?? []);
+  // Every tap is checked before the transaction opens. insertIntoRanking
+  // writes the entries and the audit log together, so one unknown shop id
+  // hits a foreign key halfway through and rolls the whole re-order back
+  // with nothing to tell the caller why.
+  const comparisons = Array.isArray(body.comparisons) ? body.comparisons : [];
+  for (const cmp of comparisons) {
+    if (typeof cmp?.winner_shop_id !== "string" || typeof cmp?.loser_shop_id !== "string") {
+      return c.json({ error: "bad comparison" }, 400);
+    }
+    if (cmp.winner_shop_id === cmp.loser_shop_id) return c.json({ error: "bad comparison" }, 400);
+    if (!shops.shopById(db, cmp.winner_shop_id) || !shops.shopById(db, cmp.loser_shop_id)) {
+      return c.json({ error: "unknown shop in comparison" }, 400);
+    }
+  }
+  rank.insertIntoRanking(db, uid, body.shop_id, body.position, comparisons);
+  analytics.track(db, uid, "ranking_inserted", { shop_id: body.shop_id, comparisons: comparisons.length });
   return c.json({ entries: rank.rankingOf(db, uid) }, 201);
 });
 
@@ -211,25 +252,106 @@ app.get("/api/users/:username", (c) => {
 });
 
 // ── logs ────────────────────────────────────────────────────────────────────
+
+/**
+ * A log photo is either one of the 40 committed seed images or a file this
+ * server itself wrote in POST /api/uploads. The column is rendered verbatim
+ * on pages, so an arbitrary client string is a path of the caller's choosing
+ * into someone else's list.
+ */
+const SEED_PHOTO = /^\/img\/logs\/log-\d{3}\.svg$/;
+const UPLOADED_PHOTO = /^\/u\/[A-Za-z0-9_-]{8,64}\.(?:jpg|png|webp)$/;
+const isLogPhoto = (p: unknown): p is string =>
+  typeof p === "string" && (SEED_PHOTO.test(p) || UPLOADED_PHOTO.test(p));
+
+app.get("/api/logs/mine", (c) => {
+  const uid = me(c);
+  if (!uid) return c.json({ error: "sign in first" }, 401);
+  return c.json({ logs: logsRepo.logsOfUser(getDb(), uid, uid, true) });
+});
+
 app.post("/api/logs", async (c) => {
   const uid = me(c);
   if (!uid) return c.json({ error: "sign in first" }, 401);
   const body = await c.req.json<{
     shop_id: string;
     intent_tag: IntentTag;
-    noise?: "quiet" | "conversational" | "loud" | null;
-    crowd?: "empty" | "comfortable" | "packed" | null;
-    taps?: Record<string, boolean>;
+    noise?: NoiseLevel | null;
+    crowd?: CrowdLevel | null;
+    taps?: LogTaps;
     line?: string | null;
     photo?: string | null;
   }>();
   const db = getDb();
-  if (!shops.shopById(db, body.shop_id)) return c.json({ error: "unknown shop" }, 404);
+  if (typeof body?.shop_id !== "string" || !shops.shopById(db, body.shop_id)) {
+    return c.json({ error: "unknown shop" }, 404);
+  }
   if (!INTENT_TAGS.includes(body.intent_tag)) return c.json({ error: "bad intent tag" }, 400);
+  // noise/crowd are labeled enums (decision 7). Unguarded they fall through
+  // to the table's CHECK and surface as a 500 for what is a bad request.
+  if (body.noise != null && !NOISE_LEVELS.includes(body.noise)) return c.json({ error: "bad noise" }, 400);
+  if (body.crowd != null && !CROWD_LEVELS.includes(body.crowd)) return c.json({ error: "bad crowd" }, 400);
   if (body.line && body.line.length > 140) return c.json({ error: "line too long" }, 400);
-  const log = logsRepo.createLog(db, calendar, { user_id: uid, ...body });
+  if (body.photo != null && !isLogPhoto(body.photo)) return c.json({ error: "bad photo" }, 400);
+  // Each field by name: the body is spread nowhere near user_id, so a signed-in
+  // client cannot attribute a log to somebody else. visibility is never taken
+  // from the client either — friends-only is the default and a share token is
+  // the only way anything goes public (decision 12).
+  const log = logsRepo.createLog(db, calendar, {
+    user_id: uid,
+    shop_id: body.shop_id,
+    intent_tag: body.intent_tag,
+    noise: body.noise ?? null,
+    crowd: body.crowd ?? null,
+    taps: body.taps,
+    line: body.line ?? null,
+    photo: body.photo ?? null,
+  });
   analytics.track(db, uid, "log_created", { shop_id: body.shop_id });
   return c.json({ log }, 201);
+});
+
+// ── uploads ─────────────────────────────────────────────────────────────────
+// The optional log photo, and the only surface in the app that writes a file
+// rather than a row. Nothing about the file comes from the caller: the bytes
+// are sniffed, the name is generated here, and it lands under server/data/
+// (gitignored) — local, like everything else.
+const UPLOAD_DIR = join(DATA_DIR, "uploads");
+const MAX_PHOTO_BYTES = 2_000_000;
+const PNG_MAGIC = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
+
+mkdirSync(UPLOAD_DIR, { recursive: true });
+
+/** The declared mime type is a claim; the first bytes are the evidence. */
+function sniffImage(buf: Buffer): "jpg" | "png" | "webp" | null {
+  if (buf.length >= 3 && buf[0] === 0xff && buf[1] === 0xd8 && buf[2] === 0xff) return "jpg";
+  if (buf.length >= 8 && buf.subarray(0, 8).equals(PNG_MAGIC)) return "png";
+  if (
+    buf.length >= 12 &&
+    buf.subarray(0, 4).toString("latin1") === "RIFF" &&
+    buf.subarray(8, 12).toString("latin1") === "WEBP"
+  ) {
+    return "webp";
+  }
+  return null;
+}
+
+app.post("/api/uploads", async (c) => {
+  const uid = me(c);
+  if (!uid) return c.json({ error: "sign in first" }, 401);
+  const body = await c.req.json<{ data?: string }>();
+  const m =
+    typeof body?.data === "string"
+      ? body.data.match(/^data:image\/(?:jpeg|png|webp);base64,([A-Za-z0-9+/=\s]+)$/)
+      : null;
+  if (!m) return c.json({ error: "bad image" }, 400);
+  const bytes = Buffer.from(m[1], "base64");
+  if (bytes.length > MAX_PHOTO_BYTES) return c.json({ error: "photo too large" }, 413);
+  const ext = sniffImage(bytes);
+  if (!ext) return c.json({ error: "not an image" }, 400);
+  const file = `${randomUUID().replace(/-/g, "")}.${ext}`;
+  writeFileSync(join(UPLOAD_DIR, file), bytes);
+  return c.json({ path: `/u/${file}` }, 201);
 });
 
 // ── lists ───────────────────────────────────────────────────────────────────
@@ -364,6 +486,17 @@ app.use(
   serveStatic({ root: "./seed/images", rewriteRequestPath: (p) => p.replace(/^\/img/, ""), onFound: immutable }),
 );
 
+// Uploaded log photos. Same treatment as seed imagery — the filename is a
+// random UUID this server chose, so the bytes behind it never change.
+app.use(
+  "/u/*",
+  serveStatic({
+    root: "./server/data/uploads",
+    rewriteRequestPath: (p) => p.replace(/^\/u/, ""),
+    onFound: immutable,
+  }),
+);
+
 // In dev the SSR pages are served from here (:8787) while Vite owns :8080, so
 // this server has to serve the fonts itself; in prod they come out of dist/.
 if (!PROD) {
@@ -377,28 +510,33 @@ if (PROD) {
   app.get("*", (c) => c.html(readFileSync(join(APP_ROOT, "dist", "index.html"), "utf-8")));
 }
 
-if (!existsSync(join(APP_ROOT, "server", "data", "cosign.db")) && !process.env.COSIGN_DB) {
-  console.error("No database found — run `npm run seed` first.");
-  process.exit(1);
-}
-
-const server = serve({ fetch: app.fetch, port: PORT }, (info) => {
-  console.log(`cosign server ${PROD ? "(prod)" : "(dev)"} on http://localhost:${info.port}`);
-});
-
-// A second instance must never look like it started. Without this it exits
-// quietly, the stale process keeps answering, and every check afterwards
-// measures the previous build.
-server.on("error", (err: NodeJS.ErrnoException) => {
-  if (err.code === "EADDRINUSE") {
-    console.error(
-      `Port ${PORT} is already in use — another cosign server is still running.\n` +
-        `Stop it first (PowerShell: Get-NetTCPConnection -LocalPort ${PORT} -State Listen).`,
-    );
-  } else {
-    console.error(err);
+// Only `tsx server/index.ts` listens. Tests import this module for app.fetch
+// and must not bind the port out from under a running dev server — or die on
+// the EADDRINUSE guard below when one is already up.
+if (process.argv[1] && pathToFileURL(process.argv[1]).href === import.meta.url) {
+  if (!existsSync(join(APP_ROOT, "server", "data", "cosign.db")) && !process.env.COSIGN_DB) {
+    console.error("No database found — run `npm run seed` first.");
+    process.exit(1);
   }
-  process.exit(1);
-});
+
+  const server = serve({ fetch: app.fetch, port: PORT }, (info) => {
+    console.log(`cosign server ${PROD ? "(prod)" : "(dev)"} on http://localhost:${info.port}`);
+  });
+
+  // A second instance must never look like it started. Without this it exits
+  // quietly, the stale process keeps answering, and every check afterwards
+  // measures the previous build.
+  server.on("error", (err: NodeJS.ErrnoException) => {
+    if (err.code === "EADDRINUSE") {
+      console.error(
+        `Port ${PORT} is already in use — another cosign server is still running.\n` +
+          `Stop it first (PowerShell: Get-NetTCPConnection -LocalPort ${PORT} -State Listen).`,
+      );
+    } else {
+      console.error(err);
+    }
+    process.exit(1);
+  });
+}
 
 export { app };

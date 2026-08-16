@@ -62,6 +62,15 @@ export function insertIntoRanking(
     for (const c of comparisons) {
       insCmp.run(randomUUID(), userId, c.winner_shop_id, c.loser_shop_id, existing ? "reorder" : "insertion", now);
     }
+    // The ranking's own row, in the same transaction as the entries it
+    // describes. It carries visibility (decision 9) — without it a first-ever
+    // insertion is friends-only only because no row says otherwise — and the
+    // "last put in order" stamp the share page reads. The upsert touches
+    // updated_at alone: a ranking already made public stays public.
+    db.prepare(
+      `INSERT INTO rankings (user_id, visibility, updated_at) VALUES (?, 'friends', ?)
+         ON CONFLICT(user_id) DO UPDATE SET updated_at = excluded.updated_at`,
+    ).run(userId, now);
     db.exec("COMMIT");
   } catch (e) {
     db.exec("ROLLBACK");
