@@ -14,7 +14,19 @@ import { mkdirSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
-const EVIDENCE = join(dirname(fileURLToPath(import.meta.url)), "..", "..", "..", "evidence", "phase2");
+// Phase 2 by default, so a bare `npx playwright test share.spec.ts` still
+// reproduces the committed Phase 2 record. It follows COSIGN_EVIDENCE when a
+// later phase re-runs this suite as a regression check — otherwise that run
+// would quietly rewrite Phase 2's accepted screenshots and OG image from
+// whatever database it happened to be pointed at.
+const EVIDENCE = join(
+  dirname(fileURLToPath(import.meta.url)),
+  "..",
+  "..",
+  "..",
+  "evidence",
+  process.env.COSIGN_EVIDENCE ?? "phase2",
+);
 mkdirSync(EVIDENCE, { recursive: true });
 
 // Seeded tokens (seed/share-tokens.json).
