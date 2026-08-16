@@ -1,6 +1,6 @@
 // The dev user-switcher — auth v1's entire sign-in surface. Pick a seeded
 // user, or head to onboarding to make a new one. Replaces the deleted
-// email/password LoginScreen.
+// email/password LoginScreen; there is no password anywhere in this product.
 
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
@@ -19,50 +19,51 @@ const UserSwitcher = () => {
   }, []);
 
   return (
-    <div className="min-h-screen bg-background text-foreground flex items-center justify-center p-6">
-      <div className="w-full max-w-sm">
-        <img src="/logo.png" alt="Cosign" className="h-12 mx-auto mb-2" />
-        <h1 className="text-xl font-semibold text-center mb-1">Who's this?</h1>
-        <p className="text-sm text-muted-foreground text-center mb-6">
-          Dev build — pick a seeded user. No passwords here.
-        </p>
-        <div className="space-y-2">
-          {users.map((u) => (
-            <button
-              key={u.id}
-              disabled={busy !== null}
-              onClick={async () => {
-                setBusy(u.id);
-                try {
-                  await switchTo(u.id);
-                } finally {
-                  setBusy(null);
-                }
-              }}
-              className="w-full flex items-center gap-3 rounded-2xl bg-card border border-border p-3 text-left hover:border-primary/60 min-h-[44px]"
-            >
-              {u.avatar ? (
-                <img src={u.avatar} alt="" className="w-10 h-10 rounded-full" />
-              ) : (
-                <span className="w-10 h-10 rounded-full bg-muted grid place-items-center text-sm">
-                  {u.display_name[0]}
-                </span>
-              )}
-              <span>
-                <span className="block font-medium">{u.display_name}</span>
-                <span className="block text-xs text-muted-foreground">@{u.username}</span>
+    <main data-switcher className="cs-wrap pb-16 pt-[max(var(--space-8),env(safe-area-inset-top))]">
+      <p className="cs-caps border-b border-rule pb-4 text-gold">Cosign · dev build</p>
+      <h1 className="cs-display mt-6 text-3xl text-ink sm:text-4xl">Who's this?</h1>
+      <p className="mt-3 text-sm text-line">
+        Pick a seeded person. There are no passwords here — this whole thing runs on your machine.
+      </p>
+
+      <div className="mt-6">
+        {users.map((u) => (
+          <button
+            key={u.id}
+            type="button"
+            data-user={u.username}
+            disabled={busy !== null}
+            onClick={async () => {
+              setBusy(u.id);
+              try {
+                await switchTo(u.id);
+              } finally {
+                setBusy(null);
+              }
+            }}
+            className="cs-row grid grid-cols-[2.5rem_1fr] items-center gap-x-4 py-4"
+          >
+            {u.avatar ? (
+              <img src={u.avatar} alt="" width={40} height={40} className="h-10 w-10 rounded-full bg-surface" />
+            ) : (
+              <span className="cs-display grid h-10 w-10 place-items-center rounded-full bg-surface text-gold">
+                {u.display_name[0]}
               </span>
-            </button>
-          ))}
-        </div>
-        <button
-          onClick={() => navigate("/onboarding")}
-          className="w-full mt-4 text-sm text-primary underline-offset-4 hover:underline min-h-[44px]"
-        >
-          New here? Make a profile
+            )}
+            <span className="min-w-0 text-left">
+              <span className="cs-display block truncate text-lg text-line">{u.display_name}</span>
+              {u.taste_line && <span className="mt-1 block truncate text-xs text-muted">{u.taste_line}</span>}
+            </span>
+          </button>
+        ))}
+      </div>
+
+      <div className="mt-8 border-t border-rule-strong pt-6">
+        <button type="button" onClick={() => navigate("/onboarding")} className="cs-pill-ghost">
+          New here — make a profile
         </button>
       </div>
-    </div>
+    </main>
   );
 };
 

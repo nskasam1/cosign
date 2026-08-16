@@ -32,7 +32,7 @@ const Receipt = ({ items, timeBucket, semester }: ReceiptProps) => (
   >
     {items.map((item, i) => (
       <span key={`${item.kind}-${item.text}`} data-receipt-item={item.kind}>
-        {i > 0 && <span className="text-rule-strong"> · </span>}
+        {i > 0 && <span className="text-muted"> · </span>}
         <span className={item.kind === "said" ? "text-gold" : undefined}>{item.text}</span>
       </span>
     ))}

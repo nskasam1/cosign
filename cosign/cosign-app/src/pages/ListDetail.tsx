@@ -1,11 +1,13 @@
 import { useCallback, useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
-import { ListOrdered, Plus, X } from "lucide-react";
 import { api, type ListView, type ShopSummary } from "@/lib/api";
-import EmptyState from "@/components/EmptyState";
+import { paletteOf, paletteStyle } from "@/lib/palette";
+import PlacePlate from "@/components/log/PlacePlate";
+import Nothing from "@/components/Nothing";
 
-// List detail. Friends-only by default — the server 404s this for anyone
-// outside the owner's circle unless the list is public (decision 12).
+// A list (distinct from the canonical ranking). Friends-only by default —
+// the server 404s this for anyone outside the owner's circle unless the list
+// is public (decision 12), so there is nothing to hide client-side.
 const ListDetail = () => {
   const { listId } = useParams();
   const [data, setData] = useState<ListView | null>(null);
@@ -47,20 +49,27 @@ const ListDetail = () => {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-screen">
-        <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
-      </div>
+      <main data-list className="cs-wrap flex min-h-[60vh] items-center justify-center">
+        <p className="cs-caps text-muted">Opening…</p>
+      </main>
     );
   }
 
   if (!data) {
     return (
-      <EmptyState
-        icon={<ListOrdered className="w-6 h-6" />}
-        title="This list isn't yours to see"
-        description="It may be friends-only, or the link is broken. Lists open up only when their owner shares them."
-        action={<Link to="/" className="text-sm text-primary font-semibold">Back home</Link>}
-      />
+      <main data-list data-state="missing" className="cs-wrap pt-6">
+        <Nothing
+          kicker="Not yours to see"
+          standalone
+          title="This list is friends-only."
+          body="Lists open up only when their owner sends a link. If you think you should have this one, ask them — that's the whole mechanism, and it's deliberate."
+          action={
+            <Link to="/" className="cs-pill-ghost">
+              Back home
+            </Link>
+          }
+        />
+      </main>
     );
   }
 
@@ -68,33 +77,62 @@ const ListDetail = () => {
   const inList = new Set(items.map((i) => i.shop_id));
 
   return (
-    <div className="min-h-screen px-5 py-8 max-w-md mx-auto">
-      <header className="mb-6">
-        <h1 className="text-2xl font-black text-foreground">{list.title}</h1>
-        <p className="text-xs text-muted-foreground">
-          {list.is_collaborative ? "Collaborative · " : ""}
-          {list.visibility === "public" ? "Public" : "Friends only"}
+    <main data-list data-list-id={list.id} className="cs-wrap pt-[max(var(--space-5),env(safe-area-inset-top))]">
+      <div className="flex items-baseline justify-between gap-4 border-b border-rule pb-4">
+        <p className="cs-caps text-gold">Cosign · a list</p>
+        <p className="cs-caps text-right text-muted">
+          {list.is_collaborative ? "collaborative · " : ""}
+          {list.visibility === "public" ? "public" : "friends only"}
         </p>
-      </header>
+      </div>
+
+      <h1 className="cs-display mt-5 text-balance text-3xl text-ink sm:text-4xl">{list.title}</h1>
 
       {items.length === 0 ? (
-        <EmptyState
-          icon={<ListOrdered className="w-6 h-6" />}
-          title="Empty list, full of promise"
-          description={can_edit ? "Add the first place — every good list starts with one strong opinion." : "Nothing here yet."}
-        />
+        <div className="mt-8">
+          <Nothing
+            kicker="Empty"
+            title="Nothing on it yet."
+            body={
+              can_edit
+                ? "Add the first place. A list of one strong opinion is more use to a friend than a list of twenty hedged ones."
+                : "The owner hasn't added anywhere yet."
+            }
+          />
+        </div>
       ) : (
-        <ol className="space-y-2">
+        <ol className="mt-6">
           {items.map((it) => (
-            <li key={it.shop_id} className="flex items-center gap-3 rounded-2xl bg-card border border-border p-3">
-              <span className="text-primary font-black w-6 text-right">{it.position}</span>
-              <Link to={`/shop/${it.shop.slug}`} className="flex-1 min-w-0">
-                <span className="block text-sm font-semibold text-foreground truncate">{it.shop.name}</span>
-                {it.note && <span className="block text-xs text-muted-foreground truncate">{it.note}</span>}
+            <li key={it.shop_id} className="relative">
+              <Link
+                to={`/shop/${it.shop.slug}`}
+                data-item
+                data-shop-id={it.shop_id}
+                style={paletteStyle(paletteOf(it.shop.palette))}
+                className="cs-row grid grid-cols-[2.1rem_3.5rem_1fr] items-center gap-x-3 py-4 pr-16"
+              >
+                <span className="cs-display cs-figures text-right text-2xl text-[hsl(var(--pal))]">
+                  {it.position}
+                </span>
+                <PlacePlate name={it.shop.name} photo={null} palette={it.shop.palette} size={56} />
+                <span className="min-w-0">
+                  <span className="cs-display block truncate text-lg text-ink">{it.shop.name}</span>
+                  {it.note && <span className="mt-1 block truncate text-xs text-muted">{it.note}</span>}
+                </span>
               </Link>
+              {/* `.cs-word` sets a 44px minimum HEIGHT and nothing about
+                  width, and "off" at 11px is 40px wide — under the target the
+                  brief mandates. The padding is what makes it a target, not
+                  the word. */}
               {can_edit && (
-                <button onClick={() => remove(it.shop_id)} aria-label={`Remove ${it.shop.name}`} className="p-2 text-muted-foreground">
-                  <X className="w-4 h-4" />
+                <button
+                  type="button"
+                  data-remove
+                  onClick={() => remove(it.shop_id)}
+                  className="cs-caps absolute bottom-0 right-0 top-0 min-w-[var(--tap)] px-4 text-muted"
+                >
+                  <span className="sr-only">Take {it.shop.name} off this list</span>
+                  <span aria-hidden="true">off</span>
                 </button>
               )}
             </li>
@@ -103,36 +141,33 @@ const ListDetail = () => {
       )}
 
       {can_edit && !adding && (
-        <button
-          onClick={openPicker}
-          className="mt-6 w-full rounded-xl border border-dashed border-border text-sm text-muted-foreground p-3 flex items-center justify-center gap-2 min-h-[44px] hover:border-primary/60 hover:text-primary"
-        >
-          <Plus className="w-4 h-4" /> Add a place
+        <button type="button" data-add-place onClick={openPicker} className="cs-pill-ghost mt-8">
+          Add a place
         </button>
       )}
 
       {adding && (
-        <div className="mt-6">
-          <h2 className="text-sm font-semibold text-foreground mb-2">Pick a place</h2>
-          <div className="grid gap-2 max-h-80 overflow-y-auto">
+        <section className="mt-8 border-t border-rule-strong pt-5">
+          <h2 className="cs-caps text-gold">Which one?</h2>
+          <div className="mt-2 max-h-96 overflow-y-auto">
             {shops
               .filter((s) => !inList.has(s.id))
               .map((s) => (
-                <button
-                  key={s.id}
-                  onClick={() => add(s.id)}
-                  className="rounded-2xl bg-card border border-border p-3 text-left text-sm font-semibold text-foreground hover:border-primary/60 min-h-[44px]"
-                >
-                  {s.name}
+                <button key={s.id} type="button" onClick={() => add(s.id)} className="cs-row py-4">
+                  <span className="cs-display block text-lg text-line">{s.name}</span>
                 </button>
               ))}
           </div>
-          <button onClick={() => setAdding(false)} className="mt-3 text-xs text-muted-foreground underline-offset-4 hover:underline">
-            Never mind
+          <button
+            type="button"
+            onClick={() => setAdding(false)}
+            className="cs-word mt-3 text-xs text-muted underline underline-offset-4"
+          >
+            never mind
           </button>
-        </div>
+        </section>
       )}
-    </div>
+    </main>
   );
 };
 

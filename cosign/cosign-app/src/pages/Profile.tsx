@@ -1,15 +1,17 @@
 import { useCallback, useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
-import { Share2, User as UserIcon, Link2, Copy, Ban } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { api, type ProfileView } from "@/lib/api";
+import { paletteOf, paletteStyle } from "@/lib/palette";
 import { track } from "@/lib/analytics";
 import type { ShareToken } from "@/types/cosign";
-import EmptyState from "@/components/EmptyState";
+import PlacePlate from "@/components/log/PlacePlate";
+import Nothing from "@/components/Nothing";
 
-// In-app profile: the owner's view of their ranking + share-link controls.
-// The public artifact is the SSR page at /s/:token — creating and revoking
-// those tokens happens here (decision 12: the share link is the opt-in).
+// In-app profile: the owner's view of their ranking and their share links.
+// The public artifact is the SSR page at /s/:token — minting and revoking
+// those tokens happens here, because a share link is the per-list opt-in
+// (decision 12) and it has to be as easy to take back as to make.
 const Profile = () => {
   const { username } = useParams();
   const { user: viewer } = useAuth();
@@ -21,6 +23,7 @@ const Profile = () => {
 
   const load = useCallback(() => {
     if (!username) return;
+    setLoading(true);
     api
       .profile(username)
       .then((d) => {
@@ -54,74 +57,92 @@ const Profile = () => {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-screen">
-        <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
-      </div>
+      <main data-profile className="cs-wrap flex min-h-[60vh] items-center justify-center">
+        <p className="cs-caps text-muted">Opening…</p>
+      </main>
     );
   }
 
   if (!data) {
     return (
-      <EmptyState
-        icon={<UserIcon className="w-6 h-6" />}
-        title="No one by that name"
-        description="Check the username, or maybe they haven't made a profile yet."
-        action={<Link to="/" className="text-sm text-primary font-semibold">Back home</Link>}
-      />
+      <main data-profile data-state="missing" className="cs-wrap pt-6">
+        <Nothing
+          kicker="No one by that name"
+          standalone
+          title="Nobody here goes by that."
+          body="Check the spelling, or they may not have made a profile yet. Cosign has no directory to browse — you get here from a link or a list."
+          action={
+            <Link to="/" className="cs-pill-ghost">
+              Back home
+            </Link>
+          }
+        />
+      </main>
     );
   }
 
   const { user, entries, is_self, can_see_ranking } = data;
+  const first = user.display_name.split(" ")[0];
   const rankingTokens = tokens.filter((t) => t.kind === "ranking");
   // Revoking is meant to be reversible: you can always mint a fresh link.
-  const activeRankingTokens = rankingTokens.filter((t) => !t.revoked_at);
+  const live = rankingTokens.filter((t) => !t.revoked_at);
 
   return (
-    <div className="min-h-screen px-5 py-8 max-w-md mx-auto">
-      <header className="flex items-center gap-3 mb-6">
+    <main data-profile data-username={user.username} className="cs-wrap pt-[max(var(--space-5),env(safe-area-inset-top))]">
+      <div className="flex items-baseline justify-between gap-4 border-b border-rule pb-4">
+        <p className="cs-caps text-gold">Cosign · {is_self ? "you" : "a person"}</p>
+        <p className="cs-caps text-right text-muted">@{user.username}</p>
+      </div>
+
+      <div className="mt-5 flex items-center gap-4">
         {user.avatar ? (
-          <img src={user.avatar} alt="" className="w-14 h-14 rounded-full" />
+          <img src={user.avatar} alt="" width={56} height={56} className="h-14 w-14 flex-none rounded-full bg-surface" />
         ) : (
-          <span className="w-14 h-14 rounded-full bg-muted grid place-items-center text-xl">{user.display_name[0]}</span>
+          <span className="grid h-14 w-14 flex-none place-items-center rounded-full bg-surface text-xl text-gold cs-display">
+            {first[0]}
+          </span>
         )}
-        <div>
-          <h1 className="text-xl font-black text-foreground">{user.display_name}</h1>
-          <p className="text-xs text-muted-foreground">@{user.username} · {data.logs_count} logs</p>
-          {user.taste_line && <p className="text-sm text-muted-foreground italic mt-0.5">{user.taste_line}</p>}
+        <div className="min-w-0">
+          <h1 className="cs-display text-2xl text-ink sm:text-3xl">{user.display_name}</h1>
+          <p className="cs-caps mt-1 text-muted">
+            {data.logs_count} {data.logs_count === 1 ? "visit" : "visits"} written down
+            {entries.length > 0 && ` · ${entries.length} in order`}
+          </p>
         </div>
-      </header>
+      </div>
+
+      {user.taste_line && <p className="mt-4 text-base text-line">“{user.taste_line}”</p>}
+      {user.signature_order && (
+        <p className="cs-caps mt-2 text-gold">Usually orders a {user.signature_order}</p>
+      )}
 
       {is_self && (
-        <section className="mb-8 rounded-2xl bg-card border border-border p-4">
-          <h2 className="text-sm font-semibold text-foreground mb-2 flex items-center gap-1">
-            <Share2 className="w-4 h-4 text-primary" /> Share your ranking
-          </h2>
-          <p className="text-xs text-muted-foreground mb-3">
-            A share link is the only way anyone outside your friends sees this list. Turn it off any time.
+        <section data-share className="mt-8 border-y border-rule-strong py-5">
+          <h2 className="cs-caps text-gold">Your share link</h2>
+          <p className="mt-2 text-sm text-line">
+            Your list is friends-only until you make one of these. A link is the whole opt-in — one page, no
+            login, nobody else's list on it — and turning it off closes the page for good.
           </p>
-          {activeRankingTokens.length === 0 && (
-            <button
-              onClick={createShare}
-              className="rounded-xl bg-primary text-primary-foreground text-sm font-semibold px-4 py-2.5 min-h-[44px]"
-            >
-              Make a share link
+          {live.length === 0 && (
+            <button type="button" data-make-share onClick={createShare} className="cs-pill mt-4">
+              Make a link
             </button>
           )}
-          <ul className="space-y-2">
+          <ul className="mt-3">
             {rankingTokens.map((t) => (
-              <li key={t.token} className="flex items-center gap-2 text-sm">
-                <Link2 className="w-4 h-4 text-muted-foreground flex-none" />
-                <span className={`truncate ${t.revoked_at ? "line-through text-muted-foreground" : "text-foreground"}`}>
+              <li key={t.token} className="flex flex-wrap items-center gap-x-4 gap-y-1 border-t border-rule py-3">
+                <span className={`min-w-0 flex-1 truncate text-sm ${t.revoked_at ? "text-muted line-through" : "text-line"}`}>
                   /s/{t.token}
                 </span>
-                {!t.revoked_at && (
+                {t.revoked_at ? (
+                  <span className="cs-caps flex-none text-muted">off</span>
+                ) : (
                   <>
-                    <button onClick={() => copy(t.token)} aria-label="Copy link" className="p-2 text-primary">
-                      <Copy className="w-4 h-4" />
+                    <button type="button" onClick={() => copy(t.token)} className="cs-word cs-caps flex-none text-ember-ink">
+                      {copied === t.token ? "copied" : "copy"}
                     </button>
-                    {copied === t.token && <span className="text-xs text-primary">copied</span>}
-                    <button onClick={() => revoke(t.token)} aria-label="Revoke link" className="p-2 text-muted-foreground">
-                      <Ban className="w-4 h-4" />
+                    <button type="button" onClick={() => revoke(t.token)} className="cs-word cs-caps flex-none text-muted">
+                      turn off
                     </button>
                   </>
                 )}
@@ -133,47 +154,69 @@ const Profile = () => {
 
       {can_see_ranking ? (
         entries.length > 0 ? (
-          <ol className="space-y-2">
+          <ol className="mt-8">
             {entries.map((e) => (
               <li key={e.shop_id}>
                 <Link
                   to={`/shop/${e.shop.slug}`}
-                  className="flex items-center gap-3 rounded-2xl bg-card border border-border p-3 hover:border-primary/60"
+                  data-entry
+                  data-position={e.position}
+                  style={paletteStyle(paletteOf(e.shop.palette))}
+                  className="cs-row grid grid-cols-[2.1rem_3.5rem_1fr] items-center gap-x-3 py-4"
                 >
-                  <span className="text-primary font-black w-6 text-right">{e.position}</span>
-                  <span className="text-sm font-semibold text-foreground">{e.shop.name}</span>
+                  <span className="cs-display cs-figures text-right text-2xl text-[hsl(var(--pal))]">
+                    {e.position}
+                  </span>
+                  <PlacePlate name={e.shop.name} photo={null} palette={e.shop.palette} size={56} />
+                  <span className="min-w-0">
+                    <span className="cs-display block truncate text-lg text-ink">{e.shop.name}</span>
+                    {e.shop.one_liner && (
+                      <span className="mt-1 block truncate text-xs text-muted">{e.shop.one_liner}</span>
+                    )}
+                  </span>
                 </Link>
               </li>
             ))}
           </ol>
         ) : (
-          <EmptyState
-            icon={<Share2 className="w-6 h-6" />}
-            title={is_self ? "Nothing ranked yet" : "Nothing ranked yet"}
-            description={
-              is_self
-                ? "Log a visit and rank your first place — your list starts with one honest call."
-                : `${user.display_name.split(" ")[0]} hasn't ranked anywhere yet.`
-            }
-            action={is_self ? <Link to="/rank" className="text-sm text-primary font-semibold">Start ranking</Link> : undefined}
-          />
+          <div className="mt-8">
+            <Nothing
+              kicker="Nothing in order yet"
+              title={is_self ? "A list of one is still a list." : `${first} hasn't put anywhere in order yet.`}
+              body={
+                is_self
+                  ? "Log a visit and the head-to-head starts on its own. Your first place needs no comparison at all — everything after it gets held up against what's already there."
+                  : "Nothing to see here yet, which is its own kind of honest."
+              }
+              action={
+                is_self ? (
+                  <Link to="/log" className="cs-pill">
+                    Log a visit
+                  </Link>
+                ) : undefined
+              }
+            />
+          </div>
         )
       ) : (
-        <EmptyState
-          icon={<UserIcon className="w-6 h-6" />}
-          title="Friends only"
-          description={`${user.display_name.split(" ")[0]}'s ranking is visible to friends. Ask them for their share link — that's the point of it.`}
-        />
+        <div className="mt-8">
+          <Nothing
+            kicker="Friends only"
+            title={`${first}'s list isn't public.`}
+            body={`Everything on Cosign is friends-only until somebody sends a link — that includes ${first}'s. Ask them for theirs; that's what it's for.`}
+          />
+        </div>
       )}
 
       {!viewer && (
-        <footer className="mt-10 text-center">
-          <Link to="/onboarding" className="text-sm text-primary underline-offset-4 hover:underline">
-            Make your own list on Cosign
+        <div className="mt-10 border-t border-rule-strong pt-6">
+          <p className="text-sm text-muted">A name and a school is the whole signup.</p>
+          <Link to="/onboarding" className="cs-pill-ghost mt-4">
+            Make your own list
           </Link>
-        </footer>
+        </div>
       )}
-    </div>
+    </main>
   );
 };
 

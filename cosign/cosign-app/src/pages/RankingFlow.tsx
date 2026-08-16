@@ -1,15 +1,16 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { ArrowLeft, Trophy } from "lucide-react";
 import { api } from "@/lib/api";
+import { paletteOf, paletteStyle } from "@/lib/palette";
 import type { Log, RankingEntry, Shop } from "@/types/cosign";
-import EmptyState from "@/components/EmptyState";
+import PlacePlate from "@/components/log/PlacePlate";
+import Nothing from "@/components/Nothing";
 
 // Read-only: the only sanctioned ranking input is binary-search insertion,
 // which runs at the end of the log flow (src/pages/PlaceFlow.tsx). This page
-// shows the list those comparisons have built — and, since Phase 3, offers a
-// way back into the head-to-head for a visit that was logged but never put
-// in order.
+// shows the list those comparisons built — set the way the share page sets
+// it, because it is the same object, and a person should recognise their own
+// list when they send it.
 const RankingFlow = () => {
   const navigate = useNavigate();
   const [entries, setEntries] = useState<Array<RankingEntry & { shop: Shop }>>([]);
@@ -49,49 +50,75 @@ const RankingFlow = () => {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-screen">
-        <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
-      </div>
+      <main data-ranking className="cs-wrap flex min-h-[60vh] items-center justify-center">
+        <p className="cs-caps text-muted">Reading your list…</p>
+      </main>
     );
   }
 
   return (
-    <div className="min-h-screen px-5 py-6 max-w-md mx-auto">
-      <div className="flex items-center gap-3 mb-6">
-        <button onClick={() => navigate(-1)} aria-label="Back">
-          <ArrowLeft className="w-5 h-5 text-muted-foreground" />
+    <main data-ranking className="cs-wrap pt-[max(var(--space-5),env(safe-area-inset-top))]">
+      <div className="flex items-baseline justify-between gap-4 border-b border-rule pb-4">
+        <button type="button" data-back onClick={() => navigate(-1)} className="cs-word cs-caps text-muted">
+          Back
         </button>
-        <h1 className="text-xl font-black text-foreground">My ranking</h1>
+        <p className="cs-caps text-right text-gold">Cosign · your list</p>
       </div>
 
+      <h1 className="cs-display mt-5 text-3xl text-ink sm:text-4xl">In order.</h1>
+      {entries.length > 0 && (
+        <p className="cs-caps mt-3 text-muted">
+          {entries.length} {entries.length === 1 ? "place" : "places"} · put here head to head, never scored
+        </p>
+      )}
+
       {failed ? (
-        <EmptyState
-          icon={<Trophy className="w-6 h-6" />}
-          title="Couldn't read your list"
-          description="That's this screen, not your ranking — nothing was lost. Try again in a moment."
-          action={
-            <button onClick={() => window.location.reload()} className="text-sm text-primary font-semibold">
-              Reload
-            </button>
-          }
-        />
+        <div className="mt-8">
+          <Nothing
+            kicker="Couldn't read it"
+            title="That's this screen, not your list."
+            body="Nothing was lost — every comparison you've ever tapped is still on disk. Try again in a moment."
+            action={
+              <button type="button" onClick={() => window.location.reload()} className="cs-pill-ghost">
+                Reload
+              </button>
+            }
+          />
+        </div>
       ) : entries.length === 0 ? (
-        <EmptyState
-          icon={<Trophy className="w-6 h-6" />}
-          title="No ranking yet"
-          description="Your list builds itself one honest head-to-head at a time — that starts when you log your first visit."
-          action={<Link to="/log" className="text-sm text-primary font-semibold">Log a visit</Link>}
-        />
+        <div className="mt-8">
+          <Nothing
+            kicker="Nothing in order yet"
+            title="A list starts with one honest call."
+            body="Log a visit and Cosign will hold it up against the next one — this place or that one, one question at a time. Nobody scores anything."
+            action={
+              <Link to="/log" className="cs-pill">
+                Log a visit
+              </Link>
+            }
+          />
+        </div>
       ) : (
-        <ol className="space-y-2">
+        <ol className="mt-6">
           {entries.map((e) => (
             <li key={e.shop_id}>
               <Link
                 to={`/shop/${e.shop.slug}`}
-                className="flex items-center gap-3 rounded-2xl bg-card border border-border p-3 hover:border-primary/60"
+                data-entry
+                data-position={e.position}
+                style={paletteStyle(paletteOf(e.shop.palette))}
+                className="cs-row grid grid-cols-[2.1rem_3.5rem_1fr] items-center gap-x-3 py-4"
               >
-                <span className="text-primary font-black w-6 text-right">{e.position}</span>
-                <span className="text-sm font-semibold text-foreground">{e.shop.name}</span>
+                <span className="cs-display cs-figures text-right text-2xl text-[hsl(var(--pal))]">
+                  {e.position}
+                </span>
+                <PlacePlate name={e.shop.name} photo={null} palette={e.shop.palette} size={56} />
+                <span className="min-w-0">
+                  <span className="cs-display block truncate text-lg text-ink">{e.shop.name}</span>
+                  {e.shop.one_liner && (
+                    <span className="mt-1 block truncate text-xs text-muted">{e.shop.one_liner}</span>
+                  )}
+                </span>
               </Link>
             </li>
           ))}
@@ -99,9 +126,12 @@ const RankingFlow = () => {
       )}
 
       {unranked.length > 0 && (
-        <section className="mt-8" data-unranked>
+        <section className="mt-10 border-t border-rule-strong pt-6" data-unranked>
           <h2 className="cs-caps text-gold">Logged, not ranked yet</h2>
-          <div className="mt-2">
+          <p className="mt-2 text-xs text-muted">
+            You wrote these visits down but left before the head-to-head. It's two or three taps each.
+          </p>
+          <div className="mt-3">
             {unranked.map((s) => (
               <Link
                 key={s.id}
@@ -117,7 +147,7 @@ const RankingFlow = () => {
           </div>
         </section>
       )}
-    </div>
+    </main>
   );
 };
 

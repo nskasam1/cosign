@@ -1,23 +1,23 @@
-import { useLocation } from "react-router-dom";
-import { useEffect } from "react";
+import { Link, useLocation } from "react-router-dom";
+import Nothing from "@/components/Nothing";
 
 const NotFound = () => {
   const location = useLocation();
 
-  useEffect(() => {
-    console.error("404 Error: User attempted to access non-existent route:", location.pathname);
-  }, [location.pathname]);
-
   return (
-    <div className="flex min-h-screen items-center justify-center bg-muted">
-      <div className="text-center">
-        <h1 className="mb-4 text-4xl font-bold">404</h1>
-        <p className="mb-4 text-xl text-muted-foreground">Oops! Page not found</p>
-        <a href="/" className="text-primary underline hover:text-primary/90">
-          Return to Home
-        </a>
-      </div>
-    </div>
+    <main className="cs-wrap flex min-h-dvh flex-col justify-center pb-10">
+      <Nothing
+        kicker="Nothing at this address"
+        standalone
+        title="There's no page here."
+        body={`Cosign has no idea what ${location.pathname} was meant to be. The link may be old, or a place may have moved.`}
+        action={
+          <Link to="/" className="cs-pill-ghost">
+            Back home
+          </Link>
+        }
+      />
+    </main>
   );
 };
 

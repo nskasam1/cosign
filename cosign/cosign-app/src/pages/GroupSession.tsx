@@ -1,20 +1,24 @@
 import { Link } from "react-router-dom";
-import { Users } from "lucide-react";
-import EmptyState from "@/components/EmptyState";
+import Nothing from "@/components/Nothing";
 
 // Group decision mode returns in Phase 5B, redesigned per the brief: the
 // intersection of up to four people's needs (intent + constraints against
 // each member's ranked list) — not voting. The old thumbs-up/down flow was
 // a banned input class and is deleted, not preserved.
 const GroupSession = () => (
-  <div className="min-h-screen flex items-center justify-center">
-    <EmptyState
-      icon={<Users className="w-6 h-6" />}
-      title="Group mode is brewing"
-      description="Four people, one table that works for everyone. This comes back once ranking and logging are in — no voting, just needs."
-      action={<Link to="/" className="text-sm text-primary font-semibold">Back home</Link>}
+  <main className="cs-wrap flex min-h-dvh flex-col justify-center pb-10">
+    <Nothing
+      kicker="Not yet"
+      standalone
+      title="Four people, one table that works for all of them."
+      body="Group mode comes back once ranking and logging are in. It will ask what each person needs and find the overlap — nobody votes, because a vote is a rating with extra steps."
+      action={
+        <Link to="/" className="cs-pill-ghost">
+          Back home
+        </Link>
+      }
     />
-  </div>
+  </main>
 );
 
 export default GroupSession;

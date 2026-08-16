@@ -1,12 +1,15 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Coffee } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { api, type ShopSummary } from "@/lib/api";
+import PlacePlate from "@/components/log/PlacePlate";
 
-// Stub onboarding (the brief's "signup"): make a name+school profile, then
-// pick up to 3 starter spots into a first list. Google Maps saved-places
-// import (Takeout fixtures) joins this flow in Phase 5A.
+// Stub onboarding — the brief's "signup". A name and a school, then up to
+// three places you already trust, which become your first list. No password,
+// no email, no provider: auth v1 is a signed cookie over local users.
+//
+// Google Takeout import joins this flow in Phase 5A; the empty state below
+// is where it will be offered.
 const Onboarding = () => {
   const { user, createAccount, refresh } = useAuth();
   const navigate = useNavigate();
@@ -77,89 +80,124 @@ const Onboarding = () => {
   };
 
   return (
-    <div className="min-h-screen px-5 py-10 max-w-md mx-auto">
+    <main data-onboarding data-step={step} className="cs-wrap pb-16 pt-[max(var(--space-6),env(safe-area-inset-top))]">
+      <p className="cs-caps border-b border-rule pb-4 text-gold">Cosign · starting out</p>
+
       {step === 1 ? (
-        <div>
-          <Coffee className="w-8 h-8 text-primary mb-3" />
-          <h1 className="text-2xl font-black text-foreground mb-1">Make your profile</h1>
-          <p className="text-sm text-muted-foreground mb-6">
-            A name and a school. That's the whole signup.
+        <>
+          <h1 className="cs-display mt-6 text-balance text-3xl text-ink sm:text-4xl">Make your profile.</h1>
+          <p className="mt-3 text-sm text-line">
+            A name and a school. There is no password, because there is nothing here worth stealing and
+            nowhere for it to go — everything stays on this machine.
           </p>
-          <label className="block text-sm text-muted-foreground mb-1" htmlFor="ob-name">Your name</label>
+
+          <label htmlFor="ob-name" className="cs-caps mt-8 block text-gold">
+            Your name
+          </label>
           <input
             id="ob-name"
             value={displayName}
             onChange={(e) => setDisplayName(e.target.value)}
-            className="w-full rounded-xl bg-card border border-border p-3 mb-4 text-foreground"
+            className="mt-2 w-full rounded-[var(--radius-md)] border border-rule-strong bg-surface p-3 text-base text-ink placeholder:text-muted"
             placeholder="Sam Whitfield"
           />
-          <label className="block text-sm text-muted-foreground mb-1" htmlFor="ob-username">Username</label>
+
+          <label htmlFor="ob-username" className="cs-caps mt-6 block text-gold">
+            Username
+          </label>
           <input
             id="ob-username"
             value={username}
             onChange={(e) => setUsername(e.target.value)}
-            className="w-full rounded-xl bg-card border border-border p-3 mb-2 text-foreground"
+            className="mt-2 w-full rounded-[var(--radius-md)] border border-rule-strong bg-surface p-3 text-base text-ink placeholder:text-muted"
             placeholder="sam"
           />
-          <p className="block text-sm text-muted-foreground mb-1" id="ob-school-label">Your school</p>
-          <div className="flex flex-wrap gap-2 mb-4" role="group" aria-labelledby="ob-school-label">
+
+          <p id="ob-school-label" className="cs-caps mt-6 text-gold">
+            Your school
+          </p>
+          <div className="mt-2 flex flex-wrap gap-2" role="group" aria-labelledby="ob-school-label">
             {schools.map((s) => (
               <button
                 key={s.id}
+                type="button"
                 onClick={() => setSchoolId(s.id)}
                 aria-pressed={schoolId === s.id}
-                className={`rounded-full border px-4 py-2 text-sm min-h-[44px] ${
-                  schoolId === s.id ? "border-primary text-primary bg-primary/10" : "border-border text-muted-foreground"
-                }`}
+                className="cs-chip"
               >
                 {s.name}
               </button>
             ))}
           </div>
-          {error && <p className="text-sm text-destructive mb-3">{error}</p>}
-          <button
-            onClick={submitProfile}
-            disabled={busy || !username.trim() || !displayName.trim() || !schoolId}
-            className="w-full rounded-xl bg-primary text-primary-foreground font-semibold p-3 disabled:opacity-50 min-h-[44px]"
-          >
-            {busy ? "Making it…" : "That's me"}
-          </button>
-        </div>
-      ) : (
-        <div>
-          <h1 className="text-2xl font-black text-foreground mb-1">Pick your spots</h1>
-          <p className="text-sm text-muted-foreground mb-6">
-            Up to three places you already trust. They start your first list.
-          </p>
-          <div className="grid gap-2 mb-6">
-            {shops.map((s) => (
-              <button
-                key={s.id}
-                onClick={() => togglePick(s.id)}
-                aria-pressed={picked.has(s.id)}
-                className={`rounded-2xl border p-3 flex items-center gap-3 text-left min-h-[44px] ${
-                  picked.has(s.id) ? "border-primary bg-primary/10" : "border-border bg-card"
-                }`}
-              >
-                {s.photo ? (
-                  <img src={s.photo} alt="" className="w-10 h-10 rounded-xl object-cover" loading="lazy" />
-                ) : (
-                  <span className="w-10 h-10 rounded-xl bg-muted grid place-items-center text-primary">☕</span>
-                )}
-                <span className="text-sm font-semibold text-foreground">{s.name}</span>
-              </button>
-            ))}
+
+          {error && (
+            <p role="alert" className="mt-5 text-sm text-line">
+              {error}
+            </p>
+          )}
+
+          <div className="mt-8 border-t border-rule-strong pt-6">
+            <button
+              type="button"
+              onClick={submitProfile}
+              disabled={busy || !username.trim() || !displayName.trim() || !schoolId}
+              className="cs-pill"
+            >
+              {busy ? "Making it…" : "That's me"}
+            </button>
           </div>
-          <button
-            onClick={finish}
-            disabled={busy}
-            className="w-full rounded-xl bg-primary text-primary-foreground font-semibold p-3 disabled:opacity-50 min-h-[44px]"
-          >
-            {busy ? "Saving…" : picked.size > 0 ? `Start with ${picked.size}` : "Skip for now"}
-          </button>
-        </div>
+        </>
+      ) : (
+        <>
+          <h1 className="cs-display mt-6 text-balance text-3xl text-ink sm:text-4xl">
+            Anywhere you already trust?
+          </h1>
+          <p className="mt-3 text-sm text-line">
+            Up to three. They start a list — not a ranking: an order only comes from head-to-head, and that
+            starts the first time you log a visit.
+          </p>
+
+          <div className="mt-6">
+            {shops.map((s) => {
+              // At the cap, the other rows genuinely cannot be picked — so
+              // they say so, in the markup and on screen. Leaving them
+              // looking and announcing exactly like the operable ones was
+              // the app quietly ignoring a tap.
+              const chosen = picked.has(s.id);
+              const spent = picked.size >= 3 && !chosen;
+              return (
+                <button
+                  key={s.id}
+                  type="button"
+                  data-pick
+                  data-shop-id={s.id}
+                  onClick={() => togglePick(s.id)}
+                  aria-pressed={chosen}
+                  aria-disabled={spent || undefined}
+                  className={`cs-row grid grid-cols-[3.5rem_1fr] items-center gap-x-4 py-4 ${spent ? "opacity-45" : ""}`}
+                >
+                  <PlacePlate name={s.name} photo={s.photo} palette={s.palette} size={56} />
+                  <span className="min-w-0">
+                    <span className={`cs-display block truncate text-lg ${chosen ? "text-ink" : "text-line"}`}>
+                      {s.name}
+                    </span>
+                    <span className="cs-caps mt-1 block text-muted">
+                      {spent ? "that's three — drop one first" : `${s.walk_min} min walk`}
+                    </span>
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+
+          <div className="mt-8 border-t border-rule-strong pt-6">
+            <button type="button" onClick={finish} disabled={busy} className="cs-pill">
+              {busy ? "Saving…" : picked.size > 0 ? `Start with ${picked.size}` : "Skip for now"}
+            </button>
+          </div>
+        </>
       )}
-    </div>
+    </main>
   );
 };
 
