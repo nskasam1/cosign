@@ -1,0 +1,36 @@
+[
+ {
+  "id": "g_thursday-four",
+  "created_by": "u_maya",
+  "school": "osu",
+  "status": "open",
+  "created_at": "2026-08-15T18:40:00-04:00",
+  "invite": [
+   "u_dev",
+   "u_june",
+   "u_theo"
+  ],
+  "needs": [
+   {
+    "participant_token": "gp-maya-thursday-4f2a",
+    "user_id": "u_maya",
+    "intent_tag": "group_project",
+    "outlets": true,
+    "open_now": true,
+    "wifi": true,
+    "max_noise": null,
+    "created_at": "2026-08-15T18:41:00-04:00"
+   },
+   {
+    "participant_token": "gp-june-thursday-9c71",
+    "user_id": "u_june",
+    "intent_tag": "reading",
+    "outlets": false,
+    "open_now": true,
+    "wifi": false,
+    "max_noise": "conversational",
+    "created_at": "2026-08-15T18:52:00-04:00"
+   }
+  ]
+ }
+]

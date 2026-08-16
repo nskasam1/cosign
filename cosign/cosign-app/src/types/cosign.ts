@@ -224,20 +224,32 @@ export interface ShareToken {
   revoked_at: string | null;
 }
 
-export type NotificationType =
-  | "friend_request"
-  | "friend_accepted"
-  | "list_editor_added"
-  | "list_reranked"
-  | "group_invite"
-  | "friend_logged";
+/**
+ * The five human actions that can ever produce a notification (brief #11),
+ * and there is no sixth. `friend_logged` used to be here and was cut in
+ * Phase 5B: it is the only one that fires without anybody choosing to tell
+ * you anything, which makes it a feed of other people's activity — the shape
+ * the brief bans. The schema's CHECK constraint is the enforcement; this is
+ * the copy of it the client reads.
+ */
+export const NOTIFICATION_TYPES = [
+  "friend_request",
+  "friend_accepted",
+  "list_editor_added",
+  "list_reranked",
+  "group_invite",
+] as const;
+export type NotificationType = (typeof NOTIFICATION_TYPES)[number];
+
+/** The kind of action record a notification points at. */
+export type NotificationRef = "friendship" | "list_editor" | "list_rerank" | "group_session";
 
 export interface AppNotification {
   id: string;
   user_id: string;
   actor_id: string;
   type: NotificationType;
-  ref_kind: string;
+  ref_kind: NotificationRef;
   ref_id: string;
   created_at: string;
   read_at: string | null;
@@ -246,6 +258,8 @@ export interface AppNotification {
 export interface GroupNeeds {
   session_id: string;
   participant_token: string;
+  /** Null for somebody who joined by link: needs, but no ranked list. */
+  user_id: string | null;
   display_name: string | null;
   intent_tag: IntentTag | null;
   need_outlets: boolean;

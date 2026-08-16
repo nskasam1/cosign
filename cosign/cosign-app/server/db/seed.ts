@@ -24,6 +24,18 @@ function readJson<T>(dir: string, name: string): T {
   return JSON.parse(readFileSync(p, "utf-8")) as T;
 }
 
+/**
+ * Live state rather than authored content, so a seed directory may have
+ * none. `server/import/export.ts` writes the founder's data — the shops,
+ * the people, the lists — and an open group session is not that: it is four
+ * people deciding where to sit on one evening. An exported seed loads
+ * without one, which is what the round-trip test walks over.
+ */
+function readJsonIfPresent<T>(dir: string, name: string, fallback: T): T {
+  const p = join(dir, name);
+  return existsSync(p) ? (JSON.parse(readFileSync(p, "utf-8")) as T) : fallback;
+}
+
 function fail(msg: string): never {
   throw new Error(`seed validation: ${msg}`);
 }
@@ -76,6 +88,17 @@ type SeedRankings = Record<
   { final: string[]; arrival: string[]; title?: string | null; visibility?: "friends" | "public" }
 >;
 
+interface SeedGroupSession {
+  id: string; created_by: string; school: string; status: string; created_at: string;
+  /** Who was asked. Each one becomes a group_invite notification. */
+  invite: string[];
+  needs: Array<{
+    participant_token: string; user_id: string | null; display_name?: string | null;
+    intent_tag: string | null; outlets: boolean; open_now: boolean; wifi: boolean;
+    max_noise: string | null; created_at: string;
+  }>;
+}
+
 // ── main ────────────────────────────────────────────────────────────────────
 
 export function runSeed(dbPath: string = DB_PATH, seedDir: string = DEFAULT_SEED_DIR): void {
@@ -86,6 +109,7 @@ export function runSeed(dbPath: string = DB_PATH, seedDir: string = DEFAULT_SEED
   const lists = readJson<SeedList[]>(seedDir, "lists.json");
   const tokens = readJson<SeedShareToken[]>(seedDir, "share-tokens.json");
   const rankings = readJson<SeedRankings>(seedDir, "rankings.json");
+  const sessions = readJsonIfPresent<SeedGroupSession[]>(seedDir, "group-sessions.json", []);
   const calendar = readJson<AcademicCalendar>(seedDir, "academic-calendar.json");
 
   const shopIds = new Set(shops.map((s) => s.id));
@@ -139,6 +163,32 @@ export function runSeed(dbPath: string = DB_PATH, seedDir: string = DEFAULT_SEED
     const owned = lists.filter((l) => l.owner_id === u.id).length;
     if (owned < 3 || owned > 5) fail(`${u.id}: needs 3-5 lists, has ${owned}`);
   }
+  // A collaborative list is only collaborative if somebody else can write to
+  // it, and Phase 5B's re-rank needs two contributors to have an opinion.
+  for (const l of lists) {
+    if (l.is_collaborative && l.editors.length === 0) fail(`list ${l.id}: collaborative with no editors`);
+    if (!l.is_collaborative && l.editors.length > 0) fail(`list ${l.id}: editors on a non-collaborative list`);
+  }
+  if (!lists.some((l) => l.is_collaborative && [l.owner_id, ...l.editors].filter((u) => rankings[u]).length >= 2)) {
+    fail("no collaborative list has two contributors with rankings — 5B's re-rank has no fixture");
+  }
+  for (const s of sessions) {
+    requireUser(s.created_by, `group session ${s.id}`);
+    s.invite.forEach((u) => requireUser(u, `group session ${s.id} invite`));
+    if (s.invite.includes(s.created_by)) fail(`group session ${s.id}: invited its own starter`);
+    if (s.invite.length + 1 > 4) fail(`group session ${s.id}: more than four people`);
+    for (const n of s.needs) {
+      if (n.user_id) requireUser(n.user_id, `group needs ${s.id}`);
+      if (n.intent_tag && !INTENT_TAGS.includes(n.intent_tag as never)) {
+        fail(`group needs ${s.id}: bad intent ${n.intent_tag}`);
+      }
+      if (!/^[A-Za-z0-9_-]{8,64}$/.test(n.participant_token)) {
+        fail(`group needs ${s.id}: participant token must be 8+ url-safe chars`);
+      }
+    }
+    if (s.needs.length > s.invite.length + 1) fail(`group session ${s.id}: more answers than people`);
+  }
+
   const usernames = new Set(users.map((u) => u.username.toLowerCase()));
   for (const t of tokens) {
     requireUser(t.user_id, `token ${t.token}`);
@@ -284,6 +334,70 @@ export function runSeed(dbPath: string = DB_PATH, seedDir: string = DEFAULT_SEED
   );
   for (const t of tokens) insTok.run(t.token, t.kind, t.user_id, t.list_id ?? null, t.created_at, t.revoked_at);
 
+  const insSession = db.prepare(
+    "INSERT INTO group_sessions (id, created_by, school_id, status, resolved_shop_id, created_at) VALUES (?,?,?,?,NULL,?)",
+  );
+  const insNeed = db.prepare(
+    `INSERT INTO group_needs (session_id, participant_token, user_id, display_name, intent_tag,
+       need_outlets, need_open_now, need_wifi, max_noise, created_at) VALUES (?,?,?,?,?,?,?,?,?,?)`,
+  );
+  for (const s of sessions) {
+    insSession.run(s.id, s.created_by, s.school, s.status, s.created_at);
+    for (const n of s.needs) {
+      const named = n.user_id
+        ? (users.find((u) => u.id === n.user_id)?.display_name.split(" ")[0] ?? null)
+        : (n.display_name ?? null);
+      insNeed.run(
+        s.id, n.participant_token, n.user_id, named, n.intent_tag,
+        n.outlets ? 1 : 0, n.open_now ? 1 : 0, n.wifi ? 1 : 0, n.max_noise, n.created_at,
+      );
+    }
+  }
+
+  // ── notifications: DERIVED, never authored ──
+  //
+  // There is no notifications.json and there must never be one. Brief #11
+  // says a notification only ever comes from a human action, and the way to
+  // make that true of the seeded database as well as of the running one is
+  // to build every row from an action record that is already in the file:
+  // a friendship, a list_editors row, a group session's invitation. A
+  // hand-written notification would be the one row in this database that
+  // nobody did anything to cause.
+  const insNotif = db.prepare(
+    `INSERT INTO notifications (id, user_id, actor_id, type, ref_kind, ref_id, created_at, read_at)
+     VALUES (?,?,?,?,?,?,?,?) ON CONFLICT (user_id, type, ref_kind, ref_id) DO NOTHING`,
+  );
+  let notifCount = 0;
+  const notify = (
+    userId: string, actorId: string, type: string, refKind: string, refId: string, at: string, read: string | null,
+  ) => {
+    if (userId === actorId) return;
+    notifCount += Number(
+      insNotif.run(`n_${refKind}_${refId}_${type}_${userId}`, userId, actorId, type, refKind, refId, at, read).changes,
+    );
+  };
+  friendships.forEach((f, i) => {
+    const id = `f_${i}`;
+    // Asking is one act and answering is another, so an accepted friendship
+    // left two rows behind — the request that was answered, and the answer.
+    notify(f.friend_id, f.user_id, "friend_request", "friendship", id, f.created_at, f.responded_at);
+    if (f.status === "accepted" && f.responded_at) {
+      notify(f.user_id, f.friend_id, "friend_accepted", "friendship", id, f.responded_at, f.responded_at);
+    }
+  });
+  for (const l of lists) {
+    for (const e of l.editors) {
+      notify(e, l.owner_id, "list_editor_added", "list_editor", l.id, l.created_at, l.created_at);
+    }
+  }
+  for (const s of sessions) {
+    for (const uid of s.invite) {
+      // Whoever has already answered has read it, by definition.
+      const answered = s.needs.some((n) => n.user_id === uid);
+      notify(uid, s.created_by, "group_invite", "group_session", s.id, s.created_at, answered ? s.created_at : null);
+    }
+  }
+
   // ── analytics: derived deterministically ──
   // Every log implies an app_open + log_created at that moment. Then the
   // north-star cohort: for users with zero logs in the week of 2026-08-03,
@@ -324,6 +438,7 @@ export function runSeed(dbPath: string = DB_PATH, seedDir: string = DEFAULT_SEED
   console.log(`  shops=${count("SELECT count(*) n FROM shops")} users=${count("SELECT count(*) n FROM users")} logs=${count("SELECT count(*) n FROM logs")}`);
   console.log(`  comparisons=${cmpCount} ranking_entries=${count("SELECT count(*) n FROM ranking_entries")} lists=${count("SELECT count(*) n FROM lists")}`);
   console.log(`  friendships=${count("SELECT count(*) n FROM friendships")} tokens=${count("SELECT count(*) n FROM share_tokens")} events=${count("SELECT count(*) n FROM analytics_events")}`);
+  console.log(`  group_sessions=${count("SELECT count(*) n FROM group_sessions")} group_needs=${count("SELECT count(*) n FROM group_needs")} notifications=${notifCount} (all derived from action records)`);
   console.log(`  north-star quiet-week users seeded=${northStarSeeded}`);
   db.close();
 }

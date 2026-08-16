@@ -23,6 +23,9 @@ import * as lists from "./repo/lists.ts";
 import * as share from "./repo/share.ts";
 import * as logsRepo from "./repo/logsRepo.ts";
 import * as analytics from "./repo/analytics.ts";
+import * as notifications from "./repo/notifications.ts";
+import * as group from "./repo/group.ts";
+import { MAX_PARTICIPANTS } from "../src/lib/group.ts";
 import { importSavedPlaces } from "./import/takeout.ts";
 import { renderSharePage, renderTombstone } from "./pages/shareList.ts";
 import { renderProfilePage } from "./pages/shareProfile.ts";
@@ -477,12 +480,72 @@ app.get("/api/lists/:id", (c) => {
   if (!list) return c.json({ error: "not found" }, 404);
   const uid = me(c);
   if (!lists.canViewList(db, uid, list)) return c.json({ error: "not found" }, 404);
+  // The derived order is computed for the reader and written nowhere: a list
+  // only moves when an editor says so (POST .../rerank), because a list that
+  // silently re-ordered itself would be a change nobody made.
+  const derived = lists.derivedOrder(db, list);
+  const owner = social.userById(db, list.owner_id);
   return c.json({
     list,
     items: lists.itemsOf(db, list.id).map((it) => ({ ...it, shop: shops.shopById(db, it.shop_id) })),
     editors: lists.editorsOf(db, list.id),
     can_edit: uid ? lists.canEditList(db, uid, list) : false,
+    is_owner: uid === list.owner_id,
+    contributors: [
+      ...(owner ? [{ user_id: owner.id, display_name: owner.display_name, username: owner.username }] : []),
+      ...lists
+        .editorUsersOf(db, list.id)
+        .filter((u) => u.id !== list.owner_id)
+        .map((u) => ({ user_id: u.id, display_name: u.display_name, username: u.username })),
+    ],
+    derived: {
+      source: derived.source,
+      contributors: derived.contributors,
+      ranked: derived.ranked,
+      unranked: derived.unranked,
+      disagreements: derived.disagreements,
+      // Is the list already in the order its contributors imply?
+      settled: lists.isSettled(db, list),
+    },
+    last_rerank: lists.lastRerank(db, list.id),
   });
+});
+
+/**
+ * An editor puts the list in the order the contributors' own rankings imply.
+ * It is a human action with a record (`list_reranks`), which is exactly what
+ * the list_reranked notification points at — the alternative, recomputing on
+ * read, would mean telling people about a change nobody made.
+ */
+app.post("/api/lists/:id/rerank", (c) => {
+  const uid = me(c);
+  if (!uid) return c.json({ error: "sign in first" }, 401);
+  const db = getDb();
+  const list = lists.listById(db, c.req.param("id"));
+  if (!list || !lists.canEditList(db, uid, list)) return c.json({ error: "not found" }, 404);
+  const rr = lists.rerank(db, list, uid);
+  if (!rr) return c.json({ error: "nothing to move" }, 409);
+  return c.json({ rerank: rr }, 201);
+});
+
+/** Only the owner hands over the pen (server/repo/lists.ts explains why). */
+app.post("/api/lists/:id/editors", async (c) => {
+  const uid = me(c);
+  if (!uid) return c.json({ error: "sign in first" }, 401);
+  const db = getDb();
+  const list = lists.listById(db, c.req.param("id"));
+  if (!list) return c.json({ error: "not found" }, 404);
+  if (list.owner_id !== uid) return c.json({ error: "not found" }, 404);
+  const body = await c.req.json<{ username?: string }>();
+  const user = body.username ? social.userByUsername(db, body.username) : null;
+  if (!user) return c.json({ error: "no one by that name" }, 404);
+  // Only somebody you have actually agreed to know. An editor is write
+  // access to your list; a username box that reaches strangers is a way to
+  // put your list in the hands of anybody who can guess a handle.
+  if (!social.areFriends(db, uid, user.id)) return c.json({ error: "add them as a friend first" }, 403);
+  const added = lists.addEditor(db, list, user.id, uid);
+  if (!added) return c.json({ error: "already an editor" }, 409);
+  return c.json({ ok: true }, 201);
 });
 
 app.post("/api/lists", async (c) => {
@@ -543,6 +606,155 @@ app.delete("/api/lists/:id/items/:shopId", (c) => {
   if (!list || !lists.canEditList(db, uid, list)) return c.json({ error: "not found" }, 404);
   lists.removeItem(db, list.id, c.req.param("shopId"));
   return c.json({ ok: true });
+});
+
+// ── friends (Phase 5B) ──────────────────────────────────────────────────────
+//
+// Asking and answering are the two human actions the friend half of the
+// notification feed is made of. Both write the friendship row and its
+// notification in the same repo call, so neither can happen without the other.
+
+app.get("/api/friends", (c) => {
+  const uid = me(c);
+  if (!uid) return c.json({ error: "sign in first" }, 401);
+  return c.json(social.friendshipsOf(getDb(), uid));
+});
+
+app.post("/api/friends/request", async (c) => {
+  const uid = me(c);
+  if (!uid) return c.json({ error: "sign in first" }, 401);
+  const body = await c.req.json<{ username?: string }>();
+  const db = getDb();
+  const target = body.username ? social.userByUsername(db, body.username) : null;
+  if (!target) return c.json({ error: "no one by that name" }, 404);
+  if (target.id === uid) return c.json({ error: "that's you" }, 400);
+  const friendship = social.requestFriendship(db, uid, target.id);
+  return c.json({ friendship }, 201);
+});
+
+app.post("/api/friends/:id/accept", (c) => {
+  const uid = me(c);
+  if (!uid) return c.json({ error: "sign in first" }, 401);
+  // acceptFriendship refuses anything not addressed to this user, so a 404
+  // covers "no such request" and "not yours to answer" identically — the
+  // second must not be distinguishable, or it enumerates other people's.
+  const friendship = social.acceptFriendship(getDb(), c.req.param("id"), uid);
+  return friendship ? c.json({ friendship }) : c.json({ error: "not found" }, 404);
+});
+
+// ── notifications (brief #11) ───────────────────────────────────────────────
+//
+// Read-only apart from marking your own as read. Nothing here creates a
+// notification: the five human actions that do live in the routes that
+// perform them, and server/repo/notifications.ts is the only file that can
+// write the table at all.
+
+app.get("/api/notifications", (c) => {
+  const uid = me(c);
+  if (!uid) return c.json({ error: "sign in first" }, 401);
+  return c.json({ entries: notifications.feedFor(getDb(), uid) });
+});
+
+app.post("/api/notifications/read", async (c) => {
+  const uid = me(c);
+  if (!uid) return c.json({ error: "sign in first" }, 401);
+  const body = await c.req.json<{ ids?: unknown }>();
+  const ids = Array.isArray(body?.ids) ? body.ids.filter((x): x is string => typeof x === "string") : [];
+  if (ids.length > 200) return c.json({ error: "too many" }, 400);
+  return c.json({ read: notifications.markRead(getDb(), uid, ids) });
+});
+
+// ── group decision mode (brief #8) ──────────────────────────────────────────
+//
+// Reading a session and answering it NEVER require a login: the brief's
+// group mode is four people around a table, one of whom sent a link, and an
+// account is not the price of saying what you need. Signing in only adds
+// your own ordered list to the arithmetic. Starting a session and closing it
+// do require an account, because both are things done in somebody's name.
+
+app.post("/api/group", async (c) => {
+  const uid = me(c);
+  if (!uid) return c.json({ error: "sign in first" }, 401);
+  const db = getDb();
+  const user = social.userById(db, uid)!;
+  const body = await c.req.json<{ invite?: unknown }>();
+  const usernames = Array.isArray(body?.invite)
+    ? body.invite.filter((x): x is string => typeof x === "string").slice(0, MAX_PARTICIPANTS - 1)
+    : [];
+  const invite: string[] = [];
+  for (const username of usernames) {
+    const friend = social.userByUsername(db, username);
+    // You can only ask somebody you know. Otherwise "start a session" is an
+    // unsolicited message to any handle you can guess.
+    if (!friend || !social.areFriends(db, uid, friend.id)) {
+      return c.json({ error: `you and @${username} aren't friends yet` }, 403);
+    }
+    invite.push(friend.id);
+  }
+  const session = group.createSession(db, { createdBy: uid, schoolId: user.school_id, invite });
+  analytics.track(db, uid, "group_started", { invited: invite.length });
+  return c.json({ session }, 201);
+});
+
+app.get("/api/group/:id", (c) => {
+  const view = group.sessionView(getDb(), calendar, c.req.param("id"), {
+    at: positionFrom(c.req.query("lat"), c.req.query("lng")),
+    participantToken: c.req.query("pt") ?? null,
+  });
+  return view ? c.json(view) : c.json({ error: "not found" }, 404);
+});
+
+app.post("/api/group/:id/needs", async (c) => {
+  const db = getDb();
+  const session = group.sessionById(db, c.req.param("id"));
+  if (!session) return c.json({ error: "not found" }, 404);
+  if (session.status !== "open") return c.json({ error: "that one is settled" }, 409);
+  const body = await c.req.json<{
+    participant_token?: string;
+    display_name?: string | null;
+    intent_tag?: IntentTag | null;
+    outlets?: boolean;
+    open_now?: boolean;
+    wifi?: boolean;
+    max_noise?: NoiseLevel | null;
+  }>();
+  if (typeof body?.participant_token !== "string" || !/^[A-Za-z0-9_-]{8,64}$/.test(body.participant_token)) {
+    return c.json({ error: "bad participant" }, 400);
+  }
+  if (body.intent_tag != null && !INTENT_TAGS.includes(body.intent_tag)) {
+    return c.json({ error: "bad intent tag" }, 400);
+  }
+  if (body.max_noise != null && !NOISE_LEVELS.includes(body.max_noise)) {
+    return c.json({ error: "bad noise" }, 400);
+  }
+  const uid = me(c);
+  const user = uid ? social.userById(db, uid) : null;
+  const ok = group.submitNeeds(db, session.id, {
+    participantToken: body.participant_token,
+    userId: user?.id ?? null,
+    // A signed-in person is named from their account, never from the body:
+    // otherwise anybody with the link can answer under somebody else's name.
+    displayName: user ? user.display_name.split(" ")[0] : (body.display_name?.trim().slice(0, 24) || null),
+    intentTag: body.intent_tag ?? null,
+    outlets: !!body.outlets,
+    openNow: !!body.open_now,
+    wifi: !!body.wifi,
+    maxNoise: body.max_noise ?? null,
+  });
+  if (!ok) return c.json({ error: `that table is full at ${MAX_PARTICIPANTS}` }, 409);
+  return c.json({ ok: true }, 201);
+});
+
+app.post("/api/group/:id/resolve", async (c) => {
+  const uid = me(c);
+  if (!uid) return c.json({ error: "sign in first" }, 401);
+  const db = getDb();
+  const body = await c.req.json<{ shop_id?: string | null }>();
+  if (body.shop_id != null && !shops.shopById(db, body.shop_id)) {
+    return c.json({ error: "unknown shop" }, 404);
+  }
+  const session = group.resolveSession(db, c.req.param("id"), uid, body.shop_id ?? null);
+  return session ? c.json({ session }) : c.json({ error: "not found" }, 404);
 });
 
 // ── share tokens ────────────────────────────────────────────────────────────

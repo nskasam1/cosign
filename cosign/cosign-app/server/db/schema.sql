@@ -161,6 +161,21 @@ CREATE TABLE IF NOT EXISTS list_editors (
   PRIMARY KEY (list_id, user_id)
 );
 
+-- One editor putting a collaborative list into the order its contributors'
+-- own rankings imply (Phase 5B). It is a row rather than a timestamp on the
+-- list because it is the ACTION RECORD a list_reranked notification points
+-- at: every notification in this schema references the thing somebody did,
+-- and a re-rank happening twice is two things. `moved` is how many places
+-- changed position — a re-rank that moves nothing is never written.
+CREATE TABLE IF NOT EXISTS list_reranks (
+  id         TEXT PRIMARY KEY,
+  list_id    TEXT NOT NULL REFERENCES lists(id) ON DELETE CASCADE,
+  actor_id   TEXT NOT NULL REFERENCES users(id),
+  moved      INTEGER NOT NULL CHECK (moved > 0),
+  created_at TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS list_reranks_list ON list_reranks(list_id, created_at DESC);
+
 CREATE TABLE IF NOT EXISTS friendships (
   id           TEXT PRIMARY KEY,
   user_id      TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
@@ -203,6 +218,10 @@ CREATE TABLE IF NOT EXISTS group_sessions (
 CREATE TABLE IF NOT EXISTS group_needs (
   session_id        TEXT NOT NULL REFERENCES group_sessions(id) ON DELETE CASCADE,
   participant_token TEXT NOT NULL,
+  -- Set when the person answering is signed in: their ranked list is what
+  -- orders the survivors. Null for somebody who joined by link, who brings
+  -- needs and no list — the no-login-wall case, which must keep working.
+  user_id           TEXT REFERENCES users(id) ON DELETE SET NULL,
   display_name      TEXT,
   intent_tag        TEXT CHECK (intent_tag IS NULL OR intent_tag IN
     ('deep_work','group_project','reading','meeting_someone','first_date',
@@ -214,22 +233,45 @@ CREATE TABLE IF NOT EXISTS group_needs (
   created_at        TEXT NOT NULL,
   PRIMARY KEY (session_id, participant_token)
 );
+-- One person answers once per session however many tabs they open.
+CREATE UNIQUE INDEX IF NOT EXISTS group_needs_user ON group_needs(session_id, user_id)
+  WHERE user_id IS NOT NULL;
 
--- Human actions only (decision 11). Every row references the persisted
--- action record that caused it; there is no other write path.
+-- Human actions only (brief #11). Every row references the persisted action
+-- record that caused it, by (ref_kind, ref_id), and the feed is rendered from
+-- that record rather than from a copy — so a notification cannot outlive the
+-- thing it is about. There are exactly five ways a row gets here and all five
+-- are somebody doing something to somebody:
+--
+--   friend_request      a friendship row, still pending
+--   friend_accepted     the same friendship row, answered
+--   list_editor_added   a list_editors row — ref_id is the LIST, and the
+--                       recipient is the added editor, which together are
+--                       that table's whole primary key
+--   list_reranked       a list_reranks row (its own record: two re-ranks are
+--                       two events, so the list itself cannot be the referent)
+--   group_invite        a group_sessions row
+--
+-- `friend_logged` was in this CHECK and is deliberately gone. It is the one
+-- of the six that fires without anybody choosing to tell you anything — a
+-- feed of other people's activity, which is the shape the brief bans. PLAN's
+-- Phase 5B line names the five above and says "exactly".
 CREATE TABLE IF NOT EXISTS notifications (
   id         TEXT PRIMARY KEY,
   user_id    TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,  -- recipient
   actor_id   TEXT NOT NULL REFERENCES users(id),
   type       TEXT NOT NULL CHECK (type IN
-    ('friend_request','friend_accepted','list_editor_added','list_reranked',
-     'group_invite','friend_logged')),
-  ref_kind   TEXT NOT NULL,   -- 'friendship' | 'list' | 'group_session' | 'log'
+    ('friend_request','friend_accepted','list_editor_added','list_reranked','group_invite')),
+  ref_kind   TEXT NOT NULL CHECK (ref_kind IN ('friendship','list_editor','list_rerank','group_session')),
   ref_id     TEXT NOT NULL,
   created_at TEXT NOT NULL,
-  read_at    TEXT
+  read_at    TEXT,
+  -- Nobody is told the same thing twice. One action record, one notification.
+  CHECK (user_id <> actor_id)
 );
 CREATE INDEX IF NOT EXISTS notifications_user ON notifications(user_id, created_at DESC);
+CREATE UNIQUE INDEX IF NOT EXISTS notifications_once
+  ON notifications(user_id, type, ref_kind, ref_id);
 
 -- Local analytics (decision 11 / north star). Never leaves this machine.
 CREATE TABLE IF NOT EXISTS analytics_events (

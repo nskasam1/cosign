@@ -213,6 +213,47 @@
   "created_at": "2026-06-30T13:05:00-04:00"
  },
  {
+  "id": "l_still-open-when-we-are",
+  "owner_id": "u_dev",
+  "title": "still open when we are",
+  "visibility": "friends",
+  "is_collaborative": true,
+  "editors": [
+   "u_theo"
+  ],
+  "items": [
+   {
+    "shop_id": "s_night-owl",
+    "added_by": "u_theo",
+    "note": "theo's whole personality, and he is not wrong"
+   },
+   {
+    "shop_id": "s_foundry",
+    "added_by": "u_dev",
+    "note": "closes at ten but the last hour is the good one"
+   },
+   {
+    "shop_id": "s_all-nighter",
+    "added_by": "u_theo"
+   },
+   {
+    "shop_id": "s_high-street-standard",
+    "added_by": "u_dev",
+    "note": "neither of us loves it and both of us end up here"
+   },
+   {
+    "shop_id": "s_copper-kettle",
+    "added_by": "u_dev",
+    "note": "walked past it twice a week for a year, never been in"
+   },
+   {
+    "shop_id": "s_wheelhouse",
+    "added_by": "u_theo"
+   }
+  ],
+  "created_at": "2026-07-19T22:40:00-04:00"
+ },
+ {
   "id": "l_first-date-safe-picks",
   "owner_id": "u_june",
   "title": "first date safe picks",
