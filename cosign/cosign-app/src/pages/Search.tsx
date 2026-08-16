@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { api, type DiscoverEntry } from "@/lib/api";
 import { readPosition } from "@/lib/geo";
+import { useTitle } from "@/lib/title";
 import PlaceRow from "@/components/discover/PlaceRow";
 import Nothing from "@/components/Nothing";
 
@@ -27,6 +28,7 @@ const FACETS: Facet[] = [
 ];
 
 const Search = () => {
+  useTitle("Search");
   const [text, setText] = useState("");
   const [on, setOn] = useState<Set<string>>(new Set());
 

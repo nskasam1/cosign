@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { api, type ShopSummary } from "@/lib/api";
+import { useTitle } from "@/lib/title";
 import PlacePlate from "@/components/log/PlacePlate";
 
 // Stub onboarding — the brief's "signup". A name and a school, then up to
@@ -11,6 +12,7 @@ import PlacePlate from "@/components/log/PlacePlate";
 // Google Takeout import joins this flow in Phase 5A; the empty state below
 // is where it will be offered.
 const Onboarding = () => {
+  useTitle("Start your list");
   const { user, createAccount, refresh } = useAuth();
   const navigate = useNavigate();
 

@@ -3,8 +3,8 @@
   "short_name": "Cosign",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#141618",
-  "theme_color": "#141618",
+  "background_color": "#14100E",
+  "theme_color": "#14100E",
   "icons": [
     {
       "src": "/app-icon.png",

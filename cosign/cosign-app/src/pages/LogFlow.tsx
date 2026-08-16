@@ -3,6 +3,7 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { api, type ShopSummary } from "@/lib/api";
 import { currentTimeBucket } from "@/lib/timeBucket";
+import { useTitle } from "@/lib/title";
 import {
   confirmationsFor,
   emptyDraft,
@@ -69,6 +70,7 @@ function semesterLabel(semester: string | undefined): string | null {
 }
 
 const LogFlow = () => {
+  useTitle("Log a visit");
   const navigate = useNavigate();
   const [params, setParams] = useSearchParams();
   const step = (params.get("step") ?? "where") as LogStep;

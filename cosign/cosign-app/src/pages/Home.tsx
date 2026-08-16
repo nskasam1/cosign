@@ -5,6 +5,7 @@ import { api, type DiscoverEntry, type DiscoverView } from "@/lib/api";
 import { readPosition } from "@/lib/geo";
 import { NEAR_ME_MAX_WALK_MIN, crowdOrder, movedBetween, stillOpenIn } from "@/lib/discover";
 import { track } from "@/lib/analytics";
+import { useTitle } from "@/lib/title";
 import PlaceRow from "@/components/discover/PlaceRow";
 import Dateline from "@/components/discover/Dateline";
 import Nothing from "@/components/Nothing";
@@ -24,6 +25,9 @@ import Nothing from "@/components/Nothing";
 // Mixing them would let "near me" quietly outrank a friend's number one.
 
 const Home = () => {
+  // Home is the one screen that wants the bare app name — and it has to ask
+  // for it, or arriving back from a place still says that place's name.
+  useTitle(null);
   const [asked, setAsked] = useState(() => Date.now());
   const [showCrowd, setShowCrowd] = useState(false);
 

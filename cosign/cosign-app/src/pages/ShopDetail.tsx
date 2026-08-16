@@ -8,6 +8,7 @@ import { dataAge } from "@/lib/freshness";
 import { paletteOf, paletteStyle, initialsOf } from "@/lib/palette";
 import { isLastThroughTheDoor, todaysWindow } from "@/lib/placeCopy";
 import { track } from "@/lib/analytics";
+import { useTitle } from "@/lib/title";
 import {
   CROWD_LABELS,
   INTENT_TAG_LABELS_SHORT,
@@ -64,6 +65,9 @@ const ShopDetail = () => {
     staleTime: 30_000,
   });
   const data = query.data;
+  // Null until the place has a name — a tab that still says the last shop
+  // you looked at is worse than one that says nothing.
+  useTitle(data?.shop.name ?? null);
 
   useEffect(() => {
     if (data) track("shop_viewed", { shop_id: data.shop.id });

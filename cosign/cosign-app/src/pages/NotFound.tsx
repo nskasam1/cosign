@@ -1,8 +1,10 @@
 import { Link, useLocation } from "react-router-dom";
+import { useTitle } from "@/lib/title";
 import Nothing from "@/components/Nothing";
 
 const NotFound = () => {
   const location = useLocation();
+  useTitle("Nothing at this address");
 
   return (
     <main className="cs-wrap flex min-h-dvh flex-col justify-center pb-10">

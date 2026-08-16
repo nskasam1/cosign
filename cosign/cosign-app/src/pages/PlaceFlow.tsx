@@ -12,6 +12,7 @@ import {
 } from "@/lib/insertion";
 import { comparisonBound } from "@/lib/logFlow";
 import { paletteOf, paletteStyle } from "@/lib/palette";
+import { useTitle } from "@/lib/title";
 import { CROWD_LABELS, INTENT_TAG_LABELS_SHORT, NOISE_LABELS, type Log, type Shop } from "@/types/cosign";
 import PlacePlate from "@/components/log/PlacePlate";
 
@@ -41,6 +42,7 @@ const BUCKET_WORDS: Record<string, string> = {
 };
 
 const PlaceFlow = () => {
+  useTitle("Putting it in order");
   const { shopId } = useParams();
   const navigate = useNavigate();
   const location = useLocation();

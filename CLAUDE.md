@@ -270,9 +270,20 @@ in PowerShell) to be sure.
   `meta` / `ranking` on the entry pill's `pointerdown`, which is why the measured
   path makes exactly one request — the save). Motion via CSS on the duration
   tokens; **avoid `framer-motion` on new surfaces** — `whileTap`, springs and
-  `layoutId` ignore `prefers-reduced-motion`, which is a phase gate.
-- Domain types in `src/types/cosign.ts`; pure domain logic in `src/lib/`
-  (`semester.ts`, `timeBucket.ts` are keepers — see PLAN.md for their known bugs).
+  `layoutId` ignore `prefers-reduced-motion`, which is a phase gate. The package
+  is still a dependency but nothing under `src/` imports it. Tailwind's own
+  `animate-*` utilities are the same trap for the same reason: `animate-spin` is
+  `spin 1s linear infinite` and no reduced-motion block reaches it.
+- Domain types in `src/types/cosign.ts`; pure domain logic in `src/lib/` —
+  `calendar.ts` (terms and finals week, replacing Phase 0's placeholder
+  `semester.ts`), `timeBucket.ts`, `freshness.ts`, `geo.ts`, `discover.ts`,
+  `insertion.ts`, `logFlow.ts`, `palette.ts`, `placeCopy.ts`, `title.ts`. Each is
+  unit-tested; none imports a node built-in, because the server imports them too.
+- **The document title is a route's job, not `index.html`'s** (`src/lib/title.ts`).
+  Every page calls `useTitle(...)`, passing `null` while the name is still in
+  flight — a tab that still says the last shop you opened is worse than one that
+  says nothing. `scripts/boot-smoke.mjs` reads `document.title` off each running
+  route and fails if they all agree.
 - Copy voice: a knowing friend, not a brand. "Cosign" is the endorsement verb.
 
 ## Evidence tooling (Phase 0 decision)

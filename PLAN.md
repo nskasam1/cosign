@@ -872,6 +872,46 @@ it, and 13 survived. All 13 are fixed. The ones worth remembering:
   the rankings the viewer may *not* read, so a place with 21 cosigners read as
   12. The remainder is computed from the total.
 
+### Carried-forward gaps — closed before Phase 5A ✅
+Everything this file and CLAUDE.md still recorded as deferred, plus one defect
+found while closing them. Evidence: `evidence/phase5a/gaps.txt`.
+- [x] **Every SPA route names itself.** `index.html` gave all twelve routes the
+      title `Cosign` — a Phase-1 condition Phase 4 named and did not fix. Titles
+      now come from `src/lib/title.ts` (`useTitle`, ~30 lines, no library), which
+      takes `null` while a data-derived name is in flight so a tab never keeps the
+      *previous* screen's name — the one failure mode that would make this worse
+      than leaving it alone. Checked behaviourally, not statically:
+      `scripts/boot-smoke.mjs` reads `document.title` off each running route,
+      asserts a per-route pattern, and fails if every route agrees.
+      **9 distinct titles across 12 routes**, all 12 booting clean.
+- [x] **The browser chrome is the token ground.** `index.html`'s `theme-color`
+      and `manifest.json`'s `theme_color`/`background_color` were `#141618` — the
+      pre-token palette — against pages painted `#14100E` since Phase 2, i.e. a
+      cooler grey status bar butting against a warm page on the one surface CSS
+      cannot reach. `tokens.test.ts` now guards all four hand-written copies
+      (both files plus the SSR page's and the tombstone's `<meta>`), the same way
+      it already guarded `og.ts`.
+- [x] **`public/placeholder.svg` deleted.** The light no-photo asset Phase 2
+      recorded as reading wrong on this ground; `PlacePlate` replaced it in
+      Phase 3 and nothing had referenced it since. Same reasoning as Phase 1's
+      slider and Phase 3's progress/radio-group: an unused primitive is the
+      drawer somebody opens later.
+- [x] **A `prefers-reduced-motion` violation, found while closing the above.**
+      `RequireAuth`'s loading state was a `border-primary` spinner on
+      `animate-spin` — Tailwind's own `spin 1s linear infinite`, which none of
+      the reduced-motion blocks in `tokens.css` or `index.css` reach, because
+      they zero the *duration tokens*. It was the last Phase-1 holding shape in
+      the shell and the only screen in the product that answered a question with
+      a shape instead of a sentence; it is now a line of small caps.
+- [x] CLAUDE.md's conventions section corrected: it still pointed at
+      `semester.ts`, deleted in Phase 1 and replaced by `calendar.ts`.
+
+**Not closed, deliberately:** the SPA's single 394 kB JS chunk (code-splitting
+is still unaddressed — it is not on any acceptance criterion, the share page
+ships none of it, and the public profile page in 5A must ship none of it
+either); the eight `react-refresh/only-export-components` lint warnings, all in
+generated shadcn primitives that `components.json` says not to hand-edit.
+
 ### Phase 5A — Profile + import ☐
 - [ ] `/p/:token` logged-out + own OG + **hard perf gate** (numbers: ___)
 - [ ] Takeout fixtures import in onboarding + empty states (test)

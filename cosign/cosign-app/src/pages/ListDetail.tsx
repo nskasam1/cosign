@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { api, type ListView, type ShopSummary } from "@/lib/api";
 import { paletteOf, paletteStyle } from "@/lib/palette";
+import { useTitle } from "@/lib/title";
 import PlacePlate from "@/components/log/PlacePlate";
 import Nothing from "@/components/Nothing";
 
@@ -14,6 +15,7 @@ const ListDetail = () => {
   const [loading, setLoading] = useState(true);
   const [adding, setAdding] = useState(false);
   const [shops, setShops] = useState<ShopSummary[]>([]);
+  useTitle(data?.list.title ?? null);
 
   const load = useCallback(() => {
     if (!listId) return;

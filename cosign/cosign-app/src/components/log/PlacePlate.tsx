@@ -12,8 +12,8 @@ interface PlacePlateProps {
 /**
  * A place's photograph, or — when it has none — the designed plate the share
  * page uses: its initials in the display face, on the ground its imagery
- * would have been painted with. Not a fallback, a state. The SPA's old
- * `public/placeholder.svg` is a light asset and reads wrong on this ground.
+ * would have been painted with. Not a fallback, a state. The SPA's old light
+ * placeholder asset read wrong on this ground and has been deleted.
  */
 const PlacePlate = ({ name, photo, palette, size, className = "" }: PlacePlateProps) => {
   const style = { ...paletteStyle(paletteOf(palette)), width: size, height: size } as CSSProperties;

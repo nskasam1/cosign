@@ -143,6 +143,37 @@ describe("no value is defined twice", () => {
       expectSameColour(value, `pal-${name}`, `og.ts palette ${name}`);
     }
   });
+
+  it("every browser-chrome colour is the token ground", () => {
+    // The status bar, the splash screen and the installed app's window are
+    // painted by the OS from these three files, not by any stylesheet — so
+    // they are the one other place a colour has to be written out by hand.
+    // They said #141618 (the pre-token palette) for four phases while every
+    // page behind them was #14100E, which is a visibly cooler grey butting
+    // against a warm page on the one surface CSS cannot reach.
+    const html = readFileSync(join(APP, "index.html"), "utf-8");
+    expectSameColour(
+      html.match(/<meta name="theme-color" content="(#[0-9a-fA-F]{6})"/)?.[1]?.toLowerCase(),
+      "bg",
+      "index.html theme-color",
+    );
+
+    const manifest = JSON.parse(readFileSync(join(APP, "public", "manifest.json"), "utf-8")) as {
+      background_color?: string;
+      theme_color?: string;
+    };
+    expectSameColour(manifest.theme_color?.toLowerCase(), "bg", "manifest theme_color");
+    expectSameColour(manifest.background_color?.toLowerCase(), "bg", "manifest background_color");
+
+    // The SSR pages inline the tokens, but their <meta> tag is read before a
+    // stylesheet is, so it is hand-written there too — both of them.
+    const share = readFileSync(join(APP, "server", "pages", "shareList.ts"), "utf-8");
+    const metas = [...share.matchAll(/theme-color" content="(#[0-9a-fA-F]{6})"/g)].map((m) =>
+      m[1].toLowerCase(),
+    );
+    expect(metas.length, "shareList.ts theme-color tags (page + tombstone)").toBe(2);
+    for (const [i, hex] of metas.entries()) expectSameColour(hex, "bg", `shareList.ts theme-color #${i + 1}`);
+  });
 });
 
 describe("fonts", () => {

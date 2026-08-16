@@ -4,6 +4,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { api, type ProfileView } from "@/lib/api";
 import { paletteOf, paletteStyle } from "@/lib/palette";
 import { track } from "@/lib/analytics";
+import { useTitle } from "@/lib/title";
 import type { ShareToken } from "@/types/cosign";
 import PlacePlate from "@/components/log/PlacePlate";
 import Nothing from "@/components/Nothing";
@@ -20,6 +21,7 @@ const Profile = () => {
   const [tokens, setTokens] = useState<ShareToken[]>([]);
   const [loading, setLoading] = useState(true);
   const [copied, setCopied] = useState<string | null>(null);
+  useTitle(data ? data.user.display_name : null);
 
   const load = useCallback(() => {
     if (!username) return;

@@ -22,24 +22,36 @@ const OUT = process.env.COSIGN_EVIDENCE_DIR
 const BASE = process.env.COSIGN_BASE ?? "http://localhost:8787";
 const ORIGIN = new URL(BASE).origin;
 
+// `title` is the document title this route must end up with. The SPA is one
+// document, so index.html can only name the app — for four phases every one
+// of these routes therefore said "Cosign", which is what a tab, a history
+// entry, a bookmark and a screen reader's first announcement all read.
+// src/lib/title.ts fixed it; this is the check that it stays fixed, and it
+// is behavioural rather than static: it reads document.title off the running
+// page, after the data the title is made of has arrived.
 const ROUTES = [
-  { name: "01-switcher-logged-out", path: "/", auth: false, expect: /cosign|pick|start/i },
+  // Logged out at "/" the switcher renders and Home never mounts, so the
+  // bare app name is the correct answer here — and the same answer Home
+  // itself gives, deliberately.
+  { name: "01-switcher-logged-out", path: "/", auth: false, expect: /cosign|pick|start/i, title: /^Cosign$/ },
   // stub signup must work with no session at all — it is the signup surface
-  { name: "01b-onboarding-logged-out", path: "/onboarding", auth: false, expect: /make your profile/i, needs: ["#ob-name", "#ob-username"] },
-  { name: "01c-onboarding-signed-in", path: "/onboarding", auth: true, expect: /anywhere you already trust/i },
-  { name: "02-home", path: "/", auth: true, expect: /near me, open now, has outlets/i },
-  { name: "02b-search", path: "/search", auth: true, expect: /what are you after/i, needs: ["#place-search"] },
-  { name: "03-profile", path: "/maya", auth: true, expect: /maya/i },
-  { name: "04-shop-detail", path: "/shop/oval-grounds", auth: true, expect: /oval grounds/i },
-  { name: "05-shop-detail-logged-out", path: "/shop/oval-grounds", auth: false, expect: /oval grounds/i },
-  { name: "06-list-detail", path: "/lists/l_our-campus-ranking", auth: true, expect: /./ },
-  { name: "07-ranking-flow", path: "/rank", auth: true, expect: /./ },
-  { name: "08-group-new", path: "/group/new", auth: true, expect: /./ },
+  { name: "01b-onboarding-logged-out", path: "/onboarding", auth: false, expect: /make your profile/i, needs: ["#ob-name", "#ob-username"], title: /^Start your list — Cosign$/ },
+  { name: "01c-onboarding-signed-in", path: "/onboarding", auth: true, expect: /anywhere you already trust/i, title: /^Start your list — Cosign$/ },
+  { name: "02-home", path: "/", auth: true, expect: /near me, open now, has outlets/i, title: /^Cosign$/ },
+  { name: "02b-search", path: "/search", auth: true, expect: /what are you after/i, needs: ["#place-search"], title: /^Search — Cosign$/ },
+  { name: "03-profile", path: "/maya", auth: true, expect: /maya/i, title: /^Maya Okafor — Cosign$/ },
+  { name: "04-shop-detail", path: "/shop/oval-grounds", auth: true, expect: /oval grounds/i, title: /^Oval Grounds — Cosign$/ },
+  { name: "05-shop-detail-logged-out", path: "/shop/oval-grounds", auth: false, expect: /oval grounds/i, title: /^Oval Grounds — Cosign$/ },
+  { name: "06-list-detail", path: "/lists/l_our-campus-ranking", auth: true, expect: /./, title: /^our ranking of campus coffee — Cosign$/ },
+  { name: "07-ranking-flow", path: "/rank", auth: true, expect: /./, title: /^Your list — Cosign$/ },
+  { name: "08-group-new", path: "/group/new", auth: true, expect: /./, title: /^Group mode — Cosign$/ },
+  { name: "09-not-found", path: "/shop/there-is-no-such-place/x", auth: true, expect: /no page here/i, title: /^Nothing at this address — Cosign$/ },
 ];
 
 const failures = [];
 const offOrigin = new Set();
 const report = [];
+const titles = [];
 
 mkdirSync(OUT, { recursive: true });
 
@@ -87,9 +99,23 @@ for (const route of ROUTES) {
     if ((await page.locator(sel).count()) === 0) errors.push(`missing element ${sel}`);
   }
 
+  // A title made of fetched data lands one tick after the data does, so wait
+  // for it rather than sampling — then read whatever is actually there and
+  // report it, so a timeout shows up as the wrong title and not as a hang.
+  if (route.title) {
+    await page
+      .waitForFunction((src) => new RegExp(src).test(document.title), route.title.source, { timeout: 5000 })
+      .catch(() => {});
+  }
+  const title = await page.title();
+  titles.push({ route: route.path, title });
+  if (route.title && !route.title.test(title)) {
+    errors.push(`title: expected ${route.title}, got ${JSON.stringify(title)}`);
+  }
+
   await page.screenshot({ path: join(OUT, `${route.name}.png`), fullPage: true });
 
-  report.push({ route: route.path, auth: route.auth, chars: text.length, errors });
+  report.push({ route: route.path, auth: route.auth, chars: text.length, title, errors });
   if (errors.length) failures.push({ route: route.name, errors });
   console.log(
     `${errors.length ? "FAIL" : "ok  "}  ${route.auth ? "auth" : "anon"}  ${route.path}  (${text.length} chars)` +
@@ -107,11 +133,22 @@ if (offOrigin.size) {
   console.log(`\nok    every request stayed on ${ORIGIN} (zero external services)`);
 }
 
+// The gap this closes was not "a title is wrong", it was "there is one title
+// for the whole app", so the count is worth stating on its own.
+const distinct = new Set(titles.map((t) => t.title));
+const oneTitleForEverything = distinct.size <= 1;
+console.log(`\n${oneTitleForEverything ? "FAIL" : "ok  "}  ${distinct.size} distinct <title> across ${titles.length} routes:`);
+for (const t of titles) console.log(`      ${t.route.padEnd(38)} ${t.title}`);
+
 writeFileSync(
   join(OUT, "boot-smoke.json"),
-  JSON.stringify({ base: BASE, routes: report, offOriginRequests: [...offOrigin] }, null, 2),
+  JSON.stringify(
+    { base: BASE, routes: report, titles, distinctTitles: distinct.size, offOriginRequests: [...offOrigin] },
+    null,
+    2,
+  ),
 );
 
-const failed = failures.length > 0 || offOrigin.size > 0;
+const failed = failures.length > 0 || offOrigin.size > 0 || oneTitleForEverything;
 console.log(failed ? `\n${failures.length} route(s) failed` : `\nall ${ROUTES.length} routes booted clean`);
 process.exit(failed ? 1 : 0);

@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { api } from "@/lib/api";
 import { paletteOf, paletteStyle } from "@/lib/palette";
+import { useTitle } from "@/lib/title";
 import type { Log, RankingEntry, Shop } from "@/types/cosign";
 import PlacePlate from "@/components/log/PlacePlate";
 import Nothing from "@/components/Nothing";
@@ -12,6 +13,7 @@ import Nothing from "@/components/Nothing";
 // it, because it is the same object, and a person should recognise their own
 // list when they send it.
 const RankingFlow = () => {
+  useTitle("Your list");
   const navigate = useNavigate();
   const [entries, setEntries] = useState<Array<RankingEntry & { shop: Shop }>>([]);
   const [logs, setLogs] = useState<Log[]>([]);
