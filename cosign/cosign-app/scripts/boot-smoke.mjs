@@ -44,7 +44,18 @@ const ROUTES = [
   { name: "05-shop-detail-logged-out", path: "/shop/oval-grounds", auth: false, expect: /oval grounds/i, title: /^Oval Grounds — Cosign$/ },
   { name: "06-list-detail", path: "/lists/l_our-campus-ranking", auth: true, expect: /./, title: /^our ranking of campus coffee — Cosign$/ },
   { name: "07-ranking-flow", path: "/rank", auth: true, expect: /./, title: /^Your list — Cosign$/ },
-  { name: "08-group-new", path: "/group/new", auth: true, expect: /./, title: /^Group mode — Cosign$/ },
+  { name: "08-group-new", path: "/group/new", auth: true, expect: /./, title: /^Ask three people — Cosign$/ },
+  // A table is a link. This one does not exist, which is the state a link
+  // reaches after the evening it was for — it must say so rather than boot
+  // into an empty session.
+  {
+    name: "08b-group",
+    path: "/g/g_notatable0000",
+    auth: false,
+    expect: /doesn't open anything/,
+    title: /^Nothing at this address — Cosign$/,
+    allowConsole: /404 \(Not Found\)/,
+  },
   { name: "09-not-found", path: "/shop/there-is-no-such-place/x", auth: true, expect: /no page here/i, title: /^Nothing at this address — Cosign$/ },
 ];
 
@@ -78,7 +89,12 @@ for (const route of ROUTES) {
 
   page.on("pageerror", (e) => errors.push(`pageerror: ${e.message}`));
   page.on("console", (m) => {
-    if (m.type() === "error") errors.push(`console: ${m.text()}`);
+    // A designed "this link opens nothing" state is REACHED by a 404, and
+    // the browser logs every non-2xx response whatever the page does about
+    // it. `allowConsole` names the one route where that is the point.
+    if (m.type() !== "error") return;
+    if (route.allowConsole?.test(m.text())) return;
+    errors.push(`console: ${m.text()}`);
   });
   page.on("request", (r) => {
     const url = r.url();

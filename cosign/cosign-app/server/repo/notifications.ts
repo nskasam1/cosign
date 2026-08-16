@@ -111,6 +111,11 @@ export function feedFor(db: DatabaseSync, userId: string, limit = 50): FeedEntry
       actor,
       ref: { kind: r.ref_kind, id: r.ref_id },
       ...resolved,
+      // Marking it read is itself an answer — "not now" is a reply. Which is
+      // what makes the count on the You tab dischargeable without answering
+      // yes, and what stops it being a number the product can hold over
+      // somebody until they give in.
+      needs_answer: resolved.needs_answer && !r.read_at,
     });
   }
   return out;

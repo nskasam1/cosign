@@ -179,8 +179,33 @@ export interface GroupView {
     held: number;
     left: number;
   };
+  /** Fails exactly one thing somebody asked for, and says which and whose. */
+  one_need_away: Array<{ shop_id: string; key: GroupConstraintKey; detail: string; askedBy: string[] }>;
+  /** What each need is worth — including the ones worth nothing. */
+  costs: Array<{
+    key: GroupConstraintKey;
+    detail: string;
+    askedBy: string[];
+    unlocks: number;
+    example: string | null;
+  }>;
   costliest: { key: GroupConstraintKey; detail: string; unlocks: number } | null;
-  places: Record<string, { name: string; slug: string; palette: string | null; walk_min: number }>;
+  /** Facts about the PLACE, never a restatement of what the group asked for. */
+  places: Record<
+    string,
+    {
+      name: string;
+      slug: string;
+      palette: string | null;
+      photo: string | null;
+      walk_min: number;
+      outlet_count: number | null;
+      wifi_mbps: number | null;
+      closes_in_min: number | null;
+      noise: NoiseLevel | null;
+      noise_samples: number;
+    }
+  >;
   members: Record<string, string>;
   resolved_shop_id: string | null;
 }

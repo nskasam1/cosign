@@ -18,7 +18,10 @@ import {
   MAX_PARTICIPANTS,
   funnel,
   intersect,
+  oneNeedAway,
+  priceOfEachNeed,
   sessionState,
+  type ConstraintKey,
   type FunnelStep,
   type GroupAnswer,
   type GroupNeed,
@@ -254,9 +257,28 @@ export interface GroupView {
   ruled_out_total: number;
   /** The same arithmetic as a column that subtracts to the answer. */
   funnel: { total: number; steps: FunnelStep[]; held: number; left: number };
+  /** Fails exactly one thing somebody asked for, and says which and whose. */
+  one_need_away: Array<{ shop_id: string; key: ConstraintKey; detail: string; askedBy: string[] }>;
+  /** What each need is worth, including the ones worth nothing. */
+  costs: Array<{ key: ConstraintKey; detail: string; askedBy: string[]; unlocks: number; example: string | null }>;
   costliest: GroupAnswer["costliest"];
-  /** Shop id → what the page needs to print about it. */
-  places: Record<string, { name: string; slug: string; palette: string | null; walk_min: number }>;
+  /** Shop id → what the page needs to print about it. Facts about the PLACE,
+   *  never a restatement of what the group asked for. */
+  places: Record<
+    string,
+    {
+      name: string;
+      slug: string;
+      palette: string | null;
+      photo: string | null;
+      walk_min: number;
+      outlet_count: number | null;
+      wifi_mbps: number | null;
+      closes_in_min: number | null;
+      noise: string | null;
+      noise_samples: number;
+    }
+  >;
   /** Whose lists are in the arithmetic, first names only. */
   members: Record<string, string>;
   resolved_shop_id: string | null;
@@ -339,10 +361,21 @@ export function sessionView(
   const invited = invitedCount(db, sessionId);
   const starter = userById(db, session.created_by);
 
-  const named: Record<string, { name: string; slug: string; palette: string | null; walk_min: number }> = {};
+  const named: GroupView["places"] = {};
   for (const s of shops.allShops(db, session.school_id)) {
     const p = places.find((x) => x.id === s.id)!;
-    named[s.id] = { name: s.name, slug: s.slug, palette: s.palette, walk_min: p.walk_min };
+    named[s.id] = {
+      name: s.name,
+      slug: s.slug,
+      palette: s.palette,
+      photo: shops.photosOf(db, s.id)[0]?.path ?? null,
+      walk_min: p.walk_min,
+      outlet_count: p.outlet_count,
+      wifi_mbps: p.wifi_mbps,
+      closes_in_min: shops.shopClosesIn(db, s.id, now, calendar.timezone),
+      noise: p.noise,
+      noise_samples: p.noise_samples,
+    };
   }
 
   const members: Record<string, string> = {};
@@ -368,7 +401,12 @@ export function sessionView(
     answers: rows.map((r) => ({
       participant: r.participant_token,
       display_name: r.display_name,
-      is_you: !!opts.participantToken && r.participant_token === opts.participantToken,
+      // Whoever is reading this — by their browser's token, or by their
+      // account, because a person who answered on their phone and opened it
+      // on a laptop has still answered.
+      is_you:
+        (!!opts.participantToken && r.participant_token === opts.participantToken) ||
+        (!!opts.viewerId && r.user_id === opts.viewerId),
       // Signing in is not the price of answering — it only means this
       // person's own ordered list is in the arithmetic.
       brings_a_list: !!r.user_id && withAList.has(r.user_id),
@@ -399,6 +437,13 @@ export function sessionView(
       .sort((a, b) => b.n - a.n || a.key.localeCompare(b.key)),
     ruled_out_total: answer.ruledOut.length,
     funnel: funnel(needs, places),
+    one_need_away: oneNeedAway(answer)
+      .slice(0, 3)
+      .map((n) => {
+        const c = answer.constraints.find((x) => x.key === n.key)!;
+        return { shop_id: n.place.id, key: n.key, detail: c.detail, askedBy: c.askedBy };
+      }),
+    costs: priceOfEachNeed(needs, places).map((c) => ({ ...c, example: c.example?.id ?? null })),
     costliest: answer.costliest,
     places: named,
     members,

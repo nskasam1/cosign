@@ -64,7 +64,11 @@ const App = () => (
             <Route path="/onboarding" element={<Onboarding />} />
             <Route path="/shop/:shopId" element={<AppShell><ShopDetail /></AppShell>} />
             <Route path="/lists/:listId" element={<AppShell><ListDetail /></AppShell>} />
-            <Route path="/group/:sessionId" element={<GroupSession />} />
+            {/* A table is a link, addressed like one: /g/<token>. It carries
+                no shell, because a session is a journey with one way out, and
+                no auth check, because an account is not the price of saying
+                what you need. */}
+            <Route path="/g/:sessionId" element={<GroupSession />} />
             <Route path="/:username" element={<AppShell><Profile /></AppShell>} />
 
             <Route path="*" element={<NotFound />} />

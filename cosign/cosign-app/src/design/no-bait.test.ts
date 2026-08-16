@@ -78,6 +78,27 @@ const RULES: Rule[] = [
   },
 ];
 
+/**
+ * The one carve-out, and it is exact rather than clever.
+ *
+ * The product PROMISES not to do these things, in words, on the two surfaces
+ * where somebody would reasonably wonder — so the vocabulary of bait appears
+ * in the copy that rules it out. A negation-detecting rule would be a guess;
+ * a list of the exact sentences allowed to contain the words is auditable,
+ * and it is short enough to read.
+ *
+ * The promise is CUT OUT of the line and everything else is still scanned,
+ * so a promise sitting on the same line as a real badge, a real nudge or a
+ * real timer buys none of them any amnesty. The scanner's own fixtures prove
+ * that too.
+ */
+const PROMISES = [
+  "There is no streak to keep, nothing to earn",
+  "Cosign will not nudge anybody about it",
+  "no reminder, no second ask, nothing on a timer",
+  "Cosign will not send one on its own",
+];
+
 interface Finding {
   file: string;
   line: number;
@@ -125,8 +146,9 @@ function codeLines(source: string): Array<{ line: string; n: number }> {
 function scan(source: string, file: string): Finding[] {
   const found: Finding[] = [];
   for (const { line, n } of codeLines(source)) {
+    const scrubbed = PROMISES.reduce((s, p) => s.split(p).join(" "), line);
     for (const rule of RULES) {
-      if (rule.re.test(line)) {
+      if (rule.re.test(scrubbed)) {
         found.push({ file, line: n, rule: rule.name, text: line.trim().slice(0, 120) });
       }
     }
@@ -195,6 +217,25 @@ describe("the scanner itself", () => {
       "  const shelf = tabs.map(render);",
     ].join("\n");
     expect(report(scan(paragraph, "fixture"))).toBe("");
+  });
+
+  it("lets the product say, in words, what it will not do", () => {
+    const promise = "<p>There is no streak to keep, nothing to earn, and nothing on a clock.</p>";
+    expect(report(scan(promise, "fixture"))).toBe("");
+  });
+
+  it("but the carve-out cuts out the promise and scans everything else", () => {
+    // a promise on the same line as a timer is still a timer
+    const sneaky = "const t = setInterval(poll, 1000); // Cosign will not nudge anybody about it";
+    expect(scan(sneaky, "fixture")).toHaveLength(1);
+    // and a promise on the same line as a badge is still a badge
+    const badge = '<p>There is no streak to keep, nothing to earn</p><span className="badge">3</span>';
+    expect(scan(badge, "fixture").map((f) => f.rule)).toEqual([
+      "a badge, a point score, a level or a leaderboard",
+    ]);
+    // a second streak outside the promise is still a streak
+    const twice = "<p>There is no streak to keep, nothing to earn.</p><p>Your streak is 4 days.</p>";
+    expect(scan(twice, "fixture").map((f) => f.rule)).toContain("a streak");
   });
 
   it("but code after a block closes on the same line is still code", () => {

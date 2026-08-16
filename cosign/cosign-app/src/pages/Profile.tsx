@@ -8,6 +8,7 @@ import { useTitle } from "@/lib/title";
 import type { ShareToken } from "@/types/cosign";
 import PlacePlate from "@/components/log/PlacePlate";
 import Nothing from "@/components/Nothing";
+import Feed from "@/components/Feed";
 
 // In-app profile: the owner's view of their ranking and their share links.
 // The public artifact is the SSR page at /s/:token — minting and revoking
@@ -21,6 +22,9 @@ const Profile = () => {
   const [tokens, setTokens] = useState<ShareToken[]>([]);
   const [loading, setLoading] = useState(true);
   const [copied, setCopied] = useState<string | null>(null);
+  /** null = not known yet (logged out, or the request is still out). */
+  const [standing, setStanding] = useState<"none" | "asked" | "asked_you" | "friends" | null>(null);
+  const [asking, setAsking] = useState(false);
   useTitle(data ? data.user.display_name : null);
 
   const load = useCallback(() => {
@@ -31,10 +35,32 @@ const Profile = () => {
       .then((d) => {
         setData(d);
         if (d.is_self) api.myShareTokens().then(({ tokens }) => setTokens(tokens));
+        else {
+          api
+            .friends()
+            .then((f) => {
+              if (f.accepted.some((u) => u.id === d.user.id)) setStanding("friends");
+              else if (f.outgoing.some((o) => o.user.id === d.user.id)) setStanding("asked");
+              else if (f.incoming.some((o) => o.user.id === d.user.id)) setStanding("asked_you");
+              else setStanding("none");
+            })
+            .catch(() => setStanding(null));
+        }
       })
       .catch(() => setData(null))
       .finally(() => setLoading(false));
   }, [username]);
+
+  const askToBeFriends = async () => {
+    if (!data || asking) return;
+    setAsking(true);
+    try {
+      await api.requestFriend(data.user.username);
+      setStanding("asked");
+    } finally {
+      setAsking(false);
+    }
+  };
 
   useEffect(load, [load]);
 
@@ -136,6 +162,36 @@ const Profile = () => {
       {user.signature_order && (
         <p className="cs-caps mt-2 text-gold">Usually orders a {user.signature_order}</p>
       )}
+
+      {/* Asking somebody to be a friend is one of the five human actions that
+          reach anybody in this product, so it is a button on their page and
+          nowhere else — there is no directory to browse and nothing suggests
+          people to you. */}
+      {!is_self && standing !== null && (
+        <div data-standing={standing} className="mt-6">
+          {standing === "none" && (
+            <>
+              <button type="button" data-ask-friend disabled={asking} onClick={askToBeFriends} className="cs-pill-ghost">
+                {asking ? "Asking…" : `Add ${first}`}
+              </button>
+              <p className="mt-3 text-xs text-muted">
+                One line on {first}'s page saying you asked. Nothing else is sent, and nothing is sent again.
+              </p>
+            </>
+          )}
+          {standing === "asked" && (
+            <p className="cs-caps text-muted">
+              You asked. Nothing happens until {first} answers, and Cosign will not ask again for you.
+            </p>
+          )}
+          {standing === "asked_you" && (
+            <p className="cs-caps text-gold">{first} asked you — it is waiting on your own page.</p>
+          )}
+          {standing === "friends" && <p className="cs-caps text-muted">You two are friends.</p>}
+        </div>
+      )}
+
+      {is_self && <Feed />}
 
       {is_self && (
         <section data-share className="mt-8 border-t border-rule-strong pt-5">

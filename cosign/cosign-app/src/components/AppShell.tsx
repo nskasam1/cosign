@@ -1,6 +1,6 @@
 import { useCallback, type ReactNode } from "react";
 import { Link, useLocation } from "react-router-dom";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
 import { api } from "@/lib/api";
 import { readPosition } from "@/lib/geo";
@@ -8,12 +8,21 @@ import { readPosition } from "@/lib/geo";
 /**
  * The shelf: four words on a hairline (brief — at most four primary
  * destinations, thumb zone, no hamburger mazes). No icons, because no other
- * surface in this product has one; no badges, because nothing here notifies
- * you without a person behind it (brief #11).
+ * surface in this product has one.
  *
- * It wraps the destinations only. The log flow, the head-to-head and
- * onboarding are journeys with their own way out, and a shelf on them would
- * offer a fifth thing to do while you are three taps into a fourth.
+ * ONE number, on You, and it counts only the people waiting on an answer
+ * from you. Phase 4 wrote "no badges, because nothing here notifies you
+ * without a person behind it"; that sentence was aimed at bait, and Phase 5B
+ * supersedes it rather than contradicting it. What makes a badge bait is that
+ * the product can raise it on its own. This one can be raised only by a
+ * friend request or a friend asking where to sit, is never raised by news, is
+ * never raised by elapsed time, and is lowered only by answering — where
+ * "not now" is an answer. Gold, because a count is a label; never ember,
+ * which has two jobs and this is neither of them; and nothing at all at zero.
+ *
+ * It wraps the destinations only. The log flow, the head-to-head, a group
+ * session and onboarding are journeys with their own way out, and a shelf on
+ * them would offer a fifth thing to do while you are three taps into a fourth.
  */
 
 interface Tab {
@@ -47,6 +56,16 @@ const Shelf = () => {
   const { pathname } = useLocation();
   const { user } = useAuth();
   const qc = useQueryClient();
+
+  // Only the asks. A logged-out reader has none, and neither does anybody
+  // whose feed is only news.
+  const waiting = useQuery({
+    queryKey: ["notifications", user?.id ?? "-"],
+    queryFn: api.notifications,
+    enabled: !!user,
+    staleTime: 30_000,
+  });
+  const asks = waiting.data?.entries.filter((e) => e.needs_answer).length ?? 0;
 
   // The log flow's six taps only hold if none of them waits on the network,
   // so the three queries it opens with are warmed on the press that starts
@@ -83,6 +102,12 @@ const Shelf = () => {
             className={`cs-tab${isLog ? " cs-tab-log" : ""}`}
           >
             {tab.label}
+            {tab.key === "you" && asks > 0 && (
+              <span data-waiting={asks} className="cs-figures ml-2 text-gold">
+                {asks}
+                <span className="sr-only"> people waiting on an answer from you</span>
+              </span>
+            )}
           </Link>
         );
       })}

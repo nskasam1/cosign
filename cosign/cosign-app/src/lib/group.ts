@@ -386,6 +386,51 @@ export function funnel(
   return { total: places.length, steps, held, left: alive.length - held };
 }
 
+/**
+ * The places that fail exactly one thing somebody asked for — the most
+ * useful thing an answer page can say after the answer, because it is where
+ * somebody finds out that the reason they are not at their own favourite is
+ * one named person's one named need.
+ *
+ * Ordered by how many of the group have it in their list, then how highly,
+ * then the walk: "your three favourites" rather than three arbitrary misses.
+ */
+export function oneNeedAway(answer: GroupAnswer): Array<{ place: GroupPlace; key: ConstraintKey }> {
+  return answer.ruledOut
+    .filter((r) => r.failed.length === 1 && r.place.positions.length > 0)
+    .map((r) => ({ ...r, pick: pickOf(r.place) }))
+    .sort((a, b) => b.pick.coverage - a.pick.coverage || b.pick.worstPct - a.pick.worstPct || a.place.walk_min - b.place.walk_min)
+    .map((r) => ({ place: r.place, key: r.failed[0] }));
+}
+
+/**
+ * What each need is worth, priced one at a time — INCLUDING the ones worth
+ * nothing, which is the rarest and most useful line an empty page has: it
+ * tells somebody which sacrifice would buy the table exactly nothing.
+ */
+export function priceOfEachNeed(
+  needs: GroupNeed[],
+  places: GroupPlace[],
+): Array<{ key: ConstraintKey; detail: string; askedBy: string[]; unlocks: number; example: GroupPlace | null }> {
+  const all = constraintsFor(needs);
+  return all
+    // A party of four cannot un-need a table, so it is never priced.
+    .filter((c) => c.key !== "table")
+    .map((dropped) => {
+      const rest = all.filter((c) => c.key !== dropped.key);
+      const freed = places.filter((p) => rest.every((c) => meets(p, c, needs) === true));
+      const best = freed.map(pickOf).sort(byGroupFit)[0];
+      return {
+        key: dropped.key,
+        detail: dropped.detail,
+        askedBy: dropped.askedBy,
+        unlocks: freed.length,
+        example: best?.place ?? freed[0] ?? null,
+      };
+    })
+    .sort((a, b) => b.unlocks - a.unlocks || a.key.localeCompare(b.key));
+}
+
 /** Everyone who has answered, in the order they arrived. */
 export function answeredBy(needs: GroupNeed[]): string[] {
   return needs.map((n) => n.display_name ?? "Someone");
