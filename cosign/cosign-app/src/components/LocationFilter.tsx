@@ -1,5 +1,4 @@
 import { MapPin } from "lucide-react";
-import { motion } from "framer-motion";
 
 interface LocationFilterProps {
   locations: string[];
@@ -7,6 +6,10 @@ interface LocationFilterProps {
   onSelect: (loc: string | null) => void;
 }
 
+// Phase 3 note: this used the deleted .gradient-accent utility and drove its
+// active state with framer-motion's whileTap + layoutId spring, neither of
+// which consults prefers-reduced-motion — the tokens only zero CSS durations.
+// It is now a flat ember chip on the share page's own chip geometry.
 const LocationFilter = ({ locations, selected, onSelect }: LocationFilterProps) => {
   if (locations.length < 2) return null;
 
@@ -17,36 +20,20 @@ const LocationFilter = ({ locations, selected, onSelect }: LocationFilterProps) 
       {chips.map(({ id, label }) => {
         const isActive = id === selected;
         return (
-          <motion.button
+          <button
             key={label}
+            type="button"
             onClick={() => onSelect(id)}
-            whileTap={{ scale: 0.93 }}
-            className="relative flex-shrink-0 flex items-center gap-1.5 px-3.5 py-2 rounded-full text-sm font-medium"
+            aria-pressed={isActive}
+            className={`flex min-h-11 flex-shrink-0 items-center gap-1.5 rounded-full border px-4 text-xs transition-colors duration-fast ease-out ${
+              isActive
+                ? "border-ember bg-ember font-bold text-background"
+                : "border-rule-strong bg-surface text-line"
+            }`}
           >
-            {isActive ? (
-              <motion.div
-                layoutId="location-active-pill"
-                className="absolute inset-0 rounded-full gradient-accent"
-                transition={{ type: "spring", bounce: 0.18, duration: 0.35 }}
-              />
-            ) : (
-              <div className="absolute inset-0 rounded-full bg-muted/60 border border-border/50" />
-            )}
-            {id !== null && (
-              <MapPin
-                className={`w-3 h-3 relative z-10 flex-shrink-0 ${
-                  isActive ? "text-primary-foreground" : "text-muted-foreground"
-                }`}
-              />
-            )}
-            <span
-              className={`relative z-10 whitespace-nowrap ${
-                isActive ? "text-primary-foreground font-semibold" : "text-muted-foreground"
-              }`}
-            >
-              {label}
-            </span>
-          </motion.button>
+            {id !== null && <MapPin className="h-3 w-3 flex-shrink-0" aria-hidden="true" />}
+            <span className="whitespace-nowrap">{label}</span>
+          </button>
         );
       })}
     </div>

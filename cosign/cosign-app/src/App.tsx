@@ -6,7 +6,9 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider } from "@/hooks/useAuth";
 import RequireAuth from "@/components/RequireAuth";
 import Home from "./pages/Home";
+import LogFlow from "./pages/LogFlow";
 import Onboarding from "./pages/Onboarding";
+import PlaceFlow from "./pages/PlaceFlow";
 import RankingFlow from "./pages/RankingFlow";
 import ShopDetail from "./pages/ShopDetail";
 import ListDetail from "./pages/ListDetail";
@@ -29,6 +31,15 @@ const App = () => (
         <BrowserRouter>
           <Routes>
             <Route path="/" element={<RequireAuth><Home /></RequireAuth>} />
+            {/* The log and the head-to-head that follows it are two routes on
+                purpose. The save enters /log/rank with `replace`, so the
+                review step is off the stack: going back from the ranking
+                screen lands on an earlier question with an empty draft, which
+                the stale-step guard sends to the picker. Back can therefore
+                only ever start a *new* log — it can never re-submit the one
+                already written. */}
+            <Route path="/log" element={<RequireAuth><LogFlow /></RequireAuth>} />
+            <Route path="/log/rank/:shopId" element={<RequireAuth><PlaceFlow /></RequireAuth>} />
             <Route path="/rank" element={<RequireAuth><RankingFlow /></RequireAuth>} />
             <Route path="/group/new" element={<RequireAuth><GroupSessionNew /></RequireAuth>} />
 

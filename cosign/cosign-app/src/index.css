@@ -25,60 +25,212 @@
     font-weight: 600;
     letter-spacing: -0.01em;
   }
-  /* Small-caps labels are the editorial voice throughout the app. */
+  /* Small-caps labels are the editorial voice throughout the app. 700, not
+     600 — Karla ships here as 400 and 700 only, so 600 was synthesising. */
   .label {
     font-size: var(--text-2xs);
-    font-weight: 600;
+    font-weight: 700;
     letter-spacing: var(--tracking-caps);
     text-transform: uppercase;
     color: hsl(var(--gold));
   }
+  /* The share page has had both since Phase 2; the SPA had neither, which is
+     a keyboard-visibility failure axe reports as soon as a flow is tabbed. */
+  :focus-visible {
+    outline: 2px solid hsl(var(--ember));
+    outline-offset: 3px;
+  }
+  ::selection {
+    background: hsl(var(--ember) / 0.32);
+  }
 }
 
-@layer utilities {
-  .glass {
-    background: hsl(var(--surface) / 0.88);
-    backdrop-filter: blur(20px) saturate(160%);
-    -webkit-backdrop-filter: blur(20px) saturate(160%);
+/* ─────────────────────────────────────────────────────────────────────────
+   The log-flow vocabulary (Phase 3). Five shapes, no card among them: the
+   surface's structure is hairlines and the page margin, ported from the
+   share page rather than re-decided. Everything reads tokens.css.
+   ───────────────────────────────────────────────────────────────────────── */
+@layer components {
+  /* One reading column, the share page's exact measure and gutter. */
+  .cs-wrap {
+    width: 100%;
+    max-width: 37.25rem;
+    margin-inline: auto;
+    padding-inline: var(--gutter);
   }
-  .glass-heavy {
-    background: hsl(var(--bg) / 0.94);
-    backdrop-filter: blur(32px) saturate(180%);
-    -webkit-backdrop-filter: blur(32px) saturate(180%);
+
+  /* The small-caps voice. Colour is always set by a utility at the call
+     site, because this label does three different jobs in three colours. */
+  .cs-caps {
+    font-family: var(--font-body);
+    font-size: var(--text-2xs);
+    font-weight: 700;
+    line-height: 1.4;
+    letter-spacing: var(--tracking-caps);
+    text-transform: uppercase;
   }
-  .gradient-card {
-    background: linear-gradient(145deg, hsl(var(--raise)) 0%, hsl(var(--surface)) 100%);
+
+  /* Display face at any size — questions, answers, place names, numerals. */
+  .cs-display {
+    font-family: var(--font-display);
+    font-weight: 400;
+    letter-spacing: var(--tracking-display);
   }
-  .card-shine {
+  .cs-figures {
+    font-variant-numeric: lining-nums tabular-nums;
+  }
+
+  /* An answer row: a hairline above, and a press state that bleeds through
+     the gutter so the whole edge-to-edge band reads as one target. */
+  .cs-row {
     position: relative;
-    overflow: hidden;
+    display: block;
+    width: 100%;
+    text-align: left;
+    margin-inline: calc(var(--gutter) * -1);
+    padding-inline: var(--gutter);
+    border-top: 1px solid hsl(var(--rule));
+    transition: background-color var(--duration-fast) var(--ease-out),
+      color var(--duration-fast) var(--ease-out);
   }
-  .card-shine::before {
-    content: '';
+  .cs-row:first-child {
+    border-top: 0;
+  }
+  .cs-row:active,
+  .cs-row[aria-pressed="true"] {
+    background: hsl(var(--surface));
+  }
+
+  /* The one selection mark in the product: a 2px ember rule in the page
+     margin. Same object as the save stamp, turned ninety degrees. */
+  .cs-row[aria-pressed="true"]::before {
+    content: "";
     position: absolute;
-    inset: 0;
-    background: linear-gradient(135deg, hsl(var(--ink) / 0.025) 0%, transparent 55%);
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 2px;
+    background: hsl(var(--ember));
+  }
+
+  /* A place's photograph, and the designed state for a place without one:
+     its initials in its own imagery hue, never a missing picture. */
+  .cs-shot {
+    border-radius: var(--radius-sm);
+    object-fit: cover;
+    background: hsl(var(--surface));
+  }
+  .cs-plate {
+    display: grid;
+    place-items: center;
+    border-radius: var(--radius-sm);
+    background: hsl(var(--plate));
+    border: 1px solid hsl(var(--pal) / 0.24);
+    color: hsl(var(--pal));
+    font-family: var(--font-display);
+    font-weight: 400;
+    letter-spacing: -0.02em;
+  }
+
+  /* The two pill shapes. Solid ember commits; the outline is everything
+     after the commit, where nothing is at stake any more. */
+  .cs-pill {
+    display: inline-flex;
+    align-items: center;
+    min-height: var(--tap);
+    padding-inline: var(--space-5);
+    border-radius: var(--radius-full);
+    background: hsl(var(--ember));
+    color: hsl(var(--bg));
+    font-family: var(--font-body);
+    font-size: var(--text-2xs);
+    font-weight: 700;
+    letter-spacing: var(--tracking-caps);
+    text-transform: uppercase;
+    transition: opacity var(--duration-fast) var(--ease-out);
+  }
+  .cs-pill[disabled] {
+    opacity: 0.45;
     pointer-events: none;
-    border-radius: inherit;
   }
-  .gradient-text {
-    background: linear-gradient(135deg, hsl(var(--gold)) 0%, hsl(var(--ember)) 100%);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
+  .cs-pill-ghost {
+    display: inline-flex;
+    align-items: center;
+    min-height: var(--tap);
+    padding-inline: var(--space-5);
+    border-radius: var(--radius-full);
+    border: 1px solid hsl(var(--ember));
+    color: hsl(var(--ember-ink));
+    font-family: var(--font-body);
+    font-size: var(--text-2xs);
+    font-weight: 700;
+    letter-spacing: var(--tracking-caps);
+    text-transform: uppercase;
+    transition: background-color var(--duration-fast) var(--ease-out),
+      color var(--duration-fast) var(--ease-out);
   }
-  .gradient-accent {
-    background: linear-gradient(135deg, hsl(var(--ember)) 0%, hsl(var(--gold)) 100%);
+  .cs-pill-ghost:hover {
+    background: hsl(var(--ember));
+    color: hsl(var(--bg));
   }
-  .gold-glow {
-    box-shadow: 0 0 24px hsl(var(--gold) / 0.18), 0 0 48px hsl(var(--ember) / 0.08);
+
+  /* A 44px word: BACK, LATER, CANCEL. Negative margin keeps the text
+     optically flush with the gutter while the target stays full size. */
+  .cs-word {
+    display: inline-flex;
+    align-items: center;
+    min-height: var(--tap);
+    margin-inline: -0.5rem;
+    padding-inline: 0.5rem;
   }
-  .accent-glow {
-    box-shadow: 0 0 30px hsl(var(--ember) / 0.2), 0 0 60px hsl(var(--gold) / 0.1);
+
+  /* The save stamp: one ember hairline drawing itself across the column,
+     which then stays put above every comparison as proof the log is safe. */
+  .cs-stamp {
+    height: 1px;
+    background: hsl(var(--ember));
+    transform-origin: left;
+    animation: cs-stamp var(--duration-slow) var(--ease-out) both;
   }
-  .nav-shadow {
-    box-shadow: 0 8px 32px hsl(var(--bg) / 0.55), 0 2px 8px hsl(var(--bg) / 0.35), inset 0 1px 0 hsl(var(--ink) / 0.04);
+  .cs-step {
+    animation: cs-step-in var(--duration-base) var(--ease-out) both;
   }
+  .cs-fade {
+    animation: cs-fade-in var(--duration-base) var(--ease-out) both;
+  }
+}
+
+@keyframes cs-stamp {
+  from { transform: scaleX(0); }
+  to { transform: scaleX(1); }
+}
+@keyframes cs-step-in {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes cs-fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+/* Every duration above is a token, and tokens.css zeroes all three under
+   prefers-reduced-motion — but a 0s animation still runs its keyframes, so
+   the final state has to be the resting state. `both` guarantees it. */
+@media (prefers-reduced-motion: reduce) {
+  .cs-stamp,
+  .cs-step,
+  .cs-fade {
+    animation: none;
+  }
+}
+
+/* The Lovable-era kit that used to live here — .glass, .gradient-card,
+   .card-shine, .gradient-text, .gradient-accent, .gold-glow, .accent-glow,
+   .nav-shadow — is gone. Every one of them was a gradient, a glow or a glass
+   panel: exactly the stock look the brief's anti-slop rule names, and none
+   of them survived Phase 2's design decisions. Only the scrollbar hider,
+   which is structural, remains. */
+@layer utilities {
   .no-scrollbar::-webkit-scrollbar { display: none; }
   .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
 }

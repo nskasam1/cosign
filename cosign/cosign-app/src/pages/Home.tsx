@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
+import { useQueryClient } from "@tanstack/react-query";
 import { Compass, MapPin, Trophy, Share2, ListOrdered } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { api, type Meta, type ShopSummary } from "@/lib/api";
@@ -12,6 +13,7 @@ import EmptyState from "@/components/EmptyState";
 // open-now from shop_hours.
 const Home = () => {
   const { user, signOut } = useAuth();
+  const qc = useQueryClient();
   const [meta, setMeta] = useState<Meta | null>(null);
   const [shops, setShops] = useState<ShopSummary[]>([]);
   const [loading, setLoading] = useState(true);
@@ -60,6 +62,24 @@ const Home = () => {
           </button>
         )}
       </header>
+
+      {/* The whole log fits in six taps, and none of them may wait on the
+          network: warming these three on pointerdown means every step after
+          the entry tap renders from memory and the flow makes exactly one
+          request — the one that saves. */}
+      <Link
+        to="/log"
+        data-log-entry
+        onPointerDown={() => {
+          const warm = { staleTime: 5 * 60_000 };
+          void qc.prefetchQuery({ queryKey: ["shops"], queryFn: api.shops, ...warm });
+          void qc.prefetchQuery({ queryKey: ["meta"], queryFn: api.meta, ...warm });
+          void qc.prefetchQuery({ queryKey: ["ranking", "me"], queryFn: api.myRanking, ...warm });
+        }}
+        className="cs-pill mb-6"
+      >
+        Log a visit
+      </Link>
 
       {heroPick ? (
         <Link

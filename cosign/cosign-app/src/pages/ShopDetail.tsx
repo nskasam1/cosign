@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { Link, useParams, useNavigate } from "react-router-dom";
 import { ArrowLeft, Wifi, Armchair, MapPin, DollarSign, Plug, Sun, KeyRound, Clock } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { currentTimeBucket } from "@/lib/timeBucket";
@@ -199,6 +199,16 @@ const ShopDetail = () => {
                 </span>
               )}
             </div>
+          </div>
+        )}
+
+        {user && (
+          <div className="mt-6">
+            {/* Entering from a shop page pre-picks the place, so the log is
+                five taps from here instead of six. */}
+            <Link to={`/log?shop=${shop.slug}`} data-log-entry-shop data-shop-slug={shop.slug} className="cs-pill">
+              Log a visit here
+            </Link>
           </div>
         )}
 
