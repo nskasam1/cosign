@@ -9,13 +9,17 @@ import { mkdirSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
+// Defaults to `scratch`, never to a phase that has been signed off. Every
+// evidence run sets COSIGN_EVIDENCE explicitly; anything else — an ad-hoc
+// `npx playwright test`, a spec run from an editor — writes somewhere it
+// cannot do any harm. evidence/scratch/ is gitignored.
 export const EVIDENCE = join(
   dirname(fileURLToPath(import.meta.url)),
   "..",
   "..",
   "..",
   "evidence",
-  process.env.COSIGN_EVIDENCE ?? "phase3",
+  process.env.COSIGN_EVIDENCE ?? "scratch",
 );
 mkdirSync(EVIDENCE, { recursive: true });
 
@@ -70,6 +74,23 @@ export async function shot(page: Page, name: string, project: string) {
 }
 
 /**
+ * A screenshot of exactly what the phone shows (Phase 4).
+ *
+ * The app shell is `position: sticky; bottom: 0`, and a full-page capture of
+ * a sticky footer lands it wherever the scroll happened to be — in the
+ * middle of the column, overlaying a row. That is a capture artifact, not
+ * the design, and committing it as evidence would misrepresent the surface.
+ * A viewport shot is also the more honest artifact for a shell: the shell's
+ * whole claim is about where it sits on a 390x844 screen.
+ */
+export async function shotViewport(page: Page, name: string, project: string, scrollTo = 0) {
+  await page.evaluate((y) => window.scrollTo(0, y), scrollTo);
+  await settled(page);
+  await page.waitForTimeout(120);
+  return page.screenshot({ path: join(EVIDENCE, `${name}-${project}.png`) });
+}
+
+/**
  * The share page's no-rating-scale assertions (e2e/share.spec.ts), reusable
  * so they can run on EVERY step of the flow rather than only on its last
  * screen — a scale that appears on step 3 is exactly what an end-state check
@@ -91,11 +112,35 @@ export async function expectNoRatingScale(page: Page, where: string): Promise<vo
   expect(body, where).not.toMatch(/\brat(?:e|ing)\b/i);
 }
 
-/** Every anchor and button on screen clears the 44px minimum target. */
+/**
+ * Every control on screen clears the 44px minimum target.
+ *
+ * A link set inside a sentence is exempt, and deliberately: WCAG 2.5.8 and
+ * 2.5.5 both carve out "the target is in a sentence or block of text",
+ * because a word in a paragraph cannot be 44px tall without destroying the
+ * paragraph. The exemption is narrow on purpose — it applies only to an
+ * inline <a> whose parent also contains text of its own, so a bare inline
+ * link standing in for a button is still caught, and every <button>, every
+ * block link and every tab is checked as before.
+ */
 export async function expectTapTargets(page: Page, where: string): Promise<void> {
   for (const el of await page.locator("a:visible, button:visible").all()) {
     const box = await el.boundingBox();
     if (!box) continue;
+    const inSentence = await el.evaluate((node) => {
+      if (node.tagName !== "A") return false;
+      if (getComputedStyle(node).display !== "inline") return false;
+      // Walk up to the nearest block: "in a sentence" is a property of the
+      // paragraph, not of whatever inline span happens to wrap the word.
+      let block: HTMLElement | null = node.parentElement;
+      while (block && getComputedStyle(block).display.startsWith("inline")) {
+        block = block.parentElement;
+      }
+      if (!block) return false;
+      const around = (block.textContent ?? "").replace(node.textContent ?? "", "").trim();
+      return around.length > 0;
+    });
+    if (inSentence) continue;
     expect
       .soft(Math.min(box.width, box.height), `${where}: ${(await el.innerText()).slice(0, 30)}`)
       .toBeGreaterThanOrEqual(44);

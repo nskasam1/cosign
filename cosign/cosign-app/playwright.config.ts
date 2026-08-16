@@ -10,7 +10,12 @@
 import { defineConfig, devices } from "@playwright/test";
 
 const BASE_URL = process.env.COSIGN_BASE ?? "http://localhost:8787";
-export const EVIDENCE_PHASE = process.env.COSIGN_EVIDENCE ?? "phase2";
+// Unset means "nowhere in particular", never a phase that has already been
+// signed off: Phase 3 found `share.spec.ts` silently regenerating seven
+// committed Phase 2 artifacts, and a default of "phase2" here is the same
+// trap one level up — a bare `npx playwright test` would overwrite Phase 2's
+// results JSON whichever spec it ran.
+export const EVIDENCE_PHASE = process.env.COSIGN_EVIDENCE ?? "scratch";
 
 export default defineConfig({
   testDir: "./e2e",

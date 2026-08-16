@@ -1,0 +1,14 @@
+{
+  "usual": {
+    "phase": "break",
+    "mode": "usual",
+    "hero": "s_night-owl",
+    "matches": 2
+  },
+  "finals": {
+    "phase": "finals",
+    "mode": "finals",
+    "hero": "s_all-nighter",
+    "matches": 2
+  }
+}

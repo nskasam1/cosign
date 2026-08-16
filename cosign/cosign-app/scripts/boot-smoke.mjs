@@ -26,8 +26,9 @@ const ROUTES = [
   { name: "01-switcher-logged-out", path: "/", auth: false, expect: /cosign|pick|start/i },
   // stub signup must work with no session at all — it is the signup surface
   { name: "01b-onboarding-logged-out", path: "/onboarding", auth: false, expect: /make your profile/i, needs: ["#ob-name", "#ob-username"] },
-  { name: "01c-onboarding-signed-in", path: "/onboarding", auth: true, expect: /pick your spots/i },
-  { name: "02-home", path: "/", auth: true, expect: /open now|near/i },
+  { name: "01c-onboarding-signed-in", path: "/onboarding", auth: true, expect: /anywhere you already trust/i },
+  { name: "02-home", path: "/", auth: true, expect: /near me, open now, has outlets/i },
+  { name: "02b-search", path: "/search", auth: true, expect: /what are you after/i, needs: ["#place-search"] },
   { name: "03-profile", path: "/maya", auth: true, expect: /maya/i },
   { name: "04-shop-detail", path: "/shop/oval-grounds", auth: true, expect: /oval grounds/i },
   { name: "05-shop-detail-logged-out", path: "/shop/oval-grounds", auth: false, expect: /oval grounds/i },

@@ -7,3 +7,7 @@
 
 # Supabase CLI residue (dir removed in Phase 1; keep ignored so it never returns)
 **/supabase/.temp/
+
+# Evidence written by an ad-hoc test run (COSIGN_EVIDENCE unset). Committed
+# evidence lives in evidence/phase<N>/ and is written by the phase scripts.
+evidence/scratch/
