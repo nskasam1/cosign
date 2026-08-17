@@ -15,15 +15,12 @@
 # earlier phase's.
 set -uo pipefail
 cd "$(dirname "$0")/.."
+. scripts/lib/server.sh
 OUT="../../evidence/phase5a"
 SCRATCH="${TMPDIR:-/tmp}/cosign-phase5a.db"
 mkdir -p "$OUT"
 
-if curl -s -o /dev/null --max-time 2 "http://localhost:8787/api/meta"; then
-  echo "Something is already listening on :8787 — stop it first." >&2
-  echo "  PowerShell: Get-NetTCPConnection -LocalPort 8787 -State Listen" >&2
-  exit 1
-fi
+require_free_port 8787
 
 rm -f "$SCRATCH" "$SCRATCH"-shm "$SCRATCH"-wal
 COSIGN_DB="$SCRATCH" npm run seed > /tmp/phase5a-seed.log 2>&1 || { cat /tmp/phase5a-seed.log; exit 1; }
@@ -31,11 +28,8 @@ npm run build > /tmp/phase5a-build.log 2>&1 || { tail -20 /tmp/phase5a-build.log
 
 COSIGN_DB="$SCRATCH" npm run serve:prod > /tmp/phase5a-server.log 2>&1 &
 SERVER=$!
-trap 'kill $SERVER 2>/dev/null' EXIT
-for _ in $(seq 1 60); do
-  curl -s -o /dev/null --max-time 1 "http://localhost:8787/api/meta" && break
-  sleep 0.5
-done
+trap 'stop_server "$SERVER" 8787' EXIT
+wait_for_port 8787 || { tail -20 /tmp/phase5a-server.log; exit 1; }
 
 # Seeded tokens (seed/share-tokens.json).
 PROFILE=Rp7YT1i9S-Ov      # maya: 22 places, a live ranking link

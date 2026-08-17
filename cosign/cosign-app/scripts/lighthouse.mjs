@@ -22,11 +22,24 @@ if (!path.startsWith("/")) {
   console.error(`Under Git Bash, prefix the command with MSYS_NO_PATHCONV=1.`);
   process.exit(2);
 }
-const phase = process.argv[3] ?? "phase2";
+// `scratch` and never a signed-off phase. This defaulted to `phase2` for four
+// phases, and `npm run gate` is a bare invocation of this script — so the one
+// command in package.json named after the gate overwrote the committed
+// Phase 2 numbers and their 500 kB report. Fourth time this trap has been
+// found (share.spec.ts, playwright.config.ts + fixtures.ts, boot-smoke.mjs);
+// evidence/scratch/ is gitignored and every phase script names its own.
+const phase = process.argv[3] ?? "scratch";
 const label = process.argv[4] ?? "share";
 const BASE = process.env.COSIGN_BASE ?? "http://localhost:8787";
 const OUT = join(APP_ROOT, "..", "..", "evidence", phase);
 const RUNS = Number(process.env.LH_RUNS ?? 3);
+
+// `LH_BLOCK="*/fonts/*"` blocks matching requests in the browser. It is a
+// measurement-side control and never a product hook: the same build and the
+// same server answer the same URL, with one resource taken away, so the cost
+// of that resource can be priced against the budget instead of argued about.
+// A run that used it is marked `blocked` in the JSON and can never be a pass.
+const BLOCK = (process.env.LH_BLOCK ?? "").split(",").map((s) => s.trim()).filter(Boolean);
 
 // Gate (PLAN.md, Phase 2): LCP <= 1.0 s and performance score >= 90.
 const GATE = { lcpMs: 1000, perf: 90, a11y: 95 };
@@ -62,6 +75,7 @@ try {
           screenEmulation: { mobile: true, width: 390, height: 844, deviceScaleFactor: 2, disabled: false },
           emulatedUserAgentString: false,
           onlyCategories: ["performance", "accessibility", "best-practices", "seo"],
+          ...(BLOCK.length ? { blockedUrlPatterns: BLOCK } : {}),
         },
       },
     );
@@ -108,10 +122,13 @@ const report = {
   lighthouse: last.lhr.lighthouseVersion,
   throttling,
   gate: GATE,
+  blocked: BLOCK.length ? BLOCK : null,
   runs,
   median,
   lcpElement: lcpEl ?? null,
-  passed: median.lcpMs <= GATE.lcpMs && median.perf >= GATE.perf,
+  // A control run has had a resource taken away, so it measures a page the
+  // product does not serve. It reports its numbers and is never a pass.
+  passed: BLOCK.length === 0 && median.lcpMs <= GATE.lcpMs && median.perf >= GATE.perf,
   a11yPassed: median.a11y >= GATE.a11y,
   generatedAt: new Date().toISOString(),
 };
@@ -122,6 +139,7 @@ writeFileSync(join(OUT, `lighthouse-${label}.report.json`), JSON.stringify(last.
 const line = (k, v, ok) => `  ${ok === undefined ? " " : ok ? "PASS" : "FAIL"}  ${k.padEnd(22)} ${v}`;
 console.log(`\nLighthouse ${last.lhr.lighthouseVersion} · mobile · simulated Slow-4G · median of ${RUNS}`);
 console.log(`  ${report.url}`);
+if (BLOCK.length) console.log(`  CONTROL — blocked: ${BLOCK.join(" ")} (never a pass)`);
 console.log(line("performance", `${median.perf}`, median.perf >= GATE.perf));
 console.log(line("LCP", `${median.lcpMs} ms`, median.lcpMs <= GATE.lcpMs));
 console.log(line("accessibility", `${median.a11y}`, median.a11y >= GATE.a11y));

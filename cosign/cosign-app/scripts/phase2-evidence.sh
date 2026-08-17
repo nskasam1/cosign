@@ -1,8 +1,20 @@
 #!/usr/bin/env bash
 # Phase 2 acceptance evidence, captured as command output rather than claims.
 #
-#   npm run prod                                  # in another shell, first
 #   cd cosign/cosign-app && bash scripts/phase2-evidence.sh
+#
+# Owns everything it needs, the way every later phase script does: a scratch
+# database seeded from seed/ (server/data/cosign.db is never touched, so the
+# run is repeatable and the committed seed stays the committed seed) and the
+# built app on :8787.
+#
+# It used to want `npm run prod` in another shell and then ran a bare
+# `npx playwright test` — no spec filter, no COSIGN_EVIDENCE, and whatever
+# database that server happened to hold. Once Phase 4 made COSIGN_EVIDENCE
+# default to `scratch`, this script's screenshots, axe reports and OG snapshot
+# went to the gitignored evidence/scratch/ while the header above still
+# promised evidence/phase2/, and the unfiltered run also dragged in four later
+# phases' specs against a database seeded for none of them.
 #
 # Writes to evidence/phase2/ at the repo root. The Playwright screenshots,
 # axe reports, OG snapshot and Lighthouse numbers are written by
@@ -10,15 +22,29 @@
 # runs; everything else is transcript.
 set -uo pipefail
 cd "$(dirname "$0")/.."
+. scripts/lib/server.sh
 OUT="../../evidence/phase2"
+SCRATCH="${TMPDIR:-/tmp}/cosign-phase2.db"
 TOKEN="IofpCInelhr1"     # maya's ranking — the 22-place perf-gate list
 REVOKED="e3lsicjJ4Q3S"
 PROFILE="Rp7YT1i9S-Ov"
 mkdir -p "$OUT"
 
+require_free_port 8787
+
+rm -f "$SCRATCH" "$SCRATCH"-shm "$SCRATCH"-wal
+COSIGN_DB="$SCRATCH" npm run seed > /tmp/phase2-seed.log 2>&1 || { cat /tmp/phase2-seed.log; exit 1; }
+npm run build > /tmp/phase2-build.log 2>&1 || { tail -20 /tmp/phase2-build.log; exit 1; }
+
+COSIGN_DB="$SCRATCH" npm run serve:prod > /tmp/phase2-server.log 2>&1 &
+SERVER=$!
+trap 'stop_server "$SERVER" 8787' EXIT
+wait_for_port 8787 || { tail -20 /tmp/phase2-server.log; exit 1; }
+
 {
   echo "# Phase 2 acceptance evidence — $(date -u +%Y-%m-%dT%H:%M:%SZ)"
   echo "# node $(node --version), npm $(npm --version)"
+  echo "# scratch database: $SCRATCH (server/data/cosign.db untouched)"
 
   echo; echo "## npx tsc -b (project refs: app / node / server)"
   ./node_modules/.bin/tsc -b; echo "exit=$?"
@@ -77,7 +103,7 @@ mkdir -p "$OUT"
 
   echo; echo "## friends-only default still holds (cosigners on a public page)"
   echo "\$ rankings by visibility:"
-  ./node_modules/.bin/tsx -e "
+  COSIGN_DB="$SCRATCH" ./node_modules/.bin/tsx -e "
     import { getDb } from './server/db/db.ts';
     const db = getDb();
     for (const r of db.prepare('SELECT visibility, count(*) n FROM rankings GROUP BY visibility').all())
@@ -99,7 +125,7 @@ mkdir -p "$OUT"
 echo "wrote $OUT/commands.txt"
 
 echo "running playwright (screenshots, axe, reduced motion, OG snapshot)…"
-npx playwright test 2>&1 | tail -3
+COSIGN_EVIDENCE=phase2 npx playwright test share.spec.ts 2>&1 | tail -3
 
 echo "running the perf gate…"
 # MSYS_NO_PATHCONV: Git Bash rewrites a leading-slash argument into a Windows

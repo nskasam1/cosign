@@ -3,7 +3,8 @@
 // host other than the local server.
 //
 //   npm run seed && npm run prod        # server on :8787
-//   node scripts/boot-smoke.mjs         # -> evidence/phase1/
+//   node scripts/boot-smoke.mjs         # -> evidence/scratch/spa/
+//   COSIGN_EVIDENCE_DIR=phase2/spa node scripts/boot-smoke.mjs
 //
 // Exits non-zero on any page error, console error, blank render, or any
 // request to an origin other than the local server.

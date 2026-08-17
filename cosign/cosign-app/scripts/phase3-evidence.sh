@@ -9,26 +9,20 @@
 # repeatable and the committed seed stays the committed seed.
 set -uo pipefail
 cd "$(dirname "$0")/.."
+. scripts/lib/server.sh
 OUT="../../evidence/phase3"
 SCRATCH="${TMPDIR:-/tmp}/cosign-phase3.db"
 mkdir -p "$OUT"
 
-if curl -s -o /dev/null --max-time 2 http://localhost:8787/api/meta; then
-  echo "Something is already listening on :8787 — stop it first." >&2
-  echo "  PowerShell: Get-NetTCPConnection -LocalPort 8787 -State Listen" >&2
-  exit 1
-fi
+require_free_port 8787
 
 rm -f "$SCRATCH" "$SCRATCH"-shm "$SCRATCH"-wal
 COSIGN_DB="$SCRATCH" npm run seed > /tmp/phase3-seed.log 2>&1 || { cat /tmp/phase3-seed.log; exit 1; }
 npm run build > /tmp/phase3-build.log 2>&1 || { tail -20 /tmp/phase3-build.log; exit 1; }
 COSIGN_DB="$SCRATCH" npm run serve:prod > /tmp/phase3-server.log 2>&1 &
 SERVER=$!
-trap 'kill $SERVER 2>/dev/null' EXIT
-for _ in $(seq 1 40); do
-  curl -s -o /dev/null --max-time 1 http://localhost:8787/api/meta && break
-  sleep 0.5
-done
+trap 'stop_server "$SERVER" 8787' EXIT
+wait_for_port 8787 || { tail -20 /tmp/phase3-server.log; exit 1; }
 
 {
   echo "# Phase 3 acceptance evidence — $(date -u +%Y-%m-%dT%H:%M:%SZ)"

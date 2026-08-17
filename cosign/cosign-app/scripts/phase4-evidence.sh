@@ -18,18 +18,14 @@
 # them, and a test that has to be re-dated is a test nobody re-runs.
 set -uo pipefail
 cd "$(dirname "$0")/.."
+. scripts/lib/server.sh
 OUT="../../evidence/phase4"
 SCRATCH="${TMPDIR:-/tmp}/cosign-phase4.db"
 FINALS_CAL="${TMPDIR:-/tmp}/cosign-finals-calendar.json"
 mkdir -p "$OUT"
 
-for port in 8787 8788; do
-  if curl -s -o /dev/null --max-time 2 "http://localhost:$port/api/meta"; then
-    echo "Something is already listening on :$port — stop it first." >&2
-    echo "  PowerShell: Get-NetTCPConnection -LocalPort $port -State Listen" >&2
-    exit 1
-  fi
-done
+require_free_port 8787
+require_free_port 8788
 
 rm -f "$SCRATCH" "$SCRATCH"-shm "$SCRATCH"-wal
 COSIGN_DB="$SCRATCH" npm run seed > /tmp/phase4-seed.log 2>&1 || { cat /tmp/phase4-seed.log; exit 1; }
@@ -61,13 +57,9 @@ COSIGN_DB="$SCRATCH" npm run serve:prod > /tmp/phase4-server.log 2>&1 &
 MAIN=$!
 PORT=8788 COSIGN_DB="$SCRATCH" COSIGN_CALENDAR="$FINALS_CAL" npm run serve:prod > /tmp/phase4-finals.log 2>&1 &
 FINALS=$!
-trap 'kill $MAIN $FINALS 2>/dev/null' EXIT
-for port in 8787 8788; do
-  for _ in $(seq 1 40); do
-    curl -s -o /dev/null --max-time 1 "http://localhost:$port/api/meta" && break
-    sleep 0.5
-  done
-done
+trap 'stop_server "$MAIN" 8787; stop_server "$FINALS" 8788' EXIT
+wait_for_port 8787 || { tail -20 /tmp/phase4-server.log; exit 1; }
+wait_for_port 8788 || { tail -20 /tmp/phase4-finals.log; exit 1; }
 
 {
   echo "# Phase 4 acceptance evidence — $(date -u +%Y-%m-%dT%H:%M:%SZ)"

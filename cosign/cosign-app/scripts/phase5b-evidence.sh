@@ -20,6 +20,7 @@
 # SPA bundle those two pages deliberately do not load.
 set -uo pipefail
 cd "$(dirname "$0")/.."
+. scripts/lib/server.sh
 OUT="../../evidence/phase5b"
 SCRATCH="${TMPDIR:-/tmp}/cosign-phase5b.db"
 # The transcript's demos WRITE (they re-rank both collaborative lists). They
@@ -29,11 +30,7 @@ SCRATCH="${TMPDIR:-/tmp}/cosign-phase5b.db"
 DEMO="${TMPDIR:-/tmp}/cosign-phase5b-demo.db"
 mkdir -p "$OUT"
 
-if curl -s -o /dev/null --max-time 2 "http://localhost:8787/api/meta"; then
-  echo "Something is already listening on :8787 — stop it first." >&2
-  echo "  PowerShell: Get-NetTCPConnection -LocalPort 8787 -State Listen" >&2
-  exit 1
-fi
+require_free_port 8787
 
 rm -f "$SCRATCH" "$SCRATCH"-shm "$SCRATCH"-wal "$DEMO" "$DEMO"-shm "$DEMO"-wal
 COSIGN_DB="$SCRATCH" npm run seed > /tmp/phase5b-seed.log 2>&1 || { cat /tmp/phase5b-seed.log; exit 1; }
@@ -42,18 +39,8 @@ npm run build > /tmp/phase5b-build.log 2>&1 || { tail -20 /tmp/phase5b-build.log
 
 COSIGN_DB="$SCRATCH" npm run serve:prod > /tmp/phase5b-server.log 2>&1 &
 SERVER=$!
-# `kill $!` targets the npm wrapper, exits 0 and leaves the node process
-# holding :8787 — this script claimed to clean up after itself for four
-# phases and never did. Kill whatever owns the port.
-stop_server() {
-  kill "$SERVER" 2>/dev/null
-  powershell -NoProfile -Command     "Get-NetTCPConnection -LocalPort 8787 -State Listen -ErrorAction SilentlyContinue | ForEach-Object { Stop-Process -Id \$_.OwningProcess -Force }"     >/dev/null 2>&1
-}
-trap stop_server EXIT
-for _ in $(seq 1 60); do
-  curl -s -o /dev/null --max-time 1 "http://localhost:8787/api/meta" && break
-  sleep 0.5
-done
+trap 'stop_server "$SERVER" 8787' EXIT
+wait_for_port 8787 || { tail -20 /tmp/phase5b-server.log; exit 1; }
 
 {
   echo "# Phase 5B acceptance evidence — $(date -u +%Y-%m-%dT%H:%M:%SZ)"
