@@ -1,7 +1,7 @@
 {
   "config": {
-    "configFile": "C:\\Users\\Vineet Sista\\Documents\\cosign\\cosign\\cosign-app\\playwright.config.ts",
-    "rootDir": "C:/Users/Vineet Sista/Documents/cosign/cosign/cosign-app/e2e",
+    "configFile": "C:\\Users\\Vineet Sista\\OneDrive\\Documents\\VS Code\\Projects\\cosign\\cosign\\cosign-app\\playwright.config.ts",
+    "rootDir": "C:/Users/Vineet Sista/OneDrive/Documents/VS Code/Projects/cosign/cosign/cosign-app/e2e",
     "forbidOnly": false,
     "fullyParallel": false,
     "globalSetup": null,
@@ -16,7 +16,7 @@
     "preserveOutput": "always",
     "projects": [
       {
-        "outputDir": "C:/Users/Vineet Sista/Documents/cosign/cosign/cosign-app/test-results",
+        "outputDir": "C:/Users/Vineet Sista/OneDrive/Documents/VS Code/Projects/cosign/cosign/cosign-app/test-results",
         "repeatEach": 1,
         "retries": 0,
         "metadata": {
@@ -24,7 +24,7 @@
         },
         "id": "mobile",
         "name": "mobile",
-        "testDir": "C:/Users/Vineet Sista/Documents/cosign/cosign/cosign-app/e2e",
+        "testDir": "C:/Users/Vineet Sista/OneDrive/Documents/VS Code/Projects/cosign/cosign/cosign-app/e2e",
         "testIgnore": [],
         "testMatch": [
           "**/*.@(spec|test).?(c|m)[jt]s?(x)"
@@ -32,7 +32,7 @@
         "timeout": 30000
       },
       {
-        "outputDir": "C:/Users/Vineet Sista/Documents/cosign/cosign/cosign-app/test-results",
+        "outputDir": "C:/Users/Vineet Sista/OneDrive/Documents/VS Code/Projects/cosign/cosign/cosign-app/test-results",
         "repeatEach": 1,
         "retries": 0,
         "metadata": {
@@ -40,7 +40,7 @@
         },
         "id": "desktop",
         "name": "desktop",
-        "testDir": "C:/Users/Vineet Sista/Documents/cosign/cosign/cosign-app/e2e",
+        "testDir": "C:/Users/Vineet Sista/OneDrive/Documents/VS Code/Projects/cosign/cosign/cosign-app/e2e",
         "testIgnore": [],
         "testMatch": [
           "**/*.@(spec|test).?(c|m)[jt]s?(x)"
@@ -57,7 +57,7 @@
       [
         "json",
         {
-          "outputFile": "../../evidence/phase5a/playwright-results.json"
+          "outputFile": "../../evidence/phase6/profile-regression/playwright-results.json"
         }
       ]
     ],
@@ -89,7 +89,7 @@
           "specs": [
             {
               "title": "renders every 5A element with no session at all",
-              "ok": false,
+              "ok": true,
               "tags": [],
               "tests": [
                 {
@@ -102,48 +102,18 @@
                     {
                       "workerIndex": 0,
                       "parallelIndex": 0,
-                      "status": "failed",
-                      "duration": 540,
-                      "error": {
-                        "message": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mreceived\u001b[39m\u001b[2m).\u001b[22mtoBe\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m) // Object.is equality\u001b[22m\n\nExpected: \u001b[32m1\u001b[39m\nReceived: \u001b[31m0\u001b[39m",
-                        "stack": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mreceived\u001b[39m\u001b[2m).\u001b[22mtoBe\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m) // Object.is equality\u001b[22m\n\nExpected: \u001b[32m1\u001b[39m\nReceived: \u001b[31m0\u001b[39m\n    at C:\\Users\\Vineet Sista\\Documents\\cosign\\cosign\\cosign-app\\e2e\\profile.spec.ts:58:48",
-                        "location": {
-                          "file": "C:\\Users\\Vineet Sista\\Documents\\cosign\\cosign\\cosign-app\\e2e\\profile.spec.ts",
-                          "column": 48,
-                          "line": 58
-                        },
-                        "snippet": "\u001b[0m \u001b[90m 56 |\u001b[39m     \u001b[36mawait\u001b[39m expect(sheet)\u001b[33m.\u001b[39mtoHaveAttribute(\u001b[32m\"role\"\u001b[39m\u001b[33m,\u001b[39m \u001b[32m\"img\"\u001b[39m)\u001b[33m;\u001b[39m\n \u001b[90m 57 |\u001b[39m     expect((\u001b[36mawait\u001b[39m sheet\u001b[33m.\u001b[39mgetAttribute(\u001b[32m\"aria-label\"\u001b[39m))\u001b[33m?\u001b[39m\u001b[33m.\u001b[39mlength \u001b[33m?\u001b[39m\u001b[33m?\u001b[39m \u001b[35m0\u001b[39m)\u001b[33m.\u001b[39mtoBeGreaterThan(\u001b[35m80\u001b[39m)\u001b[33m;\u001b[39m\n\u001b[31m\u001b[1m>\u001b[22m\u001b[39m\u001b[90m 58 |\u001b[39m     expect(\u001b[36mawait\u001b[39m sheet\u001b[33m.\u001b[39mlocator(\u001b[32m\"svg\"\u001b[39m)\u001b[33m.\u001b[39mcount())\u001b[33m.\u001b[39mtoBe(\u001b[35m1\u001b[39m)\u001b[33m;\u001b[39m\n \u001b[90m    |\u001b[39m                                                \u001b[31m\u001b[1m^\u001b[22m\u001b[39m\n \u001b[90m 59 |\u001b[39m     \u001b[90m// one mark per ranked place: 17 open rings + 5 filled discs (each of the\u001b[39m\n \u001b[90m 60 |\u001b[39m     \u001b[90m// five is a knock-out plus a disc, so 22 + 5 circles in total)\u001b[39m\n \u001b[90m 61 |\u001b[39m     \u001b[90m// 17 open rings + 5 named places (a knock-out disc and a filled disc\u001b[39m\u001b[0m"
-                      },
-                      "errors": [
-                        {
-                          "location": {
-                            "file": "C:\\Users\\Vineet Sista\\Documents\\cosign\\cosign\\cosign-app\\e2e\\profile.spec.ts",
-                            "column": 48,
-                            "line": 58
-                          },
-                          "message": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mreceived\u001b[39m\u001b[2m).\u001b[22mtoBe\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m) // Object.is equality\u001b[22m\n\nExpected: \u001b[32m1\u001b[39m\nReceived: \u001b[31m0\u001b[39m\n\n  56 |     await expect(sheet).toHaveAttribute(\"role\", \"img\");\n  57 |     expect((await sheet.getAttribute(\"aria-label\"))?.length ?? 0).toBeGreaterThan(80);\n> 58 |     expect(await sheet.locator(\"svg\").count()).toBe(1);\n     |                                                ^\n  59 |     // one mark per ranked place: 17 open rings + 5 filled discs (each of the\n  60 |     // five is a knock-out plus a disc, so 22 + 5 circles in total)\n  61 |     // 17 open rings + 5 named places (a knock-out disc and a filled disc\n    at C:\\Users\\Vineet Sista\\Documents\\cosign\\cosign\\cosign-app\\e2e\\profile.spec.ts:58:48"
-                        }
-                      ],
+                      "status": "passed",
+                      "duration": 2165,
+                      "errors": [],
                       "stdout": [],
                       "stderr": [],
                       "retry": 0,
-                      "startTime": "2026-08-16T10:01:09.336Z",
+                      "startTime": "2026-08-17T02:31:20.323Z",
                       "annotations": [],
-                      "attachments": [
-                        {
-                          "name": "error-context",
-                          "contentType": "text/markdown",
-                          "path": "C:\\Users\\Vineet Sista\\Documents\\cosign\\cosign\\cosign-app\\test-results\\profile-public-profile-ren-2ab49-ment-with-no-session-at-all-mobile\\error-context.md"
-                        }
-                      ],
-                      "errorLocation": {
-                        "file": "C:\\Users\\Vineet Sista\\Documents\\cosign\\cosign\\cosign-app\\e2e\\profile.spec.ts",
-                        "column": 48,
-                        "line": 58
-                      }
+                      "attachments": []
                     }
                   ],
-                  "status": "unexpected"
+                  "status": "expected"
                 }
               ],
               "id": "e8b79b4ee550a37632f1-ba70a72437f08c1612f8",
@@ -153,7 +123,7 @@
             },
             {
               "title": "names nobody else's private list, and no face but the author's",
-              "ok": false,
+              "ok": true,
               "tags": [],
               "tests": [
                 {
@@ -164,55 +134,25 @@
                   "projectName": "mobile",
                   "results": [
                     {
-                      "workerIndex": 1,
+                      "workerIndex": 0,
                       "parallelIndex": 0,
-                      "status": "failed",
-                      "duration": 263,
-                      "error": {
-                        "message": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mreceived\u001b[39m\u001b[2m).\u001b[22mtoBe\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m) // Object.is equality\u001b[22m\n\nExpected: \u001b[32m2\u001b[39m\nReceived: \u001b[31m3\u001b[39m",
-                        "stack": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mreceived\u001b[39m\u001b[2m).\u001b[22mtoBe\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m) // Object.is equality\u001b[22m\n\nExpected: \u001b[32m2\u001b[39m\nReceived: \u001b[31m3\u001b[39m\n    at C:\\Users\\Vineet Sista\\Documents\\cosign\\cosign\\cosign-app\\e2e\\profile.spec.ts:98:47",
-                        "location": {
-                          "file": "C:\\Users\\Vineet Sista\\Documents\\cosign\\cosign\\cosign-app\\e2e\\profile.spec.ts",
-                          "column": 47,
-                          "line": 98
-                        },
-                        "snippet": "\u001b[0m \u001b[90m  96 |\u001b[39m     expect(\u001b[36mawait\u001b[39m page\u001b[33m.\u001b[39mlocator(\u001b[32m\"[data-cosign] img\"\u001b[39m)\u001b[33m.\u001b[39mcount())\u001b[33m.\u001b[39mtoBe(\u001b[35m0\u001b[39m)\u001b[33m;\u001b[39m\n \u001b[90m  97 |\u001b[39m     \u001b[90m// and the only other image on the page is the closing photograph\u001b[39m\n\u001b[31m\u001b[1m>\u001b[22m\u001b[39m\u001b[90m  98 |\u001b[39m     expect(\u001b[36mawait\u001b[39m page\u001b[33m.\u001b[39mlocator(\u001b[32m\"img\"\u001b[39m)\u001b[33m.\u001b[39mcount())\u001b[33m.\u001b[39mtoBe(\u001b[35m2\u001b[39m)\u001b[33m;\u001b[39m\n \u001b[90m     |\u001b[39m                                               \u001b[31m\u001b[1m^\u001b[22m\u001b[39m\n \u001b[90m  99 |\u001b[39m\n \u001b[90m 100 |\u001b[39m     \u001b[36mconst\u001b[39m cosign \u001b[33m=\u001b[39m page\u001b[33m.\u001b[39mlocator(\u001b[32m\"[data-cosign]\"\u001b[39m)\u001b[33m;\u001b[39m\n \u001b[90m 101 |\u001b[39m     expect(\u001b[36mawait\u001b[39m cosign\u001b[33m.\u001b[39mcount())\u001b[33m.\u001b[39mtoBe(\u001b[35m5\u001b[39m)\u001b[33m;\u001b[39m\u001b[0m"
-                      },
-                      "errors": [
-                        {
-                          "location": {
-                            "file": "C:\\Users\\Vineet Sista\\Documents\\cosign\\cosign\\cosign-app\\e2e\\profile.spec.ts",
-                            "column": 47,
-                            "line": 98
-                          },
-                          "message": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mreceived\u001b[39m\u001b[2m).\u001b[22mtoBe\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m) // Object.is equality\u001b[22m\n\nExpected: \u001b[32m2\u001b[39m\nReceived: \u001b[31m3\u001b[39m\n\n   96 |     expect(await page.locator(\"[data-cosign] img\").count()).toBe(0);\n   97 |     // and the only other image on the page is the closing photograph\n>  98 |     expect(await page.locator(\"img\").count()).toBe(2);\n      |                                               ^\n   99 |\n  100 |     const cosign = page.locator(\"[data-cosign]\");\n  101 |     expect(await cosign.count()).toBe(5);\n    at C:\\Users\\Vineet Sista\\Documents\\cosign\\cosign\\cosign-app\\e2e\\profile.spec.ts:98:47"
-                        }
-                      ],
+                      "status": "passed",
+                      "duration": 648,
+                      "errors": [],
                       "stdout": [],
                       "stderr": [],
                       "retry": 0,
-                      "startTime": "2026-08-16T10:01:11.751Z",
+                      "startTime": "2026-08-17T02:31:22.979Z",
                       "annotations": [],
-                      "attachments": [
-                        {
-                          "name": "error-context",
-                          "contentType": "text/markdown",
-                          "path": "C:\\Users\\Vineet Sista\\Documents\\cosign\\cosign\\cosign-app\\test-results\\profile-public-profile-nam-2c480-nd-no-face-but-the-author-s-mobile\\error-context.md"
-                        }
-                      ],
-                      "errorLocation": {
-                        "file": "C:\\Users\\Vineet Sista\\Documents\\cosign\\cosign\\cosign-app\\e2e\\profile.spec.ts",
-                        "column": 47,
-                        "line": 98
-                      }
+                      "attachments": []
                     }
                   ],
-                  "status": "unexpected"
+                  "status": "expected"
                 }
               ],
               "id": "e8b79b4ee550a37632f1-15faef1623c872c404e7",
               "file": "profile.spec.ts",
-              "line": 89,
+              "line": 97,
               "column": 3
             },
             {
@@ -228,15 +168,15 @@
                   "projectName": "mobile",
                   "results": [
                     {
-                      "workerIndex": 2,
+                      "workerIndex": 0,
                       "parallelIndex": 0,
                       "status": "passed",
-                      "duration": 639,
+                      "duration": 754,
                       "errors": [],
                       "stdout": [],
                       "stderr": [],
                       "retry": 0,
-                      "startTime": "2026-08-16T10:01:13.886Z",
+                      "startTime": "2026-08-17T02:31:23.679Z",
                       "annotations": [],
                       "attachments": []
                     }
@@ -246,7 +186,7 @@
               ],
               "id": "e8b79b4ee550a37632f1-2f57043c995f59dfe201",
               "file": "profile.spec.ts",
-              "line": 111,
+              "line": 120,
               "column": 3
             },
             {
@@ -262,15 +202,15 @@
                   "projectName": "mobile",
                   "results": [
                     {
-                      "workerIndex": 2,
+                      "workerIndex": 0,
                       "parallelIndex": 0,
                       "status": "passed",
-                      "duration": 300,
+                      "duration": 704,
                       "errors": [],
                       "stdout": [],
                       "stderr": [],
                       "retry": 0,
-                      "startTime": "2026-08-16T10:01:14.767Z",
+                      "startTime": "2026-08-17T02:31:24.459Z",
                       "annotations": [],
                       "attachments": []
                     }
@@ -280,7 +220,7 @@
               ],
               "id": "e8b79b4ee550a37632f1-708bd4b458be5be5e498",
               "file": "profile.spec.ts",
-              "line": 126,
+              "line": 135,
               "column": 3
             },
             {
@@ -296,15 +236,15 @@
                   "projectName": "mobile",
                   "results": [
                     {
-                      "workerIndex": 2,
+                      "workerIndex": 0,
                       "parallelIndex": 0,
                       "status": "passed",
-                      "duration": 763,
+                      "duration": 1034,
                       "errors": [],
                       "stdout": [],
                       "stderr": [],
                       "retry": 0,
-                      "startTime": "2026-08-16T10:01:15.090Z",
+                      "startTime": "2026-08-17T02:31:25.192Z",
                       "annotations": [],
                       "attachments": []
                     }
@@ -314,7 +254,7 @@
               ],
               "id": "e8b79b4ee550a37632f1-e5674a8891633d7b8298",
               "file": "profile.spec.ts",
-              "line": 141,
+              "line": 150,
               "column": 3
             },
             {
@@ -330,15 +270,15 @@
                   "projectName": "mobile",
                   "results": [
                     {
-                      "workerIndex": 2,
+                      "workerIndex": 0,
                       "parallelIndex": 0,
                       "status": "passed",
-                      "duration": 113,
+                      "duration": 183,
                       "errors": [],
                       "stdout": [],
                       "stderr": [],
                       "retry": 0,
-                      "startTime": "2026-08-16T10:01:15.877Z",
+                      "startTime": "2026-08-17T02:31:26.261Z",
                       "annotations": [],
                       "attachments": []
                     }
@@ -348,7 +288,7 @@
               ],
               "id": "e8b79b4ee550a37632f1-4605f63398aa98894b88",
               "file": "profile.spec.ts",
-              "line": 151,
+              "line": 160,
               "column": 3
             },
             {
@@ -364,15 +304,15 @@
                   "projectName": "mobile",
                   "results": [
                     {
-                      "workerIndex": 2,
+                      "workerIndex": 0,
                       "parallelIndex": 0,
                       "status": "passed",
-                      "duration": 179,
+                      "duration": 294,
                       "errors": [],
                       "stdout": [],
                       "stderr": [],
                       "retry": 0,
-                      "startTime": "2026-08-16T10:01:16.009Z",
+                      "startTime": "2026-08-17T02:31:26.502Z",
                       "annotations": [],
                       "attachments": []
                     }
@@ -382,7 +322,7 @@
               ],
               "id": "e8b79b4ee550a37632f1-46ff44405806e8406937",
               "file": "profile.spec.ts",
-              "line": 166,
+              "line": 175,
               "column": 3
             },
             {
@@ -398,15 +338,15 @@
                   "projectName": "mobile",
                   "results": [
                     {
-                      "workerIndex": 2,
+                      "workerIndex": 0,
                       "parallelIndex": 0,
                       "status": "passed",
-                      "duration": 296,
+                      "duration": 680,
                       "errors": [],
                       "stdout": [],
                       "stderr": [],
                       "retry": 0,
-                      "startTime": "2026-08-16T10:01:16.214Z",
+                      "startTime": "2026-08-17T02:31:26.832Z",
                       "annotations": [],
                       "attachments": []
                     }
@@ -416,7 +356,7 @@
               ],
               "id": "e8b79b4ee550a37632f1-537fcf2da12633ce61c4",
               "file": "profile.spec.ts",
-              "line": 175,
+              "line": 184,
               "column": 3
             },
             {
@@ -432,15 +372,15 @@
                   "projectName": "mobile",
                   "results": [
                     {
-                      "workerIndex": 2,
+                      "workerIndex": 0,
                       "parallelIndex": 0,
                       "status": "passed",
-                      "duration": 865,
+                      "duration": 2643,
                       "errors": [],
                       "stdout": [],
                       "stderr": [],
                       "retry": 0,
-                      "startTime": "2026-08-16T10:01:16.529Z",
+                      "startTime": "2026-08-17T02:31:27.541Z",
                       "annotations": [],
                       "attachments": []
                     }
@@ -450,7 +390,7 @@
               ],
               "id": "e8b79b4ee550a37632f1-a7e1bfbfdbb4ba26ae56",
               "file": "profile.spec.ts",
-              "line": 186,
+              "line": 195,
               "column": 3
             },
             {
@@ -466,15 +406,15 @@
                   "projectName": "mobile",
                   "results": [
                     {
-                      "workerIndex": 2,
+                      "workerIndex": 0,
                       "parallelIndex": 0,
                       "status": "passed",
-                      "duration": 399,
+                      "duration": 943,
                       "errors": [],
                       "stdout": [],
                       "stderr": [],
                       "retry": 0,
-                      "startTime": "2026-08-16T10:01:17.408Z",
+                      "startTime": "2026-08-17T02:31:30.211Z",
                       "annotations": [],
                       "attachments": []
                     }
@@ -484,7 +424,7 @@
               ],
               "id": "e8b79b4ee550a37632f1-bacd56fd455ff75fecb4",
               "file": "profile.spec.ts",
-              "line": 199,
+              "line": 208,
               "column": 3
             },
             {
@@ -500,15 +440,15 @@
                   "projectName": "mobile",
                   "results": [
                     {
-                      "workerIndex": 2,
+                      "workerIndex": 0,
                       "parallelIndex": 0,
                       "status": "passed",
-                      "duration": 1740,
+                      "duration": 2569,
                       "errors": [],
                       "stdout": [],
                       "stderr": [],
                       "retry": 0,
-                      "startTime": "2026-08-16T10:01:17.835Z",
+                      "startTime": "2026-08-17T02:31:31.183Z",
                       "annotations": [],
                       "attachments": []
                     }
@@ -518,7 +458,7 @@
               ],
               "id": "e8b79b4ee550a37632f1-a814f3cb8ed9c43cfa31",
               "file": "profile.spec.ts",
-              "line": 211,
+              "line": 220,
               "column": 3
             },
             {
@@ -534,15 +474,15 @@
                   "projectName": "mobile",
                   "results": [
                     {
-                      "workerIndex": 2,
+                      "workerIndex": 0,
                       "parallelIndex": 0,
                       "status": "passed",
-                      "duration": 438,
+                      "duration": 509,
                       "errors": [],
                       "stdout": [],
                       "stderr": [],
                       "retry": 0,
-                      "startTime": "2026-08-16T10:01:19.611Z",
+                      "startTime": "2026-08-17T02:31:33.802Z",
                       "annotations": [],
                       "attachments": []
                     }
@@ -552,7 +492,7 @@
               ],
               "id": "e8b79b4ee550a37632f1-7cc6d55e0b17db9bc40c",
               "file": "profile.spec.ts",
-              "line": 243,
+              "line": 252,
               "column": 3
             },
             {
@@ -568,15 +508,15 @@
                   "projectName": "mobile",
                   "results": [
                     {
-                      "workerIndex": 2,
+                      "workerIndex": 0,
                       "parallelIndex": 0,
                       "status": "passed",
-                      "duration": 493,
+                      "duration": 627,
                       "errors": [],
                       "stdout": [],
                       "stderr": [],
                       "retry": 0,
-                      "startTime": "2026-08-16T10:01:20.088Z",
+                      "startTime": "2026-08-17T02:31:34.343Z",
                       "annotations": [],
                       "attachments": []
                     }
@@ -586,7 +526,7 @@
               ],
               "id": "e8b79b4ee550a37632f1-27acdf97e5cab96566a7",
               "file": "profile.spec.ts",
-              "line": 252,
+              "line": 261,
               "column": 3
             },
             {
@@ -602,15 +542,15 @@
                   "projectName": "mobile",
                   "results": [
                     {
-                      "workerIndex": 2,
+                      "workerIndex": 0,
                       "parallelIndex": 0,
                       "status": "passed",
-                      "duration": 422,
+                      "duration": 484,
                       "errors": [],
                       "stdout": [],
                       "stderr": [],
                       "retry": 0,
-                      "startTime": "2026-08-16T10:01:20.610Z",
+                      "startTime": "2026-08-17T02:31:35.003Z",
                       "annotations": [],
                       "attachments": []
                     }
@@ -620,12 +560,12 @@
               ],
               "id": "e8b79b4ee550a37632f1-24941174ab9dfb49ca18",
               "file": "profile.spec.ts",
-              "line": 257,
+              "line": 266,
               "column": 3
             },
             {
               "title": "renders every 5A element with no session at all",
-              "ok": false,
+              "ok": true,
               "tags": [],
               "tests": [
                 {
@@ -636,50 +576,20 @@
                   "projectName": "desktop",
                   "results": [
                     {
-                      "workerIndex": 3,
+                      "workerIndex": 1,
                       "parallelIndex": 0,
-                      "status": "failed",
-                      "duration": 312,
-                      "error": {
-                        "message": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mreceived\u001b[39m\u001b[2m).\u001b[22mtoBe\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m) // Object.is equality\u001b[22m\n\nExpected: \u001b[32m1\u001b[39m\nReceived: \u001b[31m0\u001b[39m",
-                        "stack": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mreceived\u001b[39m\u001b[2m).\u001b[22mtoBe\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m) // Object.is equality\u001b[22m\n\nExpected: \u001b[32m1\u001b[39m\nReceived: \u001b[31m0\u001b[39m\n    at C:\\Users\\Vineet Sista\\Documents\\cosign\\cosign\\cosign-app\\e2e\\profile.spec.ts:58:48",
-                        "location": {
-                          "file": "C:\\Users\\Vineet Sista\\Documents\\cosign\\cosign\\cosign-app\\e2e\\profile.spec.ts",
-                          "column": 48,
-                          "line": 58
-                        },
-                        "snippet": "\u001b[0m \u001b[90m 56 |\u001b[39m     \u001b[36mawait\u001b[39m expect(sheet)\u001b[33m.\u001b[39mtoHaveAttribute(\u001b[32m\"role\"\u001b[39m\u001b[33m,\u001b[39m \u001b[32m\"img\"\u001b[39m)\u001b[33m;\u001b[39m\n \u001b[90m 57 |\u001b[39m     expect((\u001b[36mawait\u001b[39m sheet\u001b[33m.\u001b[39mgetAttribute(\u001b[32m\"aria-label\"\u001b[39m))\u001b[33m?\u001b[39m\u001b[33m.\u001b[39mlength \u001b[33m?\u001b[39m\u001b[33m?\u001b[39m \u001b[35m0\u001b[39m)\u001b[33m.\u001b[39mtoBeGreaterThan(\u001b[35m80\u001b[39m)\u001b[33m;\u001b[39m\n\u001b[31m\u001b[1m>\u001b[22m\u001b[39m\u001b[90m 58 |\u001b[39m     expect(\u001b[36mawait\u001b[39m sheet\u001b[33m.\u001b[39mlocator(\u001b[32m\"svg\"\u001b[39m)\u001b[33m.\u001b[39mcount())\u001b[33m.\u001b[39mtoBe(\u001b[35m1\u001b[39m)\u001b[33m;\u001b[39m\n \u001b[90m    |\u001b[39m                                                \u001b[31m\u001b[1m^\u001b[22m\u001b[39m\n \u001b[90m 59 |\u001b[39m     \u001b[90m// one mark per ranked place: 17 open rings + 5 filled discs (each of the\u001b[39m\n \u001b[90m 60 |\u001b[39m     \u001b[90m// five is a knock-out plus a disc, so 22 + 5 circles in total)\u001b[39m\n \u001b[90m 61 |\u001b[39m     \u001b[90m// 17 open rings + 5 named places (a knock-out disc and a filled disc\u001b[39m\u001b[0m"
-                      },
-                      "errors": [
-                        {
-                          "location": {
-                            "file": "C:\\Users\\Vineet Sista\\Documents\\cosign\\cosign\\cosign-app\\e2e\\profile.spec.ts",
-                            "column": 48,
-                            "line": 58
-                          },
-                          "message": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mreceived\u001b[39m\u001b[2m).\u001b[22mtoBe\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m) // Object.is equality\u001b[22m\n\nExpected: \u001b[32m1\u001b[39m\nReceived: \u001b[31m0\u001b[39m\n\n  56 |     await expect(sheet).toHaveAttribute(\"role\", \"img\");\n  57 |     expect((await sheet.getAttribute(\"aria-label\"))?.length ?? 0).toBeGreaterThan(80);\n> 58 |     expect(await sheet.locator(\"svg\").count()).toBe(1);\n     |                                                ^\n  59 |     // one mark per ranked place: 17 open rings + 5 filled discs (each of the\n  60 |     // five is a knock-out plus a disc, so 22 + 5 circles in total)\n  61 |     // 17 open rings + 5 named places (a knock-out disc and a filled disc\n    at C:\\Users\\Vineet Sista\\Documents\\cosign\\cosign\\cosign-app\\e2e\\profile.spec.ts:58:48"
-                        }
-                      ],
+                      "status": "passed",
+                      "duration": 1077,
+                      "errors": [],
                       "stdout": [],
                       "stderr": [],
                       "retry": 0,
-                      "startTime": "2026-08-16T10:01:28.178Z",
+                      "startTime": "2026-08-17T02:31:44.912Z",
                       "annotations": [],
-                      "attachments": [
-                        {
-                          "name": "error-context",
-                          "contentType": "text/markdown",
-                          "path": "C:\\Users\\Vineet Sista\\Documents\\cosign\\cosign\\cosign-app\\test-results\\profile-public-profile-ren-2ab49-ment-with-no-session-at-all-desktop\\error-context.md"
-                        }
-                      ],
-                      "errorLocation": {
-                        "file": "C:\\Users\\Vineet Sista\\Documents\\cosign\\cosign\\cosign-app\\e2e\\profile.spec.ts",
-                        "column": 48,
-                        "line": 58
-                      }
+                      "attachments": []
                     }
                   ],
-                  "status": "unexpected"
+                  "status": "expected"
                 }
               ],
               "id": "e8b79b4ee550a37632f1-0cc8eb30eb5a673d8d99",
@@ -689,7 +599,7 @@
             },
             {
               "title": "names nobody else's private list, and no face but the author's",
-              "ok": false,
+              "ok": true,
               "tags": [],
               "tests": [
                 {
@@ -700,55 +610,25 @@
                   "projectName": "desktop",
                   "results": [
                     {
-                      "workerIndex": 4,
+                      "workerIndex": 1,
                       "parallelIndex": 0,
-                      "status": "failed",
-                      "duration": 263,
-                      "error": {
-                        "message": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mreceived\u001b[39m\u001b[2m).\u001b[22mtoBe\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m) // Object.is equality\u001b[22m\n\nExpected: \u001b[32m2\u001b[39m\nReceived: \u001b[31m3\u001b[39m",
-                        "stack": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mreceived\u001b[39m\u001b[2m).\u001b[22mtoBe\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m) // Object.is equality\u001b[22m\n\nExpected: \u001b[32m2\u001b[39m\nReceived: \u001b[31m3\u001b[39m\n    at C:\\Users\\Vineet Sista\\Documents\\cosign\\cosign\\cosign-app\\e2e\\profile.spec.ts:98:47",
-                        "location": {
-                          "file": "C:\\Users\\Vineet Sista\\Documents\\cosign\\cosign\\cosign-app\\e2e\\profile.spec.ts",
-                          "column": 47,
-                          "line": 98
-                        },
-                        "snippet": "\u001b[0m \u001b[90m  96 |\u001b[39m     expect(\u001b[36mawait\u001b[39m page\u001b[33m.\u001b[39mlocator(\u001b[32m\"[data-cosign] img\"\u001b[39m)\u001b[33m.\u001b[39mcount())\u001b[33m.\u001b[39mtoBe(\u001b[35m0\u001b[39m)\u001b[33m;\u001b[39m\n \u001b[90m  97 |\u001b[39m     \u001b[90m// and the only other image on the page is the closing photograph\u001b[39m\n\u001b[31m\u001b[1m>\u001b[22m\u001b[39m\u001b[90m  98 |\u001b[39m     expect(\u001b[36mawait\u001b[39m page\u001b[33m.\u001b[39mlocator(\u001b[32m\"img\"\u001b[39m)\u001b[33m.\u001b[39mcount())\u001b[33m.\u001b[39mtoBe(\u001b[35m2\u001b[39m)\u001b[33m;\u001b[39m\n \u001b[90m     |\u001b[39m                                               \u001b[31m\u001b[1m^\u001b[22m\u001b[39m\n \u001b[90m  99 |\u001b[39m\n \u001b[90m 100 |\u001b[39m     \u001b[36mconst\u001b[39m cosign \u001b[33m=\u001b[39m page\u001b[33m.\u001b[39mlocator(\u001b[32m\"[data-cosign]\"\u001b[39m)\u001b[33m;\u001b[39m\n \u001b[90m 101 |\u001b[39m     expect(\u001b[36mawait\u001b[39m cosign\u001b[33m.\u001b[39mcount())\u001b[33m.\u001b[39mtoBe(\u001b[35m5\u001b[39m)\u001b[33m;\u001b[39m\u001b[0m"
-                      },
-                      "errors": [
-                        {
-                          "location": {
-                            "file": "C:\\Users\\Vineet Sista\\Documents\\cosign\\cosign\\cosign-app\\e2e\\profile.spec.ts",
-                            "column": 47,
-                            "line": 98
-                          },
-                          "message": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mreceived\u001b[39m\u001b[2m).\u001b[22mtoBe\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m) // Object.is equality\u001b[22m\n\nExpected: \u001b[32m2\u001b[39m\nReceived: \u001b[31m3\u001b[39m\n\n   96 |     expect(await page.locator(\"[data-cosign] img\").count()).toBe(0);\n   97 |     // and the only other image on the page is the closing photograph\n>  98 |     expect(await page.locator(\"img\").count()).toBe(2);\n      |                                               ^\n   99 |\n  100 |     const cosign = page.locator(\"[data-cosign]\");\n  101 |     expect(await cosign.count()).toBe(5);\n    at C:\\Users\\Vineet Sista\\Documents\\cosign\\cosign\\cosign-app\\e2e\\profile.spec.ts:98:47"
-                        }
-                      ],
+                      "status": "passed",
+                      "duration": 455,
+                      "errors": [],
                       "stdout": [],
                       "stderr": [],
                       "retry": 0,
-                      "startTime": "2026-08-16T10:01:30.424Z",
+                      "startTime": "2026-08-17T02:31:46.220Z",
                       "annotations": [],
-                      "attachments": [
-                        {
-                          "name": "error-context",
-                          "contentType": "text/markdown",
-                          "path": "C:\\Users\\Vineet Sista\\Documents\\cosign\\cosign\\cosign-app\\test-results\\profile-public-profile-nam-2c480-nd-no-face-but-the-author-s-desktop\\error-context.md"
-                        }
-                      ],
-                      "errorLocation": {
-                        "file": "C:\\Users\\Vineet Sista\\Documents\\cosign\\cosign\\cosign-app\\e2e\\profile.spec.ts",
-                        "column": 47,
-                        "line": 98
-                      }
+                      "attachments": []
                     }
                   ],
-                  "status": "unexpected"
+                  "status": "expected"
                 }
               ],
               "id": "e8b79b4ee550a37632f1-0f2622608629b3760076",
               "file": "profile.spec.ts",
-              "line": 89,
+              "line": 97,
               "column": 3
             },
             {
@@ -764,15 +644,15 @@
                   "projectName": "desktop",
                   "results": [
                     {
-                      "workerIndex": 5,
+                      "workerIndex": 1,
                       "parallelIndex": 0,
                       "status": "passed",
-                      "duration": 583,
+                      "duration": 522,
                       "errors": [],
                       "stdout": [],
                       "stderr": [],
                       "retry": 0,
-                      "startTime": "2026-08-16T10:01:32.023Z",
+                      "startTime": "2026-08-17T02:31:46.708Z",
                       "annotations": [],
                       "attachments": []
                     }
@@ -782,7 +662,7 @@
               ],
               "id": "e8b79b4ee550a37632f1-72b92d7db1bb451120f0",
               "file": "profile.spec.ts",
-              "line": 111,
+              "line": 120,
               "column": 3
             },
             {
@@ -798,15 +678,15 @@
                   "projectName": "desktop",
                   "results": [
                     {
-                      "workerIndex": 5,
+                      "workerIndex": 1,
                       "parallelIndex": 0,
                       "status": "passed",
-                      "duration": 428,
+                      "duration": 473,
                       "errors": [],
                       "stdout": [],
                       "stderr": [],
                       "retry": 0,
-                      "startTime": "2026-08-16T10:01:32.803Z",
+                      "startTime": "2026-08-17T02:31:47.253Z",
                       "annotations": [],
                       "attachments": []
                     }
@@ -816,7 +696,7 @@
               ],
               "id": "e8b79b4ee550a37632f1-e7a188acfcd8730e95e8",
               "file": "profile.spec.ts",
-              "line": 126,
+              "line": 135,
               "column": 3
             },
             {
@@ -832,15 +712,15 @@
                   "projectName": "desktop",
                   "results": [
                     {
-                      "workerIndex": 5,
+                      "workerIndex": 1,
                       "parallelIndex": 0,
                       "status": "passed",
-                      "duration": 909,
+                      "duration": 984,
                       "errors": [],
                       "stdout": [],
                       "stderr": [],
                       "retry": 0,
-                      "startTime": "2026-08-16T10:01:33.255Z",
+                      "startTime": "2026-08-17T02:31:47.757Z",
                       "annotations": [],
                       "attachments": []
                     }
@@ -850,7 +730,7 @@
               ],
               "id": "e8b79b4ee550a37632f1-92297b2437c126214279",
               "file": "profile.spec.ts",
-              "line": 141,
+              "line": 150,
               "column": 3
             },
             {
@@ -866,15 +746,15 @@
                   "projectName": "desktop",
                   "results": [
                     {
-                      "workerIndex": 5,
+                      "workerIndex": 1,
                       "parallelIndex": 0,
                       "status": "passed",
-                      "duration": 101,
+                      "duration": 146,
                       "errors": [],
                       "stdout": [],
                       "stderr": [],
                       "retry": 0,
-                      "startTime": "2026-08-16T10:01:34.199Z",
+                      "startTime": "2026-08-17T02:31:48.779Z",
                       "annotations": [],
                       "attachments": []
                     }
@@ -884,7 +764,7 @@
               ],
               "id": "e8b79b4ee550a37632f1-e97faa199ab8fa45285c",
               "file": "profile.spec.ts",
-              "line": 151,
+              "line": 160,
               "column": 3
             },
             {
@@ -900,15 +780,15 @@
                   "projectName": "desktop",
                   "results": [
                     {
-                      "workerIndex": 5,
+                      "workerIndex": 1,
                       "parallelIndex": 0,
                       "status": "passed",
-                      "duration": 310,
+                      "duration": 289,
                       "errors": [],
                       "stdout": [],
                       "stderr": [],
                       "retry": 0,
-                      "startTime": "2026-08-16T10:01:34.331Z",
+                      "startTime": "2026-08-17T02:31:48.975Z",
                       "annotations": [],
                       "attachments": []
                     }
@@ -918,7 +798,7 @@
               ],
               "id": "e8b79b4ee550a37632f1-15e2daa5f87cbd5b7d0b",
               "file": "profile.spec.ts",
-              "line": 166,
+              "line": 175,
               "column": 3
             },
             {
@@ -934,15 +814,15 @@
                   "projectName": "desktop",
                   "results": [
                     {
-                      "workerIndex": 5,
+                      "workerIndex": 1,
                       "parallelIndex": 0,
                       "status": "passed",
-                      "duration": 372,
+                      "duration": 371,
                       "errors": [],
                       "stdout": [],
                       "stderr": [],
                       "retry": 0,
-                      "startTime": "2026-08-16T10:01:34.689Z",
+                      "startTime": "2026-08-17T02:31:49.299Z",
                       "annotations": [],
                       "attachments": []
                     }
@@ -952,7 +832,7 @@
               ],
               "id": "e8b79b4ee550a37632f1-6758c20c9331620edc0f",
               "file": "profile.spec.ts",
-              "line": 175,
+              "line": 184,
               "column": 3
             },
             {
@@ -968,15 +848,15 @@
                   "projectName": "desktop",
                   "results": [
                     {
-                      "workerIndex": 5,
+                      "workerIndex": 1,
                       "parallelIndex": 0,
                       "status": "passed",
-                      "duration": 999,
+                      "duration": 1034,
                       "errors": [],
                       "stdout": [],
                       "stderr": [],
                       "retry": 0,
-                      "startTime": "2026-08-16T10:01:35.108Z",
+                      "startTime": "2026-08-17T02:31:49.705Z",
                       "annotations": [],
                       "attachments": []
                     }
@@ -986,7 +866,7 @@
               ],
               "id": "e8b79b4ee550a37632f1-78f6609402d6ccac0e1e",
               "file": "profile.spec.ts",
-              "line": 186,
+              "line": 195,
               "column": 3
             },
             {
@@ -1002,15 +882,15 @@
                   "projectName": "desktop",
                   "results": [
                     {
-                      "workerIndex": 5,
+                      "workerIndex": 1,
                       "parallelIndex": 0,
                       "status": "passed",
-                      "duration": 319,
+                      "duration": 473,
                       "errors": [],
                       "stdout": [],
                       "stderr": [],
                       "retry": 0,
-                      "startTime": "2026-08-16T10:01:36.154Z",
+                      "startTime": "2026-08-17T02:31:50.773Z",
                       "annotations": [],
                       "attachments": []
                     }
@@ -1020,7 +900,7 @@
               ],
               "id": "e8b79b4ee550a37632f1-4ee8366e02143680c514",
               "file": "profile.spec.ts",
-              "line": 199,
+              "line": 208,
               "column": 3
             },
             {
@@ -1036,15 +916,15 @@
                   "projectName": "desktop",
                   "results": [
                     {
-                      "workerIndex": 5,
+                      "workerIndex": 1,
                       "parallelIndex": 0,
                       "status": "passed",
-                      "duration": 1362,
+                      "duration": 2074,
                       "errors": [],
                       "stdout": [],
                       "stderr": [],
                       "retry": 0,
-                      "startTime": "2026-08-16T10:01:36.492Z",
+                      "startTime": "2026-08-17T02:31:51.282Z",
                       "annotations": [],
                       "attachments": []
                     }
@@ -1054,7 +934,7 @@
               ],
               "id": "e8b79b4ee550a37632f1-ee341460345c58123fe8",
               "file": "profile.spec.ts",
-              "line": 211,
+              "line": 220,
               "column": 3
             },
             {
@@ -1070,15 +950,15 @@
                   "projectName": "desktop",
                   "results": [
                     {
-                      "workerIndex": 5,
+                      "workerIndex": 1,
                       "parallelIndex": 0,
                       "status": "passed",
-                      "duration": 253,
+                      "duration": 359,
                       "errors": [],
                       "stdout": [],
                       "stderr": [],
                       "retry": 0,
-                      "startTime": "2026-08-16T10:01:37.874Z",
+                      "startTime": "2026-08-17T02:31:53.391Z",
                       "annotations": [],
                       "attachments": []
                     }
@@ -1088,7 +968,7 @@
               ],
               "id": "e8b79b4ee550a37632f1-87509c1b5ee2d36f303d",
               "file": "profile.spec.ts",
-              "line": 243,
+              "line": 252,
               "column": 3
             },
             {
@@ -1104,15 +984,15 @@
                   "projectName": "desktop",
                   "results": [
                     {
-                      "workerIndex": 5,
+                      "workerIndex": 1,
                       "parallelIndex": 0,
                       "status": "passed",
-                      "duration": 262,
+                      "duration": 526,
                       "errors": [],
                       "stdout": [],
                       "stderr": [],
                       "retry": 0,
-                      "startTime": "2026-08-16T10:01:38.150Z",
+                      "startTime": "2026-08-17T02:31:53.778Z",
                       "annotations": [],
                       "attachments": []
                     }
@@ -1122,7 +1002,7 @@
               ],
               "id": "e8b79b4ee550a37632f1-22b93db604cdf1efd810",
               "file": "profile.spec.ts",
-              "line": 252,
+              "line": 261,
               "column": 3
             },
             {
@@ -1138,15 +1018,15 @@
                   "projectName": "desktop",
                   "results": [
                     {
-                      "workerIndex": 5,
+                      "workerIndex": 1,
                       "parallelIndex": 0,
                       "status": "passed",
-                      "duration": 177,
+                      "duration": 309,
                       "errors": [],
                       "stdout": [],
                       "stderr": [],
                       "retry": 0,
-                      "startTime": "2026-08-16T10:01:38.433Z",
+                      "startTime": "2026-08-17T02:31:54.334Z",
                       "annotations": [],
                       "attachments": []
                     }
@@ -1156,7 +1036,7 @@
               ],
               "id": "e8b79b4ee550a37632f1-bfc4f88dee9cfb45a8b5",
               "file": "profile.spec.ts",
-              "line": 257,
+              "line": 266,
               "column": 3
             }
           ]
@@ -1164,7 +1044,7 @@
         {
           "title": "the profile's own OG card",
           "file": "profile.spec.ts",
-          "line": 274,
+          "line": 283,
           "column": 6,
           "specs": [
             {
@@ -1180,15 +1060,15 @@
                   "projectName": "mobile",
                   "results": [
                     {
-                      "workerIndex": 2,
+                      "workerIndex": 0,
                       "parallelIndex": 0,
                       "status": "passed",
-                      "duration": 897,
+                      "duration": 573,
                       "errors": [],
                       "stdout": [],
                       "stderr": [],
                       "retry": 0,
-                      "startTime": "2026-08-16T10:01:21.070Z",
+                      "startTime": "2026-08-17T02:31:35.520Z",
                       "annotations": [],
                       "attachments": []
                     }
@@ -1198,7 +1078,7 @@
               ],
               "id": "e8b79b4ee550a37632f1-e55563558cc1c604a22a",
               "file": "profile.spec.ts",
-              "line": 275,
+              "line": 284,
               "column": 3
             },
             {
@@ -1214,15 +1094,15 @@
                   "projectName": "mobile",
                   "results": [
                     {
-                      "workerIndex": 2,
+                      "workerIndex": 0,
                       "parallelIndex": 0,
                       "status": "passed",
-                      "duration": 13,
+                      "duration": 49,
                       "errors": [],
                       "stdout": [],
                       "stderr": [],
                       "retry": 0,
-                      "startTime": "2026-08-16T10:01:21.995Z",
+                      "startTime": "2026-08-17T02:31:36.127Z",
                       "annotations": [],
                       "attachments": []
                     }
@@ -1232,7 +1112,7 @@
               ],
               "id": "e8b79b4ee550a37632f1-d340c2df5513e0aae44f",
               "file": "profile.spec.ts",
-              "line": 291,
+              "line": 300,
               "column": 3
             },
             {
@@ -1248,15 +1128,15 @@
                   "projectName": "mobile",
                   "results": [
                     {
-                      "workerIndex": 2,
+                      "workerIndex": 0,
                       "parallelIndex": 0,
                       "status": "passed",
-                      "duration": 239,
+                      "duration": 491,
                       "errors": [],
                       "stdout": [],
                       "stderr": [],
                       "retry": 0,
-                      "startTime": "2026-08-16T10:01:22.015Z",
+                      "startTime": "2026-08-17T02:31:36.216Z",
                       "annotations": [],
                       "attachments": []
                     }
@@ -1266,7 +1146,7 @@
               ],
               "id": "e8b79b4ee550a37632f1-eaa6cdbcadb99ce901ca",
               "file": "profile.spec.ts",
-              "line": 296,
+              "line": 305,
               "column": 3
             },
             {
@@ -1282,15 +1162,15 @@
                   "projectName": "desktop",
                   "results": [
                     {
-                      "workerIndex": 5,
+                      "workerIndex": 1,
                       "parallelIndex": 0,
                       "status": "passed",
-                      "duration": 32,
+                      "duration": 82,
                       "errors": [],
                       "stdout": [],
                       "stderr": [],
                       "retry": 0,
-                      "startTime": "2026-08-16T10:01:38.632Z",
+                      "startTime": "2026-08-17T02:31:54.670Z",
                       "annotations": [],
                       "attachments": []
                     }
@@ -1300,7 +1180,7 @@
               ],
               "id": "e8b79b4ee550a37632f1-43a49ef790c26defc982",
               "file": "profile.spec.ts",
-              "line": 275,
+              "line": 284,
               "column": 3
             },
             {
@@ -1316,15 +1196,15 @@
                   "projectName": "desktop",
                   "results": [
                     {
-                      "workerIndex": 5,
+                      "workerIndex": 1,
                       "parallelIndex": 0,
                       "status": "passed",
-                      "duration": 19,
+                      "duration": 32,
                       "errors": [],
                       "stdout": [],
                       "stderr": [],
                       "retry": 0,
-                      "startTime": "2026-08-16T10:01:38.679Z",
+                      "startTime": "2026-08-17T02:31:54.780Z",
                       "annotations": [],
                       "attachments": []
                     }
@@ -1334,7 +1214,7 @@
               ],
               "id": "e8b79b4ee550a37632f1-85d4a847d1df3fc14cfc",
               "file": "profile.spec.ts",
-              "line": 291,
+              "line": 300,
               "column": 3
             },
             {
@@ -1350,15 +1230,15 @@
                   "projectName": "desktop",
                   "results": [
                     {
-                      "workerIndex": 5,
+                      "workerIndex": 1,
                       "parallelIndex": 0,
                       "status": "passed",
-                      "duration": 216,
+                      "duration": 352,
                       "errors": [],
                       "stdout": [],
                       "stderr": [],
                       "retry": 0,
-                      "startTime": "2026-08-16T10:01:38.714Z",
+                      "startTime": "2026-08-17T02:31:54.839Z",
                       "annotations": [],
                       "attachments": []
                     }
@@ -1368,7 +1248,7 @@
               ],
               "id": "e8b79b4ee550a37632f1-9c3345b8b7b67bbd7476",
               "file": "profile.spec.ts",
-              "line": 296,
+              "line": 305,
               "column": 3
             }
           ]
@@ -1376,7 +1256,7 @@
         {
           "title": "google takeout import",
           "file": "profile.spec.ts",
-          "line": 305,
+          "line": 314,
           "column": 6,
           "specs": [
             {
@@ -1392,15 +1272,15 @@
                   "projectName": "mobile",
                   "results": [
                     {
-                      "workerIndex": 2,
+                      "workerIndex": 0,
                       "parallelIndex": 0,
                       "status": "passed",
-                      "duration": 73,
+                      "duration": 135,
                       "errors": [],
                       "stdout": [],
                       "stderr": [],
                       "retry": 0,
-                      "startTime": "2026-08-16T10:01:22.276Z",
+                      "startTime": "2026-08-17T02:31:36.747Z",
                       "annotations": [],
                       "attachments": []
                     }
@@ -1410,7 +1290,7 @@
               ],
               "id": "e8b79b4ee550a37632f1-665ff66257665f93474f",
               "file": "profile.spec.ts",
-              "line": 311,
+              "line": 320,
               "column": 3
             },
             {
@@ -1426,15 +1306,15 @@
                   "projectName": "mobile",
                   "results": [
                     {
-                      "workerIndex": 2,
+                      "workerIndex": 0,
                       "parallelIndex": 0,
                       "status": "passed",
-                      "duration": 49,
+                      "duration": 92,
                       "errors": [],
                       "stdout": [],
                       "stderr": [],
                       "retry": 0,
-                      "startTime": "2026-08-16T10:01:22.368Z",
+                      "startTime": "2026-08-17T02:31:36.921Z",
                       "annotations": [],
                       "attachments": []
                     }
@@ -1444,7 +1324,7 @@
               ],
               "id": "e8b79b4ee550a37632f1-bf6fb9f077d222f1a06c",
               "file": "profile.spec.ts",
-              "line": 328,
+              "line": 337,
               "column": 3
             },
             {
@@ -1460,15 +1340,15 @@
                   "projectName": "mobile",
                   "results": [
                     {
-                      "workerIndex": 2,
+                      "workerIndex": 0,
                       "parallelIndex": 0,
                       "status": "passed",
-                      "duration": 45,
+                      "duration": 93,
                       "errors": [],
                       "stdout": [],
                       "stderr": [],
                       "retry": 0,
-                      "startTime": "2026-08-16T10:01:22.444Z",
+                      "startTime": "2026-08-17T02:31:37.044Z",
                       "annotations": [],
                       "attachments": []
                     }
@@ -1478,7 +1358,7 @@
               ],
               "id": "e8b79b4ee550a37632f1-15e77c6cd3cdb23a5266",
               "file": "profile.spec.ts",
-              "line": 336,
+              "line": 345,
               "column": 3
             },
             {
@@ -1494,15 +1374,15 @@
                   "projectName": "mobile",
                   "results": [
                     {
-                      "workerIndex": 2,
+                      "workerIndex": 0,
                       "parallelIndex": 0,
                       "status": "passed",
-                      "duration": 1846,
+                      "duration": 3410,
                       "errors": [],
                       "stdout": [],
                       "stderr": [],
                       "retry": 0,
-                      "startTime": "2026-08-16T10:01:22.502Z",
+                      "startTime": "2026-08-17T02:31:37.164Z",
                       "annotations": [],
                       "attachments": []
                     }
@@ -1512,7 +1392,7 @@
               ],
               "id": "e8b79b4ee550a37632f1-bec5ef925b1762589831",
               "file": "profile.spec.ts",
-              "line": 345,
+              "line": 354,
               "column": 3
             },
             {
@@ -1528,15 +1408,15 @@
                   "projectName": "mobile",
                   "results": [
                     {
-                      "workerIndex": 2,
+                      "workerIndex": 0,
                       "parallelIndex": 0,
                       "status": "passed",
-                      "duration": 555,
+                      "duration": 870,
                       "errors": [],
                       "stdout": [],
                       "stderr": [],
                       "retry": 0,
-                      "startTime": "2026-08-16T10:01:24.361Z",
+                      "startTime": "2026-08-17T02:31:40.605Z",
                       "annotations": [],
                       "attachments": []
                     }
@@ -1546,7 +1426,7 @@
               ],
               "id": "e8b79b4ee550a37632f1-520f526382606257b982",
               "file": "profile.spec.ts",
-              "line": 382,
+              "line": 391,
               "column": 3
             },
             {
@@ -1562,15 +1442,15 @@
                   "projectName": "mobile",
                   "results": [
                     {
-                      "workerIndex": 2,
+                      "workerIndex": 0,
                       "parallelIndex": 0,
                       "status": "passed",
-                      "duration": 1218,
+                      "duration": 1058,
                       "errors": [],
                       "stdout": [],
                       "stderr": [],
                       "retry": 0,
-                      "startTime": "2026-08-16T10:01:24.929Z",
+                      "startTime": "2026-08-17T02:31:41.508Z",
                       "annotations": [],
                       "attachments": []
                     }
@@ -1580,7 +1460,7 @@
               ],
               "id": "e8b79b4ee550a37632f1-1efe33dc758434c7675d",
               "file": "profile.spec.ts",
-              "line": 403,
+              "line": 412,
               "column": 3
             },
             {
@@ -1596,15 +1476,15 @@
                   "projectName": "desktop",
                   "results": [
                     {
-                      "workerIndex": 5,
+                      "workerIndex": 1,
                       "parallelIndex": 0,
                       "status": "passed",
-                      "duration": 61,
+                      "duration": 89,
                       "errors": [],
                       "stdout": [],
                       "stderr": [],
                       "retry": 0,
-                      "startTime": "2026-08-16T10:01:38.941Z",
+                      "startTime": "2026-08-17T02:31:55.223Z",
                       "annotations": [],
                       "attachments": []
                     }
@@ -1614,7 +1494,7 @@
               ],
               "id": "e8b79b4ee550a37632f1-89cfd4f5198dc0442516",
               "file": "profile.spec.ts",
-              "line": 311,
+              "line": 320,
               "column": 3
             },
             {
@@ -1630,15 +1510,15 @@
                   "projectName": "desktop",
                   "results": [
                     {
-                      "workerIndex": 5,
+                      "workerIndex": 1,
                       "parallelIndex": 0,
                       "status": "passed",
-                      "duration": 51,
+                      "duration": 71,
                       "errors": [],
                       "stdout": [],
                       "stderr": [],
                       "retry": 0,
-                      "startTime": "2026-08-16T10:01:39.019Z",
+                      "startTime": "2026-08-17T02:31:55.345Z",
                       "annotations": [],
                       "attachments": []
                     }
@@ -1648,7 +1528,7 @@
               ],
               "id": "e8b79b4ee550a37632f1-655b3c582dd8f908e1ba",
               "file": "profile.spec.ts",
-              "line": 328,
+              "line": 337,
               "column": 3
             },
             {
@@ -1664,15 +1544,15 @@
                   "projectName": "desktop",
                   "results": [
                     {
-                      "workerIndex": 5,
+                      "workerIndex": 1,
                       "parallelIndex": 0,
                       "status": "passed",
-                      "duration": 66,
+                      "duration": 82,
                       "errors": [],
                       "stdout": [],
                       "stderr": [],
                       "retry": 0,
-                      "startTime": "2026-08-16T10:01:39.086Z",
+                      "startTime": "2026-08-17T02:31:55.447Z",
                       "annotations": [],
                       "attachments": []
                     }
@@ -1682,7 +1562,7 @@
               ],
               "id": "e8b79b4ee550a37632f1-46fbf20b354ebb1e674f",
               "file": "profile.spec.ts",
-              "line": 336,
+              "line": 345,
               "column": 3
             },
             {
@@ -1698,15 +1578,15 @@
                   "projectName": "desktop",
                   "results": [
                     {
-                      "workerIndex": 5,
+                      "workerIndex": 1,
                       "parallelIndex": 0,
                       "status": "passed",
-                      "duration": 2175,
+                      "duration": 2150,
                       "errors": [],
                       "stdout": [],
                       "stderr": [],
                       "retry": 0,
-                      "startTime": "2026-08-16T10:01:39.167Z",
+                      "startTime": "2026-08-17T02:31:55.554Z",
                       "annotations": [],
                       "attachments": []
                     }
@@ -1716,7 +1596,7 @@
               ],
               "id": "e8b79b4ee550a37632f1-a67e695996a8e2330295",
               "file": "profile.spec.ts",
-              "line": 345,
+              "line": 354,
               "column": 3
             },
             {
@@ -1732,15 +1612,15 @@
                   "projectName": "desktop",
                   "results": [
                     {
-                      "workerIndex": 5,
+                      "workerIndex": 1,
                       "parallelIndex": 0,
                       "status": "passed",
-                      "duration": 984,
+                      "duration": 842,
                       "errors": [],
                       "stdout": [],
                       "stderr": [],
                       "retry": 0,
-                      "startTime": "2026-08-16T10:01:41.371Z",
+                      "startTime": "2026-08-17T02:31:57.730Z",
                       "annotations": [],
                       "attachments": []
                     }
@@ -1750,7 +1630,7 @@
               ],
               "id": "e8b79b4ee550a37632f1-b3e44c9a716a01e0e898",
               "file": "profile.spec.ts",
-              "line": 382,
+              "line": 391,
               "column": 3
             },
             {
@@ -1766,15 +1646,15 @@
                   "projectName": "desktop",
                   "results": [
                     {
-                      "workerIndex": 5,
+                      "workerIndex": 1,
                       "parallelIndex": 0,
                       "status": "passed",
-                      "duration": 654,
+                      "duration": 933,
                       "errors": [],
                       "stdout": [],
                       "stderr": [],
                       "retry": 0,
-                      "startTime": "2026-08-16T10:01:42.384Z",
+                      "startTime": "2026-08-17T02:31:58.609Z",
                       "annotations": [],
                       "attachments": []
                     }
@@ -1784,7 +1664,7 @@
               ],
               "id": "e8b79b4ee550a37632f1-104763043ddfe9bbbd6e",
               "file": "profile.spec.ts",
-              "line": 403,
+              "line": 412,
               "column": 3
             }
           ]
@@ -1794,11 +1674,11 @@
   ],
   "errors": [],
   "stats": {
-    "startTime": "2026-08-16T10:01:07.166Z",
-    "duration": 36043.517,
-    "expected": 42,
+    "startTime": "2026-08-17T02:31:15.336Z",
+    "duration": 44440.334,
+    "expected": 46,
     "skipped": 0,
-    "unexpected": 4,
+    "unexpected": 0,
     "flaky": 0
   }
 }

@@ -15,6 +15,7 @@ resume from it alone.
         ├── src/         ← Vite + React SPA
         ├── server/      ← Hono + node:sqlite: JSON API, SSR share pages, static prod serving
         ├── seed/        ← the committed source of truth for all data + imagery
+        ├── e2e/         ← Playwright specs + `fixtures.ts` (its own tsconfig project)
         └── scripts/     ← evidence capture (boot smoke, command transcripts)
 ```
 
@@ -31,26 +32,27 @@ persistence layer uses the built-in `node:sqlite`). The bun lockfiles are gone.
 |---|---|---|
 | Install | `npm install` | |
 | Seed the database | `npm run seed` | one shot, from `seed/` → `server/data/cosign.db` |
-| Dev servers | `npm run dev` | Vite 8080 + Hono 8787 (concurrently); Vite proxies `/api,/img,/s,/p,/og` |
+| Dev servers | `npm run dev` | Vite 8080 + Hono 8787 (concurrently); Vite proxies `/api,/img,/u,/s,/p,/og` |
 | Production | `npm run prod` | `vite build` then the server on 8787 serving `dist/` + SSR |
 | Serve existing build | `npm run serve:prod` | skips the rebuild |
-| Typecheck | `./node_modules/.bin/tsc -b` | project refs: app / node / server |
-| Unit tests | `npm test` | Vitest, single run (~11 s warm, 241 tests) |
-| Lint | `npm run lint` | ESLint flat config (6 pre-existing warnings, 0 errors) |
+| Typecheck | `./node_modules/.bin/tsc -b` | project refs: app / node / server / **e2e** |
+| Unit tests | `npm test` | Vitest, single run (~60 s cold / ~25 s of actual tests, 450 tests in 31 files) |
+| Lint | `npm run lint` | ESLint flat config (5 pre-existing warnings, 0 errors) |
 | Bulk shop entry | `npm run import:shops -- f.csv [--dry-run]` | merges by id into `seed/shops.json` |
 | Shops → spreadsheet | `npm run export:shops -- f.csv` | round-trips back through import |
 | Share-page e2e | `npx playwright test share.spec.ts` | 24 tests, mobile + desktop; needs the prod server up |
 | Profile + import e2e | `COSIGN_EVIDENCE=phase5a npx playwright test profile.spec.ts` | 46 tests; the import half **writes** — point the server at a scratch DB first |
-| Social/group e2e | `COSIGN_EVIDENCE=phase5b npx playwright test social.spec.ts` | **writes** (sessions, friend requests, re-ranks) — scratch DB first |
-| Log-flow e2e | `COSIGN_EVIDENCE=phase3 npx playwright test log.spec.ts` | 35 tests; **writes** — point the server at a scratch DB first |
+| Social/group e2e | `COSIGN_EVIDENCE=phase5b npx playwright test social.spec.ts` | 46 tests; **writes** (sessions, friend requests, re-ranks) — scratch DB first |
+| Log-flow e2e | `COSIGN_EVIDENCE=phase3 npx playwright test log.spec.ts` | 36 tests; **writes** — point the server at a scratch DB first |
 | Home/discovery e2e | `COSIGN_EVIDENCE=phase4 npx playwright test home.spec.ts` | 44 tests; **writes**; finals tests skip without `COSIGN_FINALS_BASE` |
-| Perf gate | `MSYS_NO_PATHCONV=1 node scripts/lighthouse.mjs /s/<token> phase2 share` | exits non-zero if the gate misses |
+| Perf gate | `MSYS_NO_PATHCONV=1 node scripts/lighthouse.mjs /s/<token> phase2 share` | exits non-zero if the gate misses; **name the phase** — it defaults to `scratch` |
 | Phase 1 evidence | `bash scripts/phase1-evidence.sh` | needs the prod server up |
 | Phase 2 evidence | `LH_RUNS=5 bash scripts/phase2-evidence.sh` | transcript + playwright + the gate |
 | Phase 3 evidence | `bash scripts/phase3-evidence.sh` | owns its own server + scratch DB; :8787 must be free |
 | Phase 4 evidence | `bash scripts/phase4-evidence.sh` | owns **two** servers (:8787 + :8788) and a scratch DB; both ports must be free |
 | Phase 5A evidence | `bash scripts/phase5a-evidence.sh` | owns its own server + scratch DB; :8787 must be free; ~8 min (three Lighthouse gates) |
 | Phase 5B evidence | `bash scripts/phase5b-evidence.sh` | owns its own server + scratch DB; :8787 must be free; no Lighthouse gate (5B ships no public SSR surface) |
+| Phase 6 evidence | `bash scripts/phase6-evidence.sh` | the closing pass: every suite re-run as a regression + the gate and its font controls; owns its server + scratch DB; ~20 min |
 | SPA boot smoke | `node scripts/boot-smoke.mjs` | `COSIGN_EVIDENCE_DIR=phase2/spa` to target a phase |
 
 `COSIGN_EVIDENCE=<phase>` picks the directory Playwright writes into. It
@@ -63,6 +65,12 @@ evidence. Every evidence script sets it explicitly.
 how `scripts/phase4-evidence.sh` stands a second server inside finals week,
 and how a second school would be run.
 
+`LH_BLOCK="*/fonts/*"` makes `scripts/lighthouse.mjs` block matching requests
+in the browser. It is a measurement-side control and never a product hook: the
+same build and the same server answer the same URL with one resource taken
+away, so its cost can be priced against the budget instead of argued about. A
+run that used it is marked `blocked` in the JSON and can never report a pass.
+
 The Phase 2/5A Lighthouse gates run against `npm run prod` — **never**
 `vite preview`, which bypasses SSR and measures the wrong thing.
 
@@ -70,16 +78,33 @@ The Phase 2/5A Lighthouse gates run against `npm run prod` — **never**
 the local TypeScript; call `./node_modules/.bin/tsc` (or `.\node_modules\.bin\tsc.cmd`
 in PowerShell) to be sure.
 
-## Gotchas (verified on this machine, updated 2026-08-16 after Phase 5B)
+## Gotchas (verified on this machine, updated 2026-08-16 after the Phase 6 closing pass)
 
-- **Every default that pointed at a signed-off phase is now `scratch` — and
-  `scripts/boot-smoke.mjs` was the last one.** It fell back to
-  `evidence/phase1/` and a bare run of it during Phase 5B rewrote twelve
-  committed Phase 1 screenshots with Phase 5B's app. That is the *third* time
-  this trap has been sprung (Phase 3: `share.spec.ts`; Phase 4:
-  `playwright.config.ts` and `e2e/fixtures.ts`). Still check
-  `git status evidence/` before committing a phase — it is how all three were
-  caught.
+- **A default that points at a signed-off phase is a loaded gun, and this trap
+  has now been sprung four times.** Phase 3 found `share.spec.ts`; Phase 4 found
+  `playwright.config.ts` and `e2e/fixtures.ts`; Phase 5B found
+  `scripts/boot-smoke.mjs`, whose bare run rewrote twelve committed Phase 1
+  screenshots with Phase 5B's app — and 5B then wrote here that it was "the last
+  one". It was not. The closing pass found `scripts/lighthouse.mjs` still
+  defaulting to `phase2`, which meant **`npm run gate`** — a bare invocation of
+  that script, and the one command in `package.json` named after the gate —
+  overwrote Phase 2's committed numbers and its 500 kB report. All five default
+  to `scratch` now. Do not write "that was the last one" again; instead check
+  `git status evidence/` before committing, which is how every one of the four
+  was caught.
+- **The database file outlives the code that built it, and it is gitignored, so
+  nobody's `git pull` brings it along.** Phase 5B added `list_reranks`; on a
+  machine that had not re-seeded, `/lists/:id` answered a bare 500 (`no such
+  table`) while every other route answered fine, and the SPA showed its "cannot
+  reach the server" state — a schema problem wearing a network problem's
+  clothes. `getDb()` now reads `schema.sql` and names the missing tables on
+  startup. Re-seed after any schema change; stop the server first, the file is a
+  lock.
+- **A module that runs its CLI at import time cannot be tested.**
+  `server/import/cli.ts` called `die()` on `process.argv` at the top level, so
+  importing `mergeShop` from it killed the whole vitest file with "process.exit
+  unexpectedly called with 1". Same rule, same fix as `server/index.ts` and its
+  `serve()`: guard on `import.meta.url === pathToFileURL(process.argv[1]).href`.
 - **A surface marks its own loading state with its own attribute**, so
   `[data-group]`, `[data-feed]`, `[data-list]` and `[data-home]` are all on
   screen before there is anything on them. Playwright's `expect()` retries and
@@ -150,6 +175,16 @@ in PowerShell) to be sure.
   *its* fonts landed first. Before optimising a page against this number, run
   the share page as a control in the same minute and read `observedFirstContentfulPaint`
   against the last font's `networkEndTime` in the `.report.json`.
+  **Phase 6 priced it.** Run the profile again with `LH_BLOCK="*/fonts/*"` and it
+  measures 947 ms with the fonts gone entirely — that is the floor, and it leaves
+  53 ms of the 1000 ms budget, while the fonts cost ~335 ms. Meanwhile the share
+  page, unchanged since Phase 2, measured 869 · 911 · 1010 · 833 · 974 ms across
+  five sessions; the 1010 was taken with 22 stray Chrome processes still running from a
+  previous gate run, so **kill leftover chrome before measuring anything**. Note
+  the control is a floor on the profile and NOT on the share page, where blocking
+  the fonts came out *slower* (fallback metrics move the LCP element). Do
+  not spend a day optimising either page against this gate; read PLAN.md's Phase
+  5A perf section first.
 - **Inline SVG is expensive in a way an `<img>` is not.** The profile's map is
   forty-odd nodes; inline it cost **737 ms of throttled style+layout** against
   218 ms for the same page without it. It is served as a `data:image/svg+xml`
@@ -305,14 +340,19 @@ in PowerShell) to be sure.
 - **Playwright: browsers are installed** (chromium v1217). `playwright.config.ts`
   runs `e2e/` against the prod server in two projects (mobile 390×844, desktop
   1280) and writes screenshots, axe reports and the OG snapshot into
-  `evidence/phase2/`. `scripts/boot-smoke.mjs` still drives chromium directly.
+  `evidence/$COSIGN_EVIDENCE`, which defaults to `scratch` — it said `phase2`
+  here for four phases, and that was a loaded gun (see the top of this file).
+  `scripts/boot-smoke.mjs` still drives chromium directly.
 - **Windows dev machine.** Paths contain a space (`Vineet Sista`) — always quote.
   Git Bash is available for POSIX scripts; PowerShell 5.1 is the primary shell.
-- **446 kB main JS chunk** after build (400 kB before Phase 5B; 382 kB before Phase 4; 345 kB before
-  Phase 3's two pages; 672 kB
-  before the external SDKs left). Code-splitting is still unaddressed; the share
-  page must not ship this bundle at all — `e2e/share.spec.ts` asserts it requests
-  zero `/assets/*.js` and zero stylesheets.
+- **330 kB main JS chunk** after build, 100 kB gzipped (446 kB before the Phase 6
+  closing pass, which deleted two toast systems and a tooltip provider that
+  `App.tsx` mounted and nothing used — 116 kB, a quarter of the bundle, for three
+  things no screen rendered; 400 kB before Phase 5B; 382 kB before Phase 4; 345 kB
+  before Phase 3's two pages; 672 kB before the external SDKs left).
+  Code-splitting is still unaddressed; the share page must not ship this bundle at
+  all — `e2e/share.spec.ts` asserts it requests zero `/assets/*.js` and zero
+  stylesheets.
 - `tsconfig.json` is loose (`strictNullChecks: false`, `noImplicitAny: false`). Match
   existing style; don't fight it mid-phase.
 
@@ -357,10 +397,11 @@ in PowerShell) to be sure.
   colour anywhere else** — the one unavoidable duplication lives in
   `server/pages/tokenHex.ts` (satori and an SVG inside an `<img>` both lack CSS
   custom properties), and `tokens.test.ts` guards it *and* fails on a literal hex
-  appearing anywhere else under `server/pages/`. Four more hand-written copies of
-  the ground exist where no stylesheet can reach — `index.html`'s and
-  `manifest.json`'s theme colour, and the `<meta name="theme-color">` on each SSR
-  page — and the same test guards all of them.
+  appearing anywhere else under `server/pages/`. Six more hand-written copies of
+  the ground exist where no stylesheet can reach — `index.html`, `manifest.json`
+  twice (`theme_color` and `background_color`), and a `<meta name="theme-color">`
+  on each of `shareList`'s page **and** its tombstone plus `shareProfile`'s — and
+  the same test guards all of them.
 - **Phase 5B added exactly two shapes and no person-shape.** `.cs-ledger` (a
   two-column hairline table of counts that subtracts to an answer — the group
   page's "how 22 became 6", the shared list's "who keeps it") and `.cs-brace`
@@ -405,8 +446,13 @@ in PowerShell) to be sure.
 - Domain types in `src/types/cosign.ts`; pure domain logic in `src/lib/` —
   `calendar.ts` (terms and finals week, replacing Phase 0's placeholder
   `semester.ts`), `timeBucket.ts`, `freshness.ts`, `geo.ts`, `discover.ts`,
-  `insertion.ts`, `logFlow.ts`, `palette.ts`, `placeCopy.ts`, `title.ts`. Each is
-  unit-tested; none imports a node built-in, because the server imports them too.
+  `insertion.ts`, `logFlow.ts`, `palette.ts`, `placeCopy.ts`, `collab.ts`,
+  `group.ts`, `title.ts`. None imports a node built-in, because the server
+  imports them too — `server/repo/lists.ts` imports `collab.ts` and
+  `server/repo/group.ts` imports `group.ts`, which is the whole reason for the
+  rule. All are unit-tested except `title.ts`, which is checked behaviourally
+  instead: `scripts/boot-smoke.mjs` reads `document.title` off each running
+  route, because what it has to get right is what the tab actually says.
 - **The document title is a route's job, not `index.html`'s** (`src/lib/title.ts`).
   Every page calls `useTitle(...)`, passing `null` while the name is still in
   flight — a tab that still says the last shop you opened is worse than one that

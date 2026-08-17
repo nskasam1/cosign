@@ -21,10 +21,17 @@ Requires Node ≥ 24 and npm (bun is not used).
 
 ```
 npm install
-npm run dev      # Vite dev server on :8080
+npm run seed     # builds server/data/cosign.db from seed/ — required, once
+npm run dev      # Vite on :8080 + the API/SSR server on :8787
 npm test         # Vitest
-npm run build    # production build
+npm run prod     # build, then serve dist/ + the SSR pages from :8787
 ```
+
+`npm run seed` is not optional: the database file is gitignored, so a fresh
+clone has none and the server refuses to start without one. Re-run it after
+pulling a change that touches `server/db/schema.sql` — the server checks on
+startup and names the tables an older database is missing. Stop the server
+first; SQLite holds the file open.
 
 No `.env` is needed — there are deliberately no keys or remote services to
 configure. See `../../CLAUDE.md` for the full command table and gotchas.

@@ -1,0 +1,110 @@
+{
+  "url": "http://localhost:8787/p/Rp7YT1i9S-Ov",
+  "label": "profile-no-fonts",
+  "lighthouse": "13.4.1",
+  "throttling": {
+    "rttMs": 150,
+    "throughputKbps": 1638.4,
+    "requestLatencyMs": 562.5,
+    "downloadThroughputKbps": 1474.5600000000002,
+    "uploadThroughputKbps": 607.5,
+    "cpuSlowdownMultiplier": 4
+  },
+  "gate": {
+    "lcpMs": 1000,
+    "perf": 90,
+    "a11y": 95
+  },
+  "blocked": [
+    "*/fonts/*"
+  ],
+  "runs": [
+    {
+      "run": 1,
+      "perf": 100,
+      "a11y": 100,
+      "bestPractices": 100,
+      "seo": 66,
+      "lcpMs": 915,
+      "fcpMs": 915,
+      "tbtMs": 12,
+      "cls": 0,
+      "siMs": 915,
+      "ttfbMs": 30,
+      "bytes": 9809
+    },
+    {
+      "run": 2,
+      "perf": 100,
+      "a11y": 100,
+      "bestPractices": 100,
+      "seo": 66,
+      "lcpMs": 906,
+      "fcpMs": 906,
+      "tbtMs": 0,
+      "cls": 0,
+      "siMs": 906,
+      "ttfbMs": 20,
+      "bytes": 9809
+    },
+    {
+      "run": 3,
+      "perf": 100,
+      "a11y": 100,
+      "bestPractices": 100,
+      "seo": 66,
+      "lcpMs": 1011,
+      "fcpMs": 1011,
+      "tbtMs": 9,
+      "cls": 0,
+      "siMs": 1011,
+      "ttfbMs": 30,
+      "bytes": 9809
+    },
+    {
+      "run": 4,
+      "perf": 100,
+      "a11y": 100,
+      "bestPractices": 100,
+      "seo": 66,
+      "lcpMs": 947,
+      "fcpMs": 947,
+      "tbtMs": 7,
+      "cls": 0,
+      "siMs": 947,
+      "ttfbMs": 19,
+      "bytes": 9809
+    },
+    {
+      "run": 5,
+      "perf": 100,
+      "a11y": 100,
+      "bestPractices": 100,
+      "seo": 66,
+      "lcpMs": 957,
+      "fcpMs": 957,
+      "tbtMs": 9,
+      "cls": 0,
+      "siMs": 957,
+      "ttfbMs": 26,
+      "bytes": 9809
+    }
+  ],
+  "median": {
+    "perf": 100,
+    "a11y": 100,
+    "bestPractices": 100,
+    "seo": 66,
+    "lcpMs": 947,
+    "fcpMs": 947,
+    "tbtMs": 9,
+    "cls": 0,
+    "siMs": 947,
+    "ttfbMs": 26,
+    "bytes": 9809
+  },
+  "lcpElement": null,
+  "passed": false,
+  "a11yPassed": true,
+  "generatedAt": "2026-08-17T02:43:15.971Z"
+}

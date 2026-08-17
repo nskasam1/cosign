@@ -1,0 +1,109 @@
+# Phase 6 closing-pass evidence — 2026-08-17T02:26:57Z
+# node v24.11.0, npm 11.6.1
+# scratch database: /tmp/cosign-phase6.db (server/data/cosign.db untouched)
+
+## ./node_modules/.bin/tsc -b — and e2e/ is finally inside it
+exit=0
+$ grep -c references -A6 tsconfig.json  # projects in the build graph
+tsconfig.app.json tsconfig.node.json tsconfig.server.json tsconfig.e2e.json
+
+## npm test
+    [2m Test Files [22m [1m[32m31 passed[39m[22m[90m (31)[39m
+    [2m      Tests [22m [1m[32m450 passed[39m[22m[90m (450)[39m
+
+## npm run lint
+    ✖ 5 problems (0 errors, 5 warnings)
+
+## the stale-database guard: a schema change used to surface as a bare 500
+$ # a database built before Phase 5B added list_reranks, opened by the server
+    Database at C:/Users/Vineet Sista/AppData/Local/Temp/cosign-phase6-stale.db was built by an older schema — missing table list_reranks. Stop the server and run `COSIGN_DB=C:/Users/Vineet Sista/AppData/Local/Temp/cosign-phase6-stale.db npm run seed` (the file is a lock while a server holds it).
+    (before this guard: GET /api/lists/:id answered 500 'no such table', every other route answered fine)
+
+## the founder's CSV round trip is lossless (IMPORT_FORMAT.md §5)
+$ npm run export:shops -- /tmp/phase6-shops.csv && npm run import:shops -- /tmp/phase6-shops.csv --dry-run
+    wrote C:/Users/Vineet Sista/AppData/Local/Temp/phase6-shops.csv (22 shops)
+    C:/Users/Vineet Sista/AppData/Local/Temp/phase6-shops.csv: 22 rows
+      added   0
+      updated 22: s_wheelhouse, s_cricket-and-crow, s_terrazzo, s_night-owl, s_hackberry, s_lantern-lane, s_oval-grounds, s_bramble, s_copper-kettle, s_marginalia, s_south-porch, s_foundry, s_petal-and-bean, s_high-street-standard, s_juniper, s_all-nighter, s_percolate, s_grandview-social, s_tulip-tree, s_bexley-common, s_short-north-drip, s_cardinal-and-vine
+    [2m      Tests [22m [1m[32m10 passed[39m[22m[90m (10)[39m
+    (before the fix: 22 wifi_notes, 22 camp_notes and 18 palettes were nulled by the documented command)
+
+## /g/:token is the third public token-addressed surface, and now says so
+$ curl -sI localhost:8787/g/anything | grep -i x-robots-tag
+    x-robots-tag: noindex, nofollow
+$ grep Disallow public/robots.txt
+    Disallow: /s/
+    Disallow: /p/
+    Disallow: /og/
+    Disallow: /g/
+
+## a log count is an answer about friends-only rows, so it is gated like one
+$ curl -s localhost:8787/api/users/maya            # logged out
+    logs_count=5 can_see_ranking=false
+$ curl -s --cookie <u_dev, an accepted friend> localhost:8787/api/users/maya
+    logs_count=23 can_see_ranking=true
+
+## the hero surface with nothing on it — a link minted before its owner ranked anywhere
+$ curl -s localhost:8787/s/<a token for an empty ranking>
+    data-empty          : true
+    "All 0, in order"   : false
+    an empty <ol>       : false
+    the filter script   : false
+    still names the author and the door out: true
+
+## every surface, re-run against this build (the config's JSON reporter writes each results file)
+$ COSIGN_EVIDENCE=phase6/share-regression npx playwright test share.spec.ts   # phase 2
+$ COSIGN_EVIDENCE=phase6/profile-regression npx playwright test profile.spec.ts   # phase 5A
+$ COSIGN_EVIDENCE=phase6/social-regression npx playwright test social.spec.ts   # phase 5B
+$ COSIGN_EVIDENCE=phase6/home-regression npx playwright test home.spec.ts   # phase 4
+$ COSIGN_EVIDENCE=phase6/log-regression npx playwright test log.spec.ts   # phase 3
+
+    share     24 passed (41.5s)
+    profile   46 passed (44.4s)
+    social    46 passed (1.2m)
+    home      42 passed (1.5m)
+    log       35 passed (2.2m)
+
+$ COSIGN_EVIDENCE_DIR=phase6/spa node scripts/boot-smoke.mjs
+          /rank                                  Your list — Cosign
+          /group/new                             Ask three people — Cosign
+          /g/g_notatable0000                     Nothing at this address — Cosign
+          /shop/there-is-no-such-place/x         Nothing at this address — Cosign
+    
+    all 13 routes booted clean
+
+## the perf gate (LCP <= 1000 ms, median of 5, mobile + simulated Slow-4G)
+$ LH_RUNS=5 node scripts/lighthouse.mjs /p/Rp7YT1i9S-Ov phase6 profile
+      PASS  performance            100
+      FAIL  LCP                    1282 ms
+      runs: 100/1004ms  100/1049ms  100/1284ms  100/1288ms  100/1282ms
+    gate exit=1
+$ LH_RUNS=5 node scripts/lighthouse.mjs /s/IofpCInelhr1 phase6 share
+      PASS  performance            100
+      PASS  LCP                    974 ms
+      runs: 100/1289ms  100/934ms  98/974ms  99/970ms  100/1002ms
+    gate exit=0
+
+## the same two pages with */fonts/* blocked — controls, never a pass
+$ LH_BLOCK='*/fonts/*' LH_RUNS=5 node scripts/lighthouse.mjs /p/Rp7YT1i9S-Ov phase6 profile-no-fonts
+      PASS  LCP                    947 ms
+      runs: 100/915ms  100/906ms  100/1011ms  100/947ms  100/957ms
+$ LH_BLOCK='*/fonts/*' LH_RUNS=5 node scripts/lighthouse.mjs /s/IofpCInelhr1 phase6 share-no-fonts
+      FAIL  LCP                    1001 ms
+      runs: 100/1270ms  100/1001ms  100/1020ms  100/982ms  100/938ms
+
+$ node scripts/gate-summary.mjs phase6
+
+LCP, median of 5, mobile + simulated Slow-4G. Budget 1000 ms.
+
+                        as served   fonts blocked   spread (blocked)
+  the ranked list  /s/   974 ms ok   1001 ms OVER    938–1270 ms
+  the profile      /p/  1282 ms OVER   947 ms ok     906–1011 ms
+
+  the ranked list  /s/: blocking the fonts made it 27 ms SLOWER, so this control is not a floor for this page — read it as a diagnostic, not as a second gate.
+  the profile      /p/: the three faces cost 335 ms of simulated LCP, and the page with none of them on the wire measures 947 ms — 53 ms inside the budget. No change to the page goes under that figure.
+
+    What this means for the criterion is in PLAN.md, Phase 6. Note that
+    machine load moves these numbers — CLAUDE.md has said so since Phase 2
+    — so the run above is one sample of a distribution, and the summary is
+    computed from it rather than written down beside it.

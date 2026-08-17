@@ -33,7 +33,7 @@ Column by column:
 | `bathroom_access` | One of: `open`, `code`, `customer_only`. |
 | `bathroom_code` | The code if `bathroom_access` is `code`, e.g. `1889#`. Otherwise blank. |
 | `natural_light` | `true` or `false` — are there real windows where people sit? |
-| `camp_ok` | `true` or `false` — can you sit 3+ hours on one coffee without side-eye? |
+| `camp_ok` | `true` or `false` — can you sit **four hours** on one coffee without side-eye? (Four, not three: it is the brief's number and it is what every screen in the app says.) |
 | `one_liner` | Your one-sentence take. This is the personality of the app; make it count. |
 
 The enum columns (`table_size`, `bathroom_access`) must use those exact strings —
@@ -95,6 +95,7 @@ inconsistent rather than seeding half a database:
 | `lists.json` | thematic and collaborative lists |
 | `share-tokens.json` | the unlisted share links |
 | `academic-calendar.json` | term dates and finals week |
+| `group-sessions.json` | the seeded table of four, and what each of them asked for |
 
 - **`shops.json`** — array of shop objects: `id`, `slug`, `name`, `address`,
   `lat`, `lng`, `school`, `price_drip`, `price_latte`, `student_discount`,
@@ -202,6 +203,22 @@ No fields dropped, no timestamps mangled, no enums "normalized" into something
 else. This is what makes the weekend safe: you can always get your data back out
 exactly as you put it in, so the worst case of any experiment is re-running
 `npm run seed`.
+
+The same holds for the **spreadsheet** round trip (`npm run export:shops` then
+`npm run import:shops`), with one thing worth knowing about how it is kept true.
+The sheet has twenty columns and a shop has more, so re-importing cannot be a
+straight overwrite: `wifi_note`, `camp_note`, `palette`, `school` and the photos
+have no column to come back in through, and a sheet can therefore never *mean*
+"clear the wifi note". Those fields are taken from the row already on file and
+the sheet's columns are laid over the top. Two harmless normalisations remain:
+`Sa-Su` reads back as Saturday-then-Sunday where the file wrote Sunday-first
+(same days, same window), and a discount with no terms written for it is
+exported as `yes` and read back as a discount with no terms — not as a note
+reading "yes".
+
+This is checked, not asserted: `server/import/roundtrip.test.ts` runs the trip
+against `seed/shops.json` itself, so a field added later is covered the day it
+lands rather than the day somebody remembers to extend a fixture.
 
 If you ever see a round-trip change something, that's a bug in the app, not your
 data. File it.

@@ -185,10 +185,23 @@ Commit order matters (brief: *first commit is the scoped rename, green build aft
    `tsconfig.api.json` + its reference in `tsconfig.json`. Green build + tsc after
    each commit.
 3. **Server + schema + seed + SPA re-point** (multiple commits as criteria land):
-- `server/`: `index.ts` (Hono), `db/schema.sql`, `db/init.ts`, `repo/{shops,users,
-  logs,rankings,lists,friendships,notifications,analytics,shareTokens,scores}.ts`,
-  `auth/{cookie,provider}.ts`, `providers/geo.ts`, `import/{takeout,csv,export}.ts`
-  (exporter exists so round-trip = import → export → import, tested).
+- `server/`, **as intended** — the as-built index is the paragraph after this one,
+  and the two differ: `index.ts` (Hono), `db/schema.sql`, `db/init.ts`,
+  `repo/{shops,users,logs,rankings,lists,friendships,notifications,analytics,
+  shareTokens,scores}.ts`, `auth/{cookie,provider}.ts`, `providers/geo.ts`,
+  `import/{takeout,csv,export}.ts` (exporter exists so round-trip = import →
+  export → import, tested).
+- `server/`, **as built** (checked against `git ls-files` in the Phase 6 pass;
+  this plan is meant to be resumable from alone, and ten of the paths above do
+  not exist): `index.ts`, `db/{schema.sql,db.ts,seed.ts}`,
+  `repo/{shops,social,logsRepo,rank,lists,scores,discover,group,notifications,
+  analytics,share}.ts`, `auth/cookie.ts`, `lib/hours.ts`,
+  `import/{cli,export,takeout,shopsCsv,hoursSyntax}.ts`,
+  `pages/{shareList,shareProfile,shareData,profileData,profileMap,og,tokens,
+  tokenHex}.ts`. There is no `providers/geo.ts` — the GeoProvider stub is
+  `src/lib/geo.ts`, shared with the client, because the server imports the same
+  pure module. Users, friendships and share tokens live in `social.ts` and
+  `share.ts` rather than in files of their own.
 - Schema (SQLite): `schools`, `users` (profile fields merged in), `shops`,
   `shop_amenities`, `shop_photos`, `shop_hours`, `logs`, `comparisons`, `rankings` +
   `ranking_entries` (ordered), `lists` + `list_items` + `list_editors`,
@@ -216,7 +229,12 @@ Commit order matters (brief: *first commit is the scoped rename, green build aft
   `academic-calendar.json`, `images/` (CC0/stylized, one warm treatment, committed,
   no hotlinking), `takeout/{saved-places.csv,saved-places.geojson}` fixtures;
   `IMPORT_FORMAT.md` (we author it); `npm run seed` loads everything one-shot;
-  `npm run prod` script added (decision 1).
+  `npm run prod` script added (decision 1). **As built** there is no
+  `comparisons.json` — comparisons are derived by the seeder from
+  `rankings.json`, which is the file that exists instead, because a hand-written
+  comparison could disagree with the order it is supposed to have produced.
+  `group-sessions.json` arrived with Phase 5B. There is deliberately no
+  `notifications.json`, for the reason recorded under Phase 5B.
 - SPA: `src/lib/api.ts` client; `useAuth` over `/api/me` + switcher UI; Onboarding
   reworked to stub signup (pick/create name + school, OSU un-hardcoded); pages
   re-pointed at local API (minimal edits to stay green — visual rebuilds belong to
@@ -360,10 +378,10 @@ full verification output, followed by evidence and this status update.
 
 ### Phase 2 — Share page, OG, tokens ✅
 - [x] Tokens file committed via design skills (`src/design/tokens.css` +
-      `tokens.md` rationale); consumed by Tailwind (61 `var(--…)` references in
+      `tokens.md` rationale); consumed by Tailwind (67 `var(--…)` references in
       `tailwind.config.ts`), by the SPA (`src/index.css` imports it), and by the
       SSR pages (`server/pages/tokens.ts` inlines it). `tokens.test.ts`
-      (32 tests) fails the build on a contrast regression, a font that is named
+      (34 tests) fails the build on a contrast regression, a font that is named
       but not committed, or drift in the copies `og.ts` needs.
 - [x] Share page SSR, logged-out; **all decision-2 elements** present and
       asserted, not just screenshotted (`e2e/share.spec.ts`, 24 tests across
@@ -387,6 +405,15 @@ full verification output, followed by evidence and this status update.
       document. Median of 5 runs, Lighthouse 13.4.1, mobile + simulated
       Slow-4G, against `npm run prod` on the seeded 22-place list with images.
       Evidence: `evidence/phase2/lighthouse-share.json` (+ full `.report.json`).
+      **Annotated by Phase 6 (2026-08-16): this number does not reproduce.** The
+      same page, unchanged, measured 911, 1010, 833 and 974 ms across the closing
+      pass's four runs — a 177 ms spread on identical bytes, straddling the
+      budget. Nothing regressed: the page is the same page, and the profile
+      measured 947 ms beside it with its fonts blocked. But 869 was one sample of
+      that spread and the gate cannot resolve a difference smaller than its own
+      noise. The reasoning is under Phase 5A's perf section; the box stays checked
+      because it was earned honestly on the number in front of it, and it is
+      annotated because that number is not repeatable.
 
 **Phase 2 decisions & assumptions (new — don't relitigate):**
 - **Direction chosen by panel, not by reflex.** `frontend-design` +
@@ -478,8 +505,8 @@ full verification output, followed by evidence and this status update.
       (sweep)** — the receipt on the post-save screen carries the *server's*
       returned values (`data-time-bucket` / `data-semester`, asserted equal to the
       POST response), and the flow never asks. The sweep is now a mechanism, not a
-      claim: `src/design/no-scales.test.ts` walks all 117 `.ts/.tsx/.css` files
-      under `src/` and `server/` and fails on range/number inputs, `role=slider|
+      claim: `src/design/no-scales.test.ts` walks all 144 `.ts/.tsx/.css` files
+      under `src/` and `server/` (every one but itself) and fails on range/number inputs, `role=slider|
       progressbar|radiogroup`, `aria-value*`, star/thumb glyphs, an `N/5`-style
       score, or an import of a scale-capable primitive — plus the e2e runs the
       share page's DOM assertions on **every step**, not just the last screen
@@ -639,7 +666,7 @@ full verification output, followed by evidence and this status update.
 - [x] **Friend-weighted ≠ crowd order** — and it is a *tier*, not a weight:
       every place somebody you know has ranked sits above every place nobody
       you know has, at any crowd size. `server/repo/scores.test.ts` +
-      `discover.test.ts` prove it against a unanimous crowd of fifty (17+22
+      `discover.test.ts` prove it against a unanimous crowd of fifty (18+22
       tests), and the same guarantee is asserted on the rendered page. It is
       also **visible in the product**: Home can show you the crowd's order and
       says how many places move (`20 of 20` for Lena on the seeded campus).
@@ -883,7 +910,9 @@ found while closing them. Evidence: `evidence/phase5a/gaps.txt`.
       than leaving it alone. Checked behaviourally, not statically:
       `scripts/boot-smoke.mjs` reads `document.title` off each running route,
       asserts a per-route pattern, and fails if every route agrees.
-      **9 distinct titles across 12 routes**, all 12 booting clean.
+      **8 distinct titles across 13 routes**, all 13 booting clean. (It was 9 across
+      12 when this was written; Phase 5B added `/g/:token`, which shares the
+      "Nothing at this address" title with the 404.)
 - [x] **The browser chrome is the token ground.** `index.html`'s `theme-color`
       and `manifest.json`'s `theme_color`/`background_color` were `#141618` — the
       pre-token palette — against pages painted `#14100E` since Phase 2, i.e. a
@@ -906,11 +935,15 @@ found while closing them. Evidence: `evidence/phase5a/gaps.txt`.
 - [x] CLAUDE.md's conventions section corrected: it still pointed at
       `semester.ts`, deleted in Phase 1 and replaced by `calendar.ts`.
 
-**Not closed, deliberately:** the SPA's single 394 kB JS chunk (code-splitting
-is still unaddressed — it is not on any acceptance criterion, the share page
-ships none of it, and the public profile page in 5A must ship none of it
-either); the eight `react-refresh/only-export-components` lint warnings, all in
-generated shadcn primitives that `components.json` says not to hand-edit.
+**Not closed, deliberately:** the SPA's single JS chunk (394 kB when this was
+written; code-splitting is still unaddressed — it is not on any acceptance
+criterion, the share page ships none of it, and the public profile page in 5A
+must ship none of it either); the `react-refresh/only-export-components` lint
+warnings, which were eight then and are five now. Four are in generated shadcn
+primitives that `components.json` says not to hand-edit; the fifth is
+`src/hooks/useAuth.tsx`, which is ours and is not covered by that exemption —
+it exports `useAuth` beside the provider component, and splitting them to
+satisfy a dev-server nicety is not worth the indirection.
 
 ### Phase 5A — Profile + import ◐ (built and evidenced; the perf gate is NOT met)
 - [x] **`/p/:token` renders logged out, with every 5A element** — map of places as a
@@ -946,6 +979,13 @@ generated shadcn primitives that `components.json` says not to hand-edit.
       Lighthouse 13.4.1, mobile + simulated Slow-4G, against `npm run prod`.
       `scripts/lighthouse.mjs` exits non-zero and the transcript records
       `gate exit=1`. **Diagnosis and the two control experiments are below.**
+      Phase 6 re-measured it four more times (1286, 1285, 1286, 1282 — inside 6 ms
+      of each other) and added the control that explains it: with `*/fonts/*`
+      blocked the same page measures 947 ms, so the three faces cost ~335 ms on a
+      page whose text never waits for them, against 53 ms of budget left once they
+      are gone. It stays unchecked, and what to do about a criterion whose run-to-run
+      spread is wider than the margin it judges is written up as a founder's
+      decision at the end of the perf section below.
 
 **Phase 5A decisions & assumptions (new — don't relitigate):**
 - **Direction chosen by panel again, then judged.** Three independent directions for
@@ -1095,6 +1135,51 @@ numbers are logged and the box stays unchecked; it is not claimed as a pass. Wha
 actually close it is beyond this phase: subsetting Young Serif (26.6 kB of the 52.9 kB
 on the wire) to the glyphs the product uses, which needs a font toolchain this repo
 deliberately does not have.
+
+**Phase 6 measured it three more times and added the control the earlier runs did
+not have** — the same build and the same server answering the same URL with
+`*/fonts/*` blocked (`LH_BLOCK`; the run is marked `blocked` in the JSON and
+`passed` is forced false, so a control can never be read as a pass). Five sessions
+now; the committed numbers in `evidence/phase6/` are the last of each:
+
+| | as served | with `*/fonts/*` blocked |
+|---|---|---|
+| the profile `/p/` | 1280 · 1286 · 1285 · 1286 · **1282** ms — fails every time | 907 · 954 · 941 · **947** ms |
+| the ranked list `/s/` | 869 (Phase 2) · 911 · 1010 · 833 · **974** ms | 921 · 1015 · 1109 · **1001** ms |
+
+What that supports, and what it does not:
+
+1. **The profile's failure is real, reproducible and not the map.** Five
+   independent sessions inside 6 ms of each other. It is the fonts: taking all
+   three off the wire moves it to 947 ms, so they cost ~335 ms of simulated LCP on
+   a page whose text never waits for them (`font-display: swap`).
+2. **There is no headroom to optimise into.** 947 ms is what the page measures with
+   *zero* font bytes, and no change to the page goes under that; the budget leaves
+   53 ms. Subsetting was priced this time rather than guessed at: Young Serif's
+   `glyf` is 29.7 kB across 294 glyphs and the 95 Latin-1 codepoints are cheap
+   composites, so the ASCII letterforms — which no subset can drop — are nearly all
+   of it. Best case for all three faces is ~33 kB against 54 kB today, worth about
+   110 ms against a 335 ms cost.
+3. **The gate's resolution is worse than the margin it is judging.** The share page
+   has not changed since Phase 2 and measured 869, 911, 1010, 833 and 974 ms across
+   the five sessions — a 177 ms swing on identical bytes, driven by machine load
+   (the 1010 was taken with 22 stray Chrome processes left over from a previous
+   gate run; killing them moved the same page to 833). Phase 2's ✅ is annotated
+   above rather than withdrawn: the page is unchanged and nothing regressed, but
+   its number is one sample of that spread.
+4. **The blocked control is a floor on the profile and NOT on the share page**,
+   where it measured 276 ms *slower* than serving the fonts. Blocking a request
+   does not only remove bytes — the text lays out in fallback metrics and the LCP
+   element can move. `gate-summary.mjs` says so in that case rather than reporting
+   a negative cost as if it were a saving. It is a diagnostic, never a second gate.
+
+**What to do about it is the founder's call, not a bug to keep grinding on.** The
+options are (a) leave both boxes as they stand with this arithmetic recorded —
+Phase 2 ✅ annotated, Phase 5A unchecked — or (b) re-derive the budget from what
+this harness can actually resolve, which would mean stating it as something like
+"LCP ≤ 1.2 s on the median of five, on an otherwise idle machine" and re-accepting
+both public pages against it. **Nothing in the product was changed to make a number
+pass**, and `scripts/lighthouse.mjs` still exits non-zero on `/p/`.
 
 ### Phase 5B — Social/notifications/metrics/integrity ✅
 - [x] **Group intersection-best for 4 seeded users** — the four who are pairwise
@@ -1399,6 +1484,133 @@ ban is a position paired with the length of a private ranked list, which is why
   defect, a third time. It gates on the response status now.
 - **"a iced oat latte"** was on the share page, the public profile and the in-app
   profile for a phase and a half. One `article()` helper, three call sites.
+
+### Phase 6 — Closing pass ✅
+
+Not a feature phase. Between them PLAN and CLAUDE.md still carried one unchecked
+criterion, a dozen notes marked deferred, and a number of factual claims that had
+quietly stopped being true. This pass audited all of it against the tree, fixed
+what was actually wrong, and re-ran every earlier suite against the shipped
+build. Evidence: `evidence/phase6/`.
+
+**How it was audited.** Five independent lenses — open and ambiguous items, the
+brief's thirteen non-negotiables, code hygiene, documentation accuracy, and tests
+that cannot fail — produced 66 findings. 37 went to a separate agent instructed
+to refute them and **23 survived**. Four more defects came from running the
+product rather than reading it, and two from a new test failing on its first run.
+
+- [x] **A live 500 on the collaborative-list page, from a database nobody had
+      re-seeded.** `/lists/:id` answered `no such table: list_reranks` while every
+      other route answered fine, so the SPA showed its "cannot reach the server"
+      state: a schema problem wearing a network problem's clothes. The database
+      file is gitignored, so it outlives the code that built it, and every phase
+      that has added a table has silently invalidated every existing developer's
+      copy. `getDb()` reads `schema.sql` on startup and names the missing tables;
+      proven against the real stale database before it was re-seeded, and held by
+      `server/db/schemaGuard.test.ts` (3 tests).
+- [x] **The founder's documented CSV round trip destroyed 99 fields.**
+      `IMPORT_FORMAT.md` §5 promises export → import is lossless, and what was
+      actually tested was `parse → serialize → parse` — a fixpoint on what the
+      *sheet* can hold, which stayed green while the documented command nulled
+      **22 `wifi_note`s, 22 `camp_note`s and 18 `palette`s** on the committed
+      seed. The sheet has twenty columns and a shop has more, so `parseShopsCsv`
+      invents a value for every field it cannot carry and `{ ...prev, ...incoming }`
+      wrote the inventions over the real data. A CSV can never *mean* "clear the
+      wifi note", so `mergeShop` takes uncarried fields from the row already on
+      file. The new test asserts §5's actual promise against `seed/shops.json`
+      itself and found a second defect on its first run: the trip also **invented**
+      `student_discount_note: "yes"` for the six shops with a discount and no
+      terms, which `ShopDetail` renders — an export and a re-import would have put
+      the word "yes" on six shop pages.
+- [x] **`/g/:token` was the one public token-addressed surface no crawler was told
+      to skip.** `robots.txt` disallowed `/s/`, `/p/` and `/og/`; a group session
+      answers with no session and no auth check, and unlike a share token it has
+      no revocation route at all. It is disallowed now, and the server sets
+      `X-Robots-Tag: noindex, nofollow` on it because the SPA is one document and
+      cannot carry a per-route meta.
+- [x] **The privacy kill switch could fail silently.** `revoke` had no `catch`: a
+      rejected request left the row rendering "copy" and "turn off" exactly as
+      before, with no message anywhere, so the one person who had just closed
+      their public page had every reason to believe it was closed. It was still
+      live. `createShare` and `copy` had the same shape. All three say what
+      happened now, and the revoke message says which way it failed.
+- [x] **The hero surface had no zero-entry state.** A ranking link can be minted
+      the moment an account exists, and `/s/` then rendered "All 0, in order" over
+      an empty `<ol>`, under a chip counting nothing, above a CTA reading "0
+      places, put in order by one person who actually went" — sent to somebody by
+      name. `/p/` has said the true thing since 5A; `/s/` does now, keeps the
+      author's header (decision 2 asks for the person first) and keeps the one
+      door out. The test written for it caught a second bug: the chip-filter
+      script was still emitted, and it calls `addEventListener` on a `null`.
+- [x] **A log count is an answer about friends-only rows.**
+      `GET /api/users/:username` gated the ranking through `canViewRanking` and
+      then counted logs with a raw `SELECT count(*)`, no viewer, on a route that
+      never requires a session — and the number is printed on the page. It is
+      `logsRepo.visibleLogCount` now, gated on the *friends* predicate rather than
+      on `canSeeRanking`, which is also true for a stranger when the ranking is
+      public: opting an ordering into public is not publishing how often you write
+      visits down. Logged out it answers 5; to an accepted friend, 23.
+- [x] **Stub onboarding had no failure state at all.** Two bare `.then`s meant an
+      unreachable server left the school row empty and "That's me" disabled
+      forever with nothing saying why; `finish()` was a `try/finally` with no
+      `catch`; and the one path that did report anything printed the server's
+      machine strings (`bad username`) at somebody two fields into their first
+      minute. One sentence each, and the unreachable case is gated on the data
+      rather than on a loading flag.
+- [x] **`npm run gate` overwrote Phase 2's committed evidence.**
+      `scripts/lighthouse.mjs` still defaulted to `phase2`, and `npm run gate` is a
+      bare invocation of it. Fourth time this trap has been sprung, and 5B had
+      written in CLAUDE.md that `boot-smoke.mjs` was "the last one".
+- [x] **The 2,800-line e2e suite was in no tsconfig project**, so `tsc -b` was
+      green while `home.spec.ts` carried five real `TS2339`s: its hand-written wire
+      type for `/api/discover` was missing `age.days`, which three freshness
+      assertions read. `tsconfig.e2e.json` is in the build graph now (it also
+      covers `playwright.config.ts`, which was in no project either), and the
+      reference was proven to bite by breaking a file on purpose.
+- [x] **Four assertions that could not fail, and a fixture with an expiry date:**
+      an OG test named for four things it never checked, a tie-chaining test whose
+      loop could not reach the case it names, the friends-outrank-the-crowd
+      guarantee behind an `if`, an exact identity asserted with `>=`, and a
+      freshness fixture that stops being true on 2026-10-13.
+- [x] **Three of the six evidence scripts still killed the npm wrapper** — the trap
+      CLAUDE.md has documented since Phase 4 — and `phase2-evidence.sh` ran the
+      *whole* e2e directory unfiltered, with no `COSIGN_EVIDENCE` and no scratch
+      database, against whatever server happened to be up. One
+      `scripts/lib/server.sh` owns start, wait and stop-by-port for all of them.
+- [x] **Dead weight removed**, on the precedent set five times already: two toast
+      systems and a tooltip provider were mounted in `App.tsx` and used by nothing,
+      taking five generated primitives and two hooks with them. **The bundle went
+      446 kB → 330 kB** (gzipped 138 → 100) — a quarter of the JS the app shipped
+      was three things no screen ever rendered.
+- [x] **Documentation reconciled with the tree** — every count recounted rather
+      than re-copied, the Phase 1 file map given an as-built index beside the
+      as-intended one, and `IMPORT_FORMAT.md`'s `camp_ok` corrected from three
+      hours to the brief's four.
+- [x] **Regression: 193 e2e tests ran, 0 failed** (share 24, profile 46, social 46,
+      home 42 of 44, log 35 of 36 — the three skips are the finals-week pair and
+      the mobile-only timed run), each into its own subdirectory, read-only suites
+      first and writers last. 450 unit tests in 31 files, `tsc -b` exit 0, lint 0
+      errors, 13 routes booting clean with every request on localhost.
+
+**Phase 6 decisions & assumptions (new — don't relitigate):**
+- **An evidence script may not end in a written conclusion.** The first run of
+  `phase6-evidence.sh` printed "the spread collapses" under a control whose spread
+  was 212 ms — the same class of defect as every stale count this pass corrected,
+  committed by the script written to correct them. `scripts/gate-summary.mjs`
+  computes the comparison from the four result files instead, so the prose cannot
+  disagree with the numbers above it.
+- **`LH_BLOCK` is a measurement control, not a product hook.** It blocks matching
+  requests in the browser so the same build and server can be measured with a
+  resource taken away. A run that used it is marked `blocked` in the JSON and
+  `passed` is forced false — a control can never be read as a pass.
+- **`evidence/phase5a/playwright-results.json` is deleted rather than kept.** It
+  recorded four failures from a build that no longer exists — the map was still
+  inline SVG — and survived only because `--reporter=list` on the command line
+  replaces the reporter list in `playwright.config.ts`, JSON reporter included. So
+  the one machine-readable artifact behind Phase 5A's checked boxes said the suite
+  failed, while the transcript beside it recorded 46 passed twenty minutes later.
+  The current run of that same suite is `evidence/phase6/profile-regression/`
+  (46 passed, 0 failed). Phase 6's script does not pass `--reporter=list`.
 
 ---
 
