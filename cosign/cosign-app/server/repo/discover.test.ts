@@ -157,15 +157,25 @@ describe("mocked finals week changes the answer", () => {
 });
 
 describe("friends outrank the crowd, at any crowd size", () => {
-  const VIEWER = "u_maya";
+  // Lena, not Maya. Maya's friends have between them ranked all 22 seeded
+  // places, so her Home holds nothing for the friend tier to outrank and the
+  // guarantee below was vacuously true for her — the `if` that used to guard
+  // it never once ran its comparison. Lena's two friends have ranked 17 of
+  // the 22, which is the only shape in which the tier is visible at all.
+  const VIEWER = "u_lena";
 
   it("puts every place her people have ranked above every place they have not", () => {
     const view = discover(db, CALENDAR, { now: MID_SEMESTER, viewerId: VIEWER });
     const known = view.entries.map((e) => e.friend_count > 0);
     const lastKnown = known.lastIndexOf(true);
     const firstUnknown = known.indexOf(false);
-    expect(lastKnown).toBeGreaterThanOrEqual(0);
-    if (firstUnknown !== -1) expect(lastKnown).toBeLessThan(firstUnknown);
+    // Both halves have to exist or the comparison below compares nothing —
+    // this used to guard the tier check with `if (firstUnknown !== -1)`, which
+    // is green on a list with no strangers on it at all, i.e. on exactly the
+    // seed change that would stop the guarantee being tested.
+    expect(lastKnown, "the seed gives her places her friends have ranked").toBeGreaterThanOrEqual(0);
+    expect(firstUnknown, "...and places they have not, to outrank").toBeGreaterThanOrEqual(0);
+    expect(lastKnown).toBeLessThan(firstUnknown);
   });
 
   it("gives her a different order from a logged-out reader's", () => {

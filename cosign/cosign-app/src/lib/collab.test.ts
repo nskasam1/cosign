@@ -139,25 +139,54 @@ describe("two places the contributors cannot separate share a standing", () => {
     // under one numeral while the contributors had put the first decisively
     // above the third — a brace asserting an agreement nobody made.
     //
-    // x beats everything. a and b split; b and c split; a beats c 1-0.
-    const order = collabOrder(items("x", "a", "b", "c"), [
-      who("u_1", "x", "a", "b", "c"),
-      who("u_2", "x", "b", "a", "c"),
-      who("u_3", "x", "b", "c", "a"),
+    // The fixture has to be built from PARTIAL rankings. Three complete ones
+    // give every pair the same three voters, and three voters cannot draw —
+    // so the version of this test that used them produced no shared standing
+    // at all and the loop below ran zero times while reporting green.
+    //
+    //   a ≡ b   u_1 one way, u_2 the other
+    //   b ≡ c   u_1 one way, u_3 the other
+    //   a > c   u_1 alone, and nobody has been to both to contradict them
+    //
+    // p and q are counterweights, not decoration: beating c would put a a
+    // whole Copeland point clear, and rows in different tiers can never share
+    // a standing, which is the one place the transitivity guard is reachable.
+    const order = collabOrder(items("a", "b", "c", "p", "q"), [
+      who("u_1", "a", "b", "c"),
+      who("u_2", "b", "a"),
+      who("u_3", "c", "b"),
+      who("u_4", "p", "a"),
+      who("u_5", "c", "q"),
     ]);
     const standings = order.ranked.map((r) => [r.shop_id, r.standing, r.tied_with_previous]);
-    // whatever the order, no row may share a standing with a row it beat
-    for (const row of order.ranked) {
-      if (!row.tied_with_previous) continue;
+    // a and b share second. c is level with b — and level with the row above
+    // it — but a beat it, so it does not join them, and there is no third.
+    expect(standings).toEqual([
+      ["p", 1, false],
+      ["a", 2, false],
+      ["b", 2, true],
+      ["c", 4, false],
+      ["q", 5, false],
+    ]);
+
+    // ...and the general rule, over whatever the sort produced: no row shares
+    // a standing with a row it beat. A loop is worth nothing on its own — an
+    // empty one passes — so what it walks is counted first.
+    const shared = order.ranked.filter((r) => r.tied_with_previous);
+    expect(shared.length, "the fixture has to produce a shared standing to check").toBe(1);
+    for (const row of shared) {
       const i = order.ranked.indexOf(row);
       for (const above of order.ranked.slice(0, i).filter((r) => r.standing === row.standing)) {
-        const decided = order.disagreements.some(
+        const split = order.disagreements.find(
           (d) =>
             (d.a === above.shop_id && d.b === row.shop_id) || (d.b === above.shop_id && d.a === row.shop_id),
         );
-        // a shared standing is only ever a DRAW, never a contested pair with
-        // a majority on one side
-        expect({ standings, pair: [above.shop_id, row.shop_id], decided }).toMatchObject({ decided: true });
+        // A shared standing is only ever a DRAW: contributors on both sides of
+        // the pair, and the same number of them. Merely appearing in
+        // `disagreements` is not enough — a pair with a majority on one side
+        // is a disagreement too, so the counts have to be equal.
+        expect(split, `${above.shop_id} and ${row.shop_id} share ${row.standing}`).toBeTruthy();
+        expect(split!.forA.length, `${above.shop_id} vs ${row.shop_id}`).toBe(split!.forB.length);
       }
     }
   });

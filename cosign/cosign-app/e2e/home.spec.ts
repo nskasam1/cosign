@@ -11,7 +11,7 @@
 // Some of these WRITE (the re-verify prompt is a write), so they run against
 // a scratch database like the Phase 3 suite does.
 
-import { expect, test, type Page } from "@playwright/test";
+import { expect, test, type BrowserContext, type Page } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
 import { writeFileSync } from "node:fs";
 import { join } from "node:path";
@@ -45,7 +45,9 @@ interface Entry {
   amenities: { outlet_count: number | null } | null;
   friend_count: number;
   friends: Array<{ username: string; display_name: string; position: number }>;
-  age: { stale: boolean; label: string };
+  // `days` is null for a place nobody has ever checked, which is also stale —
+  // so every reader below coalesces rather than comparing null to a number.
+  age: { days: number | null; stale: boolean; label: string };
   camp_ok: boolean;
   closes_in_min: number | null;
 }
@@ -160,14 +162,32 @@ test.describe("friends outrank the crowd, and you can see it", () => {
     await expect(page.locator('[data-elsewhere][data-order="friends"]')).toBeVisible();
     const friendsOrder = await rowIds(page, "[data-elsewhere]");
 
-    // Every place the viewer's people have ranked sits above every place
-    // they have not — the guarantee, checked on the rendered page.
+    // The page renders the route's column, in the route's order — Home takes
+    // out the rows that answered the hero query and reorders nothing.
     const known = new Map(view.entries.map((e) => [e.id, e.friend_count > 0]));
-    const flags = friendsOrder.map((id) => known.get(id) ?? false);
+    expect(
+      friendsOrder.filter((id) => !known.has(id)),
+      "every rendered row is a row the route answered with",
+    ).toEqual([]);
+    const onScreen = new Set(friendsOrder);
+    expect(friendsOrder, "the page shows the order it was handed").toEqual(
+      view.entries.map((e) => e.id).filter((id) => onScreen.has(id)),
+    );
+
+    // ...and that order puts every place her people have ranked above every
+    // place they have not. Both halves have to exist or the comparison
+    // compares nothing, which is what went wrong here: the guarantee sat
+    // behind `if (firstUnknown !== -1)`, and the rendered slice is whatever
+    // the hero query left behind — at two on a Thursday that is three rows,
+    // all of them her friends'. So it is checked against the whole column,
+    // where the seed reliably has both, and the rendered order is tied to
+    // that column by the assertion above.
+    const flags = view.entries.map((e) => e.friend_count > 0);
     const lastKnown = flags.lastIndexOf(true);
     const firstUnknown = flags.indexOf(false);
-    expect(lastKnown).toBeGreaterThanOrEqual(0);
-    if (firstUnknown !== -1) expect(lastKnown).toBeLessThan(firstUnknown);
+    expect(lastKnown, "her friends have ranked somewhere").toBeGreaterThanOrEqual(0);
+    expect(firstUnknown, "...and there is somewhere left for them to outrank").toBeGreaterThanOrEqual(0);
+    expect(lastKnown).toBeLessThan(firstUnknown);
 
     // The claim is checkable in the product, not only in a test file.
     const moved = page.locator("[data-moved]");
@@ -290,18 +310,57 @@ test.describe("the designed states nobody plans to see", () => {
   });
 });
 
+/**
+ * A place the server has just been told is still right — MADE fresh, not
+ * found fresh, and returned as the entry it was before the confirmation.
+ *
+ * STALE_AFTER_DAYS is counted off the real clock while every last_verified_at
+ * in the seed is a fixed date, so the newest of them (2026-08-14) leaves the
+ * fresh band on 2026-09-04 and crosses into stale on 2026-10-13. A test that
+ * SEARCHED the seed for a fresh row therefore had an expiry date of its own:
+ * after that Tuesday the whole campus is stale and there is nothing to find,
+ * and the Phase 4 suite fails for a reason that has nothing to do with the
+ * code. So the state is created through the product's own route — a throwaway
+ * account logs a visit and confirms the facts, which is exactly the write the
+ * re-verify prompt makes — and every later assertion is derived from what the
+ * server says afterwards.
+ *
+ * It confirms whichever place the data already calls the freshest, so the
+ * write moves one row by at most one band and never touches the stale end of
+ * the column that the rest of this suite draws its fixtures from.
+ */
+async function freshlyChecked(page: Page, context: BrowserContext): Promise<Entry> {
+  await signInAsNewUser(context, "checked");
+  // A place nobody has ever checked has no age at all, and sorts to the far
+  // end rather than to the front of a "freshest first" list.
+  const freshest = [...(await discover(page)).entries].sort(
+    (a, b) => (a.age.days ?? 1e9) - (b.age.days ?? 1e9),
+  )[0];
+  const logged = await page.request.post("/api/logs", {
+    data: { shop_id: freshest.id, intent_tag: "deep_work" },
+  });
+  expect(logged.status(), await logged.text()).toBe(201);
+  const confirmed = await page.request.post(`/api/shops/${freshest.id}/verify`);
+  expect(confirmed.status(), await confirmed.text()).toBe(200);
+  return freshest;
+}
+
 test.describe("freshness", () => {
   test("says how old every row is, and stays quiet when it is fresh", async ({ page, context }) => {
+    // The fresh row is created before the page is read (freshlyChecked), so
+    // the quiet band is still exercised on a day when nothing in the seed is
+    // young enough to exercise it.
+    const checked = await freshlyChecked(page, context);
     await signIn(context, VIEWER);
     const view = await discover(page);
 
     // The bands are derived from the data, not asserted against the calendar.
-    // Pinning "at least one fresh row" to the seed's newest timestamp would
-    // have made this test start failing on its own on 2026-09-04, three weeks
-    // after the seed's last check — a fixture with an expiry date.
     const band = (e: Entry) => (e.age.stale ? "stale" : (e.age.days ?? 0) < 21 ? "fresh" : "aging");
     const expected = new Map(view.entries.map((e) => [e.id, band(e)]));
-    expect(new Set(expected.values()).size, "the seed spans more than one band").toBeGreaterThan(1);
+    expect(expected.get(checked.id), `${checked.name} was just confirmed, so it reads as fresh`).toBe(
+      "fresh",
+    );
+    expect(new Set(expected.values()).size, "and something older is on screen beside it").toBeGreaterThan(1);
 
     await page.goto("/");
     await expect(page.locator("[data-home][data-state]")).toHaveCount(0);
@@ -311,7 +370,7 @@ test.describe("freshness", () => {
     // exactly as much about its age as that band allows.
     const rows = await page.locator("[data-place]").all();
     expect(rows.length).toBeGreaterThanOrEqual(20);
-    let sawStale = false;
+    let sawDated = false;
     let sawSilent = false;
     for (const row of rows) {
       const id = (await row.getAttribute("data-shop-id"))!;
@@ -325,10 +384,16 @@ test.describe("freshness", () => {
         expect(ageCount, `${id} is ${want}, so it should say so`).toBe(1);
         const text = await row.locator("[data-age]").innerText();
         expect(text).toMatch(want === "stale" ? /not checked since|never checked/i : /checked/i);
-        if (want === "stale") sawStale = true;
+        sawDated = true;
       }
     }
-    expect(sawStale || sawSilent, "at least one band was actually exercised").toBe(true);
+    // Both halves of the claim, and both are guaranteed by the data rather
+    // than hoped for: the fresh row is the one this test confirmed, and the
+    // dated row is whatever else the band spread above found. The old
+    // `sawStale || sawSilent` passed on either one, so it went on passing
+    // after 2026-09-04 while quietly testing only half the title.
+    expect(sawSilent, "the row this test confirmed says nothing at all about its age").toBe(true);
+    expect(sawDated, "and a row on the other side of the line says how old it is").toBe(true);
   });
 
   test("asks the person who was last through the door, and only them", async ({ page, context }, testInfo) => {
@@ -389,15 +454,15 @@ test.describe("freshness", () => {
   });
 
   test("a fresh place is not asked about at all", async ({ page, context }) => {
+    // Created rather than chosen (freshlyChecked). Searching the data for an
+    // unstale row was already better than naming a slug, but it still had an
+    // expiry date: on 2026-10-13 the last seeded check passes
+    // STALE_AFTER_DAYS and the filter comes back empty.
+    const checked = await freshlyChecked(page, context);
     await signIn(context, VIEWER);
-    // Chosen from the data rather than named: the seed's freshest shop is
-    // only fresh until the clock passes it, and a hard-coded slug here is a
-    // test with an expiry date.
-    const freshest = (await discover(page)).entries
-      .filter((e) => !e.age.stale)
-      .sort((a, b) => (a.age.days ?? 1e9) - (b.age.days ?? 1e9))[0];
-    expect(freshest, "something on this campus has been checked inside 60 days").toBeTruthy();
-    await page.goto(`/shop/${freshest.slug}`);
+    const age = (await discover(page)).entries.find((e) => e.id === checked.id)!.age;
+    expect(age.stale, `${checked.name} was confirmed a moment ago`).toBe(false);
+    await page.goto(`/shop/${checked.slug}`);
     await expect(page.locator("[data-shop]")).toBeVisible();
     await expect(page.locator("[data-shop][data-stale]")).toHaveCount(0);
     await expect(page.locator("[data-reverify]")).toHaveCount(0);

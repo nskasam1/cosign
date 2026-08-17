@@ -157,13 +157,19 @@ test.describe("group mode", () => {
     const figures = await ledger.locator("dd").allInnerTexts();
     expect(figures.length).toBeGreaterThan(3);
     const total = Number(figures[0]);
-    const removed = figures.slice(1, -1).map((f) => Number(f.replace(/[^\d]/g, "")) || 0);
+    // Everything between the first figure and the last: one line per need,
+    // plus the "held, not ruled out" line when there is one. `funnel()`
+    // subtracts all of them from the total in exactly that order.
+    const middle = figures.slice(1, -1).map((f) => Number(f.replace(/[^\d]/g, "")) || 0);
     const left = Number(figures.at(-1));
     expect(total).toBe(22);
     expect(left).toBeGreaterThan(0);
     expect(left).toBeLessThan(total);
-    // the column has to add up, or it is decoration
-    expect(removed.reduce((a, b) => a + b, 0)).toBeGreaterThanOrEqual(total - left);
+    // The column has to add up, or it is decoration — and it is an identity,
+    // not a bound. `>=` was the assertion here, which a column that
+    // double-counted a need, or dropped a line, or printed the held places
+    // twice would still satisfy: every one of those overshoots.
+    expect(middle.reduce((a, b) => a + b, 0), figures.join(" · ")).toBe(total - left);
 
     await shot(page, "group-answer");
   });

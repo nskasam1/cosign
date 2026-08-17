@@ -1,8 +1,12 @@
-// Phase 2 acceptance: the public share page. Runs against `npm run prod`
+// Phase 2 acceptance: the public share page. Runs against the built app
 // (SSR on :8787), never `vite preview`.
 //
-//   npm run seed && npm run prod         # in another shell
-//   npx playwright test                  # -> evidence/phase2/
+//   bash scripts/phase2-evidence.sh      # owns its own server + scratch DB
+//
+// Run it by hand and it writes to evidence/scratch/, not evidence/phase2/ —
+// the line that used to sit here promised the opposite, which is how the
+// script itself came to run a bare `npx playwright test` and lose a phase's
+// artifacts to the gitignored directory.
 //
 // The template's contract with this spec is a small set of data-* hooks
 // (data-entry / data-chip / data-cosign / data-nophoto / data-cta), so the
@@ -203,7 +207,13 @@ test.describe("public share page", () => {
 });
 
 test.describe("open graph image", () => {
-  test("renders a 1200x630 png with the author, title, places and cosign count", async ({ request }) => {
+  // What the card SAYS is asserted in server/pages/og.test.ts, on the element
+  // tree satori is handed. It cannot be asserted from here: satori converts
+  // every glyph to a path before resvg rasterises it, so the bytes below
+  // contain no text at all. This test was called "renders a 1200x630 png with
+  // the author, title, places and cosign count" while checking the header and
+  // nothing else — the card could have named the wrong person for a phase.
+  test("renders a 1200x630 png", async ({ request }) => {
     const res = await request.get(`/og/s/${LIST_TOKEN}`);
     expect(res.status()).toBe(200);
     expect(res.headers()["content-type"]).toBe("image/png");

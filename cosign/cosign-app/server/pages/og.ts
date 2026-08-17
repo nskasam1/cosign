@@ -105,8 +105,15 @@ function ensureWasm(): Promise<void> {
  * to a square by some clients (a 1200x630 centre crop keeps x 285..915), so
  * everything that has to survive lives inside that band; the outer thirds
  * carry only the palette rail, which is decoration.
+ *
+ * Exported for `og.test.ts`, which is the only place the CONTENT of the card
+ * can be checked: satori turns every glyph into a path before resvg ever
+ * rasterises it, so there is not one readable word left in the PNG. The e2e
+ * that fetches `/og/s/:token` can therefore only weigh it and measure it —
+ * it claimed the author, the title, the places and the count for a phase
+ * without asserting any of them.
  */
-function ogTree(data: ShareData) {
+export function ogTree(data: ShareData) {
   const a = data.author;
   const top = data.entries.slice(0, 3);
   const cosignTotal = data.entries.reduce((n, x) => n + x.cosigners.length + x.cosignOthers, 0);
