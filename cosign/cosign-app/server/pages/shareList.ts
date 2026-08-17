@@ -184,20 +184,61 @@ export function renderShare(data: ShareData, origin = ""): string {
   const a = data.author;
   const avatar = a.avatar ? (inlineSvg(a.avatar) ?? a.avatar) : null;
   const ogUrl = `${origin}/og/s/${data.token}`;
-  const desc = a.tasteLine
-    ? `${a.name} ranked ${data.entries.length} places near ${a.school}. ${a.tasteLine}`
-    : `${a.name} ranked ${data.entries.length} places near ${a.school}.`;
+  const places =
+    data.entries.length === 0
+      ? `${a.name} hasn’t put anywhere near ${a.school} in order yet.`
+      : `${a.name} ranked ${data.entries.length} places near ${a.school}.`;
+  const desc = a.tasteLine ? `${places} ${a.tasteLine}` : places;
   const updated = data.updatedAt
     ? new Date(data.updatedAt).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })
     : null;
 
+  const empty = data.entries.length === 0;
+
   const meta = [
-    `<b>${data.entries.length} places</b>, ranked head to head — never scored, never bought`,
+    empty
+      ? `<b>Nothing in order yet</b> — ranked head to head, never scored, never bought`
+      : `<b>${data.entries.length} places</b>, ranked head to head — never scored, never bought`,
     a.signatureOrder ? `usually orders ${article(a.signatureOrder)} <b>${e(a.signatureOrder)}</b>` : null,
     updated ? `last put in order ${e(updated)}` : null,
   ]
     .filter(Boolean)
     .join(" · ");
+
+  // A link can be minted the moment an account exists, before its owner has
+  // ranked anywhere — and this page then said "All 0, in order" over an empty
+  // <ol>, under a chip row whose only chip counted nothing, above a CTA
+  // reading "0 places, put in order by one person who actually went." The
+  // hero surface of the product, sent to somebody by name. The author's
+  // header still stands (decision 2 asks for the person first); what changes
+  // is that the page says the true thing and still opens the same door.
+  // `/p/:token` has said it properly since 5A; this is the same sentence.
+  const listing = empty
+    ? `<section class="cta" data-empty>
+<p class="kicker" style="border:0;padding:0;margin-bottom:0">Nothing in order yet</p>
+<h2>${e(a.firstName)} hasn’t put anywhere in order.</h2>
+<p>When that happens, this page is the list: every place ${e(a.firstName)} has actually been, in order, one honest line each. You can start yours now — this place or that one, one tap at a time.</p>
+<a href="/onboarding">Start your list</a>
+</section>`
+    : `<div class="chips" role="group" aria-label="Filter the list by what you came for">
+<button type="button" data-chip-all aria-pressed="true">Everything<i>${data.entries.length}</i></button>
+${data.tagCounts
+  .map(
+    (t) =>
+      `<button type="button" data-chip="${e(t.tag)}" aria-pressed="false">${e(t.label)}<i>${t.count}</i></button>`,
+  )
+  .join("")}
+</div>
+<p class="status" data-count role="status">All ${data.entries.length}, in order</p>
+<ol>
+${data.entries.map((x) => entryHtml(x, a.firstName)).join("\n")}
+</ol>
+<section class="cta" data-cta>
+<p class="kicker" style="border:0;padding:0;margin-bottom:0">Make your own</p>
+<h2>${data.entries.length} places, put in order by one person who actually went.</h2>
+<p>Rank yours the same way — this place or that one, one tap at a time — and send the link. No stars to argue with, and nobody can buy their way up.</p>
+<a href="/onboarding">Start your list</a>
+</section>`;
 
   return `<!doctype html>
 <html lang="en">
@@ -239,28 +280,10 @@ ${avatar ? `<img src="${e(avatar)}" width="48" height="48" alt="">` : ""}
 ${a.tasteLine ? `<p class="taste">“${smart(a.tasteLine)}”</p>` : ""}
 <p class="meta">${meta}</p>
 </header>
-<div class="chips" role="group" aria-label="Filter the list by what you came for">
-<button type="button" data-chip-all aria-pressed="true">Everything<i>${data.entries.length}</i></button>
-${data.tagCounts
-  .map(
-    (t) =>
-      `<button type="button" data-chip="${e(t.tag)}" aria-pressed="false">${e(t.label)}<i>${t.count}</i></button>`,
-  )
-  .join("")}
-</div>
-<p class="status" data-count role="status">All ${data.entries.length}, in order</p>
-<ol>
-${data.entries.map((x) => entryHtml(x, a.firstName)).join("\n")}
-</ol>
-<section class="cta" data-cta>
-<p class="kicker" style="border:0;padding:0;margin-bottom:0">Make your own</p>
-<h2>${data.entries.length} places, put in order by one person who actually went.</h2>
-<p>Rank yours the same way — this place or that one, one tap at a time — and send the link. No stars to argue with, and nobody can buy their way up.</p>
-<a href="/onboarding">Start your list</a>
-</section>
+${listing}
 <footer>Cosign · ${e(a.school)}<br>${e(a.firstName)} can turn this link off at any time.</footer>
 </main>
-<script>${PAGE_JS.replace(/\n/g, "")}</script>
+${empty ? "" : `<script>${PAGE_JS.replace(/\n/g, "")}</script>`}
 </body>
 </html>`;
 }

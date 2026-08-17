@@ -111,7 +111,14 @@ export function parseShopsCsv(text: string): CsvShop[] {
       price_drip: num(priceDrip),
       price_latte: num(priceLatte),
       student_discount: discount.trim() !== "",
-      student_discount_note: discount.trim() === "" ? null : discount,
+      // A bare "yes" is not a note. It is what serializeShopsCsv writes for a
+      // discount nobody has written terms for, and what a founder types in a
+      // column headed `student_discount` when there is nothing more to say.
+      // Read back as note text it reaches the shop page — ShopDetail renders
+      // `student_discount_note || "student discount"` — so an export and a
+      // re-import would replace "student discount" with the word "yes" on
+      // every one of the six shops that have a discount and no terms.
+      student_discount_note: /^(|yes)$/i.test(discount.trim()) ? null : discount,
       hours: parseHoursSyntax(hours),
       amenities: {
         outlet_count: num(outletCount),

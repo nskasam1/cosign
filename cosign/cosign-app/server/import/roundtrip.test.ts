@@ -9,6 +9,7 @@ import { join } from "node:path";
 import { afterAll, describe, expect, it } from "vitest";
 import { openDb } from "../db/db";
 import { runSeed, DEFAULT_SEED_DIR } from "../db/seed";
+import { mergeShop } from "./cli";
 import { exportSeed, writeSeedDir } from "./export";
 import { formatHoursSyntax, parseHoursSyntax } from "./hoursSyntax";
 import { parseShopsCsv, serializeShopsCsv, CSV_HEADER } from "./shopsCsv";
@@ -67,6 +68,41 @@ describe("founder shops CSV", () => {
     const once = parseShopsCsv(`${CSV_HEADER}\n${exampleRow}\n`);
     const twice = parseShopsCsv(serializeShopsCsv(once));
     expect(twice).toEqual(once);
+  });
+
+  // The test above is a fixpoint on what the SHEET can hold, which is the
+  // weaker half of §5 and was green while the documented command destroyed
+  // 22 wifi notes, 22 camp notes and 18 palettes on the committed seed. §5
+  // promises the real thing: take the shops we have, write the sheet, read it
+  // back, and nothing a shop knows about itself is gone. Run against
+  // seed/shops.json itself, so a field added later is covered the day it
+  // lands rather than the day somebody remembers to extend a fixture.
+  it("export → import loses nothing on the real seed (IMPORT_FORMAT §5)", () => {
+    const shops = JSON.parse(
+      readFileSync(join(DEFAULT_SEED_DIR, "shops.json"), "utf-8"),
+    ) as ReturnType<typeof parseShopsCsv>;
+    const byId = new Map(shops.map((s) => [s.id, s]));
+    const back = parseShopsCsv(serializeShopsCsv(shops));
+
+    expect(back).toHaveLength(shops.length);
+    for (const incoming of back) {
+      const prev = byId.get(incoming.id);
+      expect(prev, `${incoming.id} survived the sheet`).toBeDefined();
+      const merged = mergeShop(prev!, incoming);
+
+      // `hours` is compared as a set of days: the sheet writes "Sa-Su", which
+      // reads back as [6,0] where the seed wrote [0,6]. Same days, same
+      // window — an ordering, not a loss.
+      const sortDays = (h: typeof merged.hours) =>
+        h.map((w) => ({ ...w, days: [...w.days].sort((a, b) => a - b) }));
+      expect(sortDays(merged.hours)).toEqual(sortDays(prev!.hours));
+      expect({ ...merged, hours: null }).toEqual({
+        ...prev!,
+        hours: null,
+        // absent in JSON, null after a trip through a cell that has no column
+        student_discount_note: prev!.student_discount_note ?? null,
+      });
+    }
   });
 
   it("rejects bad enums with the row number", () => {

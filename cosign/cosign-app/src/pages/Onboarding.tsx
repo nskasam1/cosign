@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
-import { api, type ShopSummary } from "@/lib/api";
+import { ApiError, api, type ShopSummary } from "@/lib/api";
 import { useTitle } from "@/lib/title";
 import ImportTakeout from "@/components/ImportTakeout";
 import PlacePlate from "@/components/log/PlacePlate";
@@ -15,6 +15,25 @@ import PlacePlate from "@/components/log/PlacePlate";
 // Maps for two years. The second door is the honest one for most people —
 // but it is below the first, not instead of it, because somebody with no
 // export at all must not arrive at a screen that only knows how to import.
+// The server's refusals are machine strings — `bad username`, `unknown
+// school` — and this screen printed whichever one came back, verbatim, at
+// somebody two fields into their first minute with the product. Worse, a
+// rejected fetch is not an ApiError at all and has no `error` field, so a
+// server that was simply not running rendered the browser's own "Failed to
+// fetch". One sentence each, in the app's voice, and an honest fallback that
+// distinguishes "we said no" from "we never heard".
+const SIGNUP_TROUBLE: Record<string, string> = {
+  "bad username": "Usernames are 2–24 characters — letters, numbers, and . - _ if you like.",
+  "display name required": "Cosign needs a name to put at the top of your list.",
+  "username taken": "Somebody already has that one. Try another.",
+  "unknown school": "Pick one of the schools above — those are the ones Cosign knows so far.",
+};
+
+function signupTrouble(e: unknown): string {
+  if (e instanceof ApiError) return SIGNUP_TROUBLE[e.message] ?? "That didn't go through. Tap it again.";
+  return "Cosign can't reach its own server, so nothing was made. Check your connection and tap it again.";
+}
+
 const Onboarding = () => {
   useTitle("Start your list");
   const { user, createAccount, refresh } = useAuth();
@@ -33,12 +52,25 @@ const Onboarding = () => {
   const [schools, setSchools] = useState<Array<{ id: string; name: string }>>([]);
   const [schoolId, setSchoolId] = useState<string>("");
 
+  /** Neither list arrived. Not `isError` — a paused request is neither. */
+  const [unreachable, setUnreachable] = useState(false);
+
   useEffect(() => {
-    api.shops().then(({ shops }) => setShops(shops));
-    api.meta().then(({ schools }) => {
-      setSchools(schools);
-      setSchoolId((prev) => prev || schools[0]?.id || "");
-    });
+    // Both of these were bare `.then`s. With the server unreachable, `schools`
+    // stayed empty, so the school row rendered nothing, "That's me" was
+    // disabled forever by `!schoolId`, and the screen gave no reason at all —
+    // the first minute of the product, silently broken.
+    api
+      .shops()
+      .then(({ shops }) => setShops(shops))
+      .catch(() => setUnreachable(true));
+    api
+      .meta()
+      .then(({ schools }) => {
+        setSchools(schools);
+        setSchoolId((prev) => prev || schools[0]?.id || "");
+      })
+      .catch(() => setUnreachable(true));
   }, []);
 
   // `user` is null on first render while /api/me is in flight, so the step
@@ -58,7 +90,7 @@ const Onboarding = () => {
       });
       setStep(2);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Something went wrong");
+      setError(signupTrouble(e));
     } finally {
       setBusy(false);
     }
@@ -75,6 +107,7 @@ const Onboarding = () => {
 
   const finish = async () => {
     setBusy(true);
+    setError(null);
     try {
       if (picked.size > 0) {
         const { list } = await api.createList({ title: "My spots" });
@@ -82,6 +115,11 @@ const Onboarding = () => {
       }
       await refresh();
       navigate("/");
+    } catch {
+      // A try/finally with no catch flipped the button back to "Start with 3"
+      // and said nothing, which reads as "I did that" to somebody who is now
+      // stranded on step two with three places still selected.
+      setError("That didn't save. Your picks are still here — tap it again.");
     } finally {
       setBusy(false);
     }
@@ -137,6 +175,17 @@ const Onboarding = () => {
               </button>
             ))}
           </div>
+          {/* Gate on the DATA, never on a loading flag: a request the browser
+              paused because it went offline is neither loading nor errored.
+              With no schools there is nothing to press and "That's me" can
+              never enable, so the screen has to say why rather than sit
+              there looking finished. */}
+          {schools.length === 0 && unreachable && (
+            <p data-schools-unreachable role="alert" className="mt-3 text-sm text-line">
+              Cosign can't reach its own server, so it can't offer you a school yet. Nothing is broken on your
+              end — try again in a moment.
+            </p>
+          )}
 
           {error && (
             <p role="alert" className="mt-5 text-sm text-line">
@@ -171,6 +220,17 @@ const Onboarding = () => {
 
           <p className="cs-caps mt-10 border-t border-rule pt-4 text-gold">Or pick them here</p>
 
+          {/* "Or pick them here" over nothing at all was the other half of the
+              same silence: the heading promises a campus and the server never
+              sent one. The import door above still works, so say which one is
+              shut rather than making the whole step look empty. */}
+          {shops.length === 0 && unreachable && (
+            <p data-shops-unreachable role="alert" className="mt-3 text-sm text-line">
+              Cosign can't reach its own server, so it can't list the campus right now. The import above still
+              works, and you can skip this and add places later.
+            </p>
+          )}
+
           <div className="mt-4">
             {shops.map((s) => {
               // At the cap, the other rows genuinely cannot be picked — so
@@ -203,6 +263,12 @@ const Onboarding = () => {
               );
             })}
           </div>
+
+          {error && (
+            <p role="alert" className="mt-5 text-sm text-line">
+              {error}
+            </p>
+          )}
 
           <div className="mt-8 border-t border-rule-strong pt-6">
             <button type="button" onClick={finish} disabled={busy} className="cs-pill">

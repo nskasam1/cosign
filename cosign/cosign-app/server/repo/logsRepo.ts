@@ -85,6 +85,31 @@ export function logsOfUser(
 }
 
 /**
+ * How many of this user's logs `viewerId` may see.
+ *
+ * `GET /api/users/:username` gated the ranking through `rank.canViewRanking`
+ * and then counted the logs with a raw `SELECT count(*) FROM logs WHERE
+ * user_id = ?` right beside it — no viewer, no predicate, on a route that
+ * never requires a session. So a logged-out reader of a public profile was
+ * told exactly how many times somebody had written a visit down, including
+ * every friends-only one, and the number is printed on the page ("N visits
+ * written down"). A count is smaller than a list and still an answer about
+ * private rows; it belongs behind the same gate they do.
+ */
+export function visibleLogCount(
+  db: DatabaseSync,
+  userId: string,
+  viewerId: string | null,
+  canSeeFriendsOnly: boolean,
+): number {
+  const all = canSeeFriendsOnly || viewerId === userId;
+  const row = db
+    .prepare(`SELECT count(*) AS n FROM logs WHERE user_id = ?${all ? "" : " AND visibility = 'public'"}`)
+    .get(userId) as { n: number };
+  return row.n;
+}
+
+/**
  * When this user was last in this shop, from their own logs alone.
  *
  * Deliberately its own query rather than a scan of `visibleLogsForShop`,

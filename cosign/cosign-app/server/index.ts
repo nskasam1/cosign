@@ -306,7 +306,11 @@ app.get("/api/users/:username", (c) => {
     is_self: uid === user.id,
     can_see_ranking: canSeeRanking,
     entries,
-    logs_count: (db.prepare("SELECT count(*) n FROM logs WHERE user_id = ?").get(user.id) as { n: number }).n,
+    // Gated like the ranking and for the same reason — but on the FRIENDS
+    // predicate, not on `canSeeRanking`, which is also true for a stranger
+    // when the ranking itself is public. Somebody who opted their ordering
+    // into public did not thereby publish how often they write visits down.
+    logs_count: logsRepo.visibleLogCount(db, user.id, uid, social.canViewFriendsOnly(db, uid, user.id)),
   });
 });
 
@@ -899,6 +903,18 @@ app.use(
     onFound: immutable,
   }),
 );
+
+// A group session is the third public, token-addressed surface: /g/<token>
+// answers with no session and no auth check, exactly like /s/ and /p/. Those
+// two carry `noindex, nofollow` in their own <head>, but /g/ is a client
+// route inside the one SPA document, which cannot say it per-route — so the
+// header says it instead. robots.txt disallows it as well; this is for the
+// crawler that does not read robots.txt, which is the one that matters when
+// the whole point of the address is that it was handed to a person.
+app.use("/g/*", async (c, next) => {
+  await next();
+  c.header("X-Robots-Tag", "noindex, nofollow");
+});
 
 // In dev the SSR pages are served from here (:8787) while Vite owns :8080, so
 // this server has to serve the fonts itself; in prod they come out of dist/.

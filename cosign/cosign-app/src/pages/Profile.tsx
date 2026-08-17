@@ -79,21 +79,48 @@ const Profile = () => {
   const shareUrl = (t: ShareToken) =>
     `${window.location.origin}/${t.kind === "profile" ? "p" : "s"}/${t.token}`;
 
+  // All three of these wrote state on the happy path and said nothing on any
+  // other one. "Turn off" is the worst of the three by a distance: a rejected
+  // request left the row rendering "copy" and "turn off" exactly as before,
+  // with no message anywhere, so the one person who just closed their public
+  // page had every reason to believe it was closed. It was still live. The
+  // rule this encodes is the one the app already applies to asking somebody
+  // to be friends: a privacy control that fails must say so, and must say
+  // which way it failed.
+  const [shareError, setShareError] = useState<string | null>(null);
+
   const createShare = async (kind: "ranking" | "profile") => {
-    const { token } = await api.createShareToken({ kind });
-    track("share_created", { kind });
-    setTokens((prev) => [token, ...prev]);
+    setShareError(null);
+    try {
+      const { token } = await api.createShareToken({ kind });
+      track("share_created", { kind });
+      setTokens((prev) => [token, ...prev]);
+    } catch {
+      setShareError("That didn't make a link — nothing is shared. Tap it again.");
+    }
   };
 
   const copy = async (t: ShareToken) => {
-    await navigator.clipboard.writeText(shareUrl(t));
-    setCopied(t.token);
-    setTimeout(() => setCopied(null), 1500);
+    setShareError(null);
+    try {
+      await navigator.clipboard.writeText(shareUrl(t));
+      setCopied(t.token);
+      setTimeout(() => setCopied(null), 1500);
+    } catch {
+      // The link is right there in the row above; a clipboard a browser will
+      // not open is not a reason to pretend the copy happened.
+      setShareError("Your browser wouldn't let go of the clipboard. The address is in the row — copy it by hand.");
+    }
   };
 
   const revoke = async (token: string) => {
-    await api.revokeShareToken(token);
-    setTokens((prev) => prev.map((t) => (t.token === token ? { ...t, revoked_at: new Date().toISOString() } : t)));
+    setShareError(null);
+    try {
+      await api.revokeShareToken(token);
+      setTokens((prev) => prev.map((t) => (t.token === token ? { ...t, revoked_at: new Date().toISOString() } : t)));
+    } catch {
+      setShareError("That didn't go through, and the link is still live. Tap turn off again.");
+    }
   };
 
   if (loading) {
@@ -217,6 +244,11 @@ const Profile = () => {
             Everything here is friends-only until you make one of these. A link is the whole opt-in — one
             page, no login, nobody else's list on it — and turning it off closes that page for good.
           </p>
+          {shareError && (
+            <p data-share-error role="alert" className="mt-3 text-sm text-ember-ink">
+              {shareError}
+            </p>
+          )}
 
           {SHAREABLE.map(({ kind, title, what, make }) => {
             const mine = tokens.filter((t) => t.kind === kind);

@@ -30,8 +30,50 @@ export function getDb(): DatabaseSync {
       );
     }
     _db = openDb();
+    assertSchemaCurrent(_db);
   }
   return _db;
+}
+
+/**
+ * The database file is gitignored, so it outlives the code that built it. A
+ * phase that adds a table leaves every existing developer holding a database
+ * that answers most routes and 500s on one — Phase 5B added `list_reranks`,
+ * and `/lists/:id` threw `no such table` on a machine that had simply not
+ * re-seeded. That is the missing-database guard's failure, one state over: the
+ * file exists, so nothing said anything.
+ *
+ * Compared by name only. A column added to an existing table would still slip
+ * through, but a table is what a phase adds, and a check that reads
+ * `schema.sql` cannot drift away from the schema it is checking.
+ */
+export function missingTables(db: DatabaseSync): string[] {
+  const declared = [...readFileSync(SCHEMA_PATH, "utf-8")
+    .matchAll(/CREATE\s+TABLE\s+(?:IF\s+NOT\s+EXISTS\s+)?([A-Za-z_][A-Za-z0-9_]*)/gi)]
+    .map((m) => m[1]);
+  const present = new Set(
+    db.prepare("SELECT name FROM sqlite_master WHERE type = 'table'").all()
+      .map((r) => String((r as { name: unknown }).name)),
+  );
+  return declared.filter((t) => !present.has(t));
+}
+
+function assertSchemaCurrent(db: DatabaseSync): void {
+  const missing = missingTables(db);
+  if (missing.length) {
+    // Name the command that rebuilds THIS database — a scratch DB is seeded
+    // through COSIGN_DB, and being told to run the bare seed would rebuild
+    // the wrong file and leave the message still true.
+    const reseed = process.env.COSIGN_DB
+      ? `COSIGN_DB=${process.env.COSIGN_DB} npm run seed`
+      : "npm run seed";
+    throw new Error(
+      `Database at ${DB_PATH} was built by an older schema — missing ` +
+        `${missing.length === 1 ? "table" : "tables"} ${missing.join(", ")}. ` +
+        `Stop the server and run \`${reseed}\` (the file is a lock while a ` +
+        `server holds it).`,
+    );
+  }
 }
 
 /** For tests / the seed script: a fresh DB with the schema applied. */

@@ -163,9 +163,22 @@ const ImportTakeout = ({ title, onImported }: ImportTakeoutProps) => {
         </>
       ) : (
         <>
-          <p className="cs-display mt-3 text-balance text-xl text-ink">
-            We know {known.length} of the {matches.length} places you saved.
-          </p>
+          {/* An export can parse perfectly and still contain no places — an
+              empty FeatureCollection, or a CSV with only a header. That read
+              "We know 0 of the 0 places you saved." above nothing at all,
+              which blames the reader for a file that was simply empty. Brief
+              #9 asks for every empty state to be designed as carefully as
+              home; this is one of them. */}
+          {matches.length === 0 ? (
+            <p data-import-empty className="cs-display mt-3 text-balance text-xl text-ink">
+              That file parsed, but there were no places in it. Google splits its export by product — the one
+              you want is Saved Places, and it comes out of the Maps folder.
+            </p>
+          ) : (
+            <p className="cs-display mt-3 text-balance text-xl text-ink">
+              We know {known.length} of the {matches.length} places you saved.
+            </p>
+          )}
 
           {certain.length > 0 && (
             <ul data-import-group="certain" className="mt-5">
