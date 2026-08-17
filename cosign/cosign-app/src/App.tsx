@@ -1,8 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Route, Routes } from "react-router-dom";
-import { Toaster as Sonner } from "@/components/ui/sonner";
-import { Toaster } from "@/components/ui/toaster";
-import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider } from "@/hooks/useAuth";
 import AppShell from "@/components/AppShell";
 import RequireAuth from "@/components/RequireAuth";
@@ -35,46 +32,42 @@ const queryClient = new QueryClient({
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <AuthProvider>
-      <TooltipProvider>
-        <Toaster />
-        <Sonner />
-        <BrowserRouter>
-          <Routes>
-            {/* The shell wraps destinations, never journeys: the log flow,
-                the head-to-head and onboarding each have one way out and
-                offering a fifth thing to do three taps into a fourth is how
-                a flow stops getting finished. */}
-            <Route path="/" element={<RequireAuth><AppShell><Home /></AppShell></RequireAuth>} />
-            <Route path="/search" element={<RequireAuth><AppShell><Search /></AppShell></RequireAuth>} />
-            {/* The log and the head-to-head that follows it are two routes on
-                purpose. The save enters /log/rank with `replace`, so the
-                review step is off the stack: going back from the ranking
-                screen lands on an earlier question with an empty draft, which
-                the stale-step guard sends to the picker. Back can therefore
-                only ever start a *new* log — it can never re-submit the one
-                already written. */}
-            <Route path="/log" element={<RequireAuth><LogFlow /></RequireAuth>} />
-            <Route path="/log/rank/:shopId" element={<RequireAuth><PlaceFlow /></RequireAuth>} />
-            <Route path="/rank" element={<RequireAuth><AppShell><RankingFlow /></AppShell></RequireAuth>} />
-            <Route path="/group/new" element={<RequireAuth><GroupSessionNew /></RequireAuth>} />
+      <BrowserRouter>
+        <Routes>
+          {/* The shell wraps destinations, never journeys: the log flow,
+              the head-to-head and onboarding each have one way out and
+              offering a fifth thing to do three taps into a fourth is how
+              a flow stops getting finished. */}
+          <Route path="/" element={<RequireAuth><AppShell><Home /></AppShell></RequireAuth>} />
+          <Route path="/search" element={<RequireAuth><AppShell><Search /></AppShell></RequireAuth>} />
+          {/* The log and the head-to-head that follows it are two routes on
+              purpose. The save enters /log/rank with `replace`, so the
+              review step is off the stack: going back from the ranking
+              screen lands on an earlier question with an empty draft, which
+              the stale-step guard sends to the picker. Back can therefore
+              only ever start a *new* log — it can never re-submit the one
+              already written. */}
+          <Route path="/log" element={<RequireAuth><LogFlow /></RequireAuth>} />
+          <Route path="/log/rank/:shopId" element={<RequireAuth><PlaceFlow /></RequireAuth>} />
+          <Route path="/rank" element={<RequireAuth><AppShell><RankingFlow /></AppShell></RequireAuth>} />
+          <Route path="/group/new" element={<RequireAuth><GroupSessionNew /></RequireAuth>} />
 
-            {/* Public, no auth wall */}
-            {/* Onboarding *is* signup — behind RequireAuth it would show the
-                switcher to the logged-out people it exists to serve. */}
-            <Route path="/onboarding" element={<Onboarding />} />
-            <Route path="/shop/:shopId" element={<AppShell><ShopDetail /></AppShell>} />
-            <Route path="/lists/:listId" element={<AppShell><ListDetail /></AppShell>} />
-            {/* A table is a link, addressed like one: /g/<token>. It carries
-                no shell, because a session is a journey with one way out, and
-                no auth check, because an account is not the price of saying
-                what you need. */}
-            <Route path="/g/:sessionId" element={<GroupSession />} />
-            <Route path="/:username" element={<AppShell><Profile /></AppShell>} />
+          {/* Public, no auth wall */}
+          {/* Onboarding *is* signup — behind RequireAuth it would show the
+              switcher to the logged-out people it exists to serve. */}
+          <Route path="/onboarding" element={<Onboarding />} />
+          <Route path="/shop/:shopId" element={<AppShell><ShopDetail /></AppShell>} />
+          <Route path="/lists/:listId" element={<AppShell><ListDetail /></AppShell>} />
+          {/* A table is a link, addressed like one: /g/<token>. It carries
+              no shell, because a session is a journey with one way out, and
+              no auth check, because an account is not the price of saying
+              what you need. */}
+          <Route path="/g/:sessionId" element={<GroupSession />} />
+          <Route path="/:username" element={<AppShell><Profile /></AppShell>} />
 
-            <Route path="*" element={<NotFound />} />
-          </Routes>
-        </BrowserRouter>
-      </TooltipProvider>
+          <Route path="*" element={<NotFound />} />
+        </Routes>
+      </BrowserRouter>
     </AuthProvider>
   </QueryClientProvider>
 );
