@@ -15,14 +15,28 @@ import PlacePlate from "@/components/log/PlacePlate";
  * of Home would be asking twenty-two questions of somebody who came here to
  * be told one thing.
  */
+/**
+ * How far down the cascade a row waits before it settles, in stagger units.
+ *
+ * Capped, and the cap is the point: an uncapped 40 ms step down a
+ * twenty-two place column would hold the last row invisible for the better
+ * part of a second to animate something nobody has scrolled to. Six rows is
+ * roughly what a 390x844 screen shows, so the arrival cascade covers what
+ * you can actually watch arrive and everything below it is already at rest.
+ */
+const CASCADE_DEPTH = 6;
+
 const PlaceRow = ({
   place,
   now,
   lead = false,
+  index,
 }: {
   place: DiscoverEntry;
   now: Date;
   lead?: boolean;
+  /** Position in the column, for the arrival cascade. Omit and it settles alone. */
+  index?: number;
 }) => {
   const facts = factsOf(place, now);
   const who = friendSentence(place);
@@ -37,11 +51,15 @@ const PlaceRow = ({
       data-shop-slug={place.slug}
       data-lead={lead ? "" : undefined}
       data-stale={place.age.stale ? "" : undefined}
-      style={paletteStyle(palette)}
+      style={
+        index === undefined
+          ? paletteStyle(palette)
+          : { ...paletteStyle(palette), "--i": String(Math.min(index, CASCADE_DEPTH)) }
+      }
       className={
         lead
-          ? "cs-row block py-5"
-          : "cs-row grid grid-cols-[3.5rem_1fr] items-start gap-x-4 py-5"
+          ? "cs-row cs-settle block py-5"
+          : "cs-row cs-settle grid grid-cols-[3.5rem_1fr] items-start gap-x-4 py-5"
       }
     >
       {lead ? (

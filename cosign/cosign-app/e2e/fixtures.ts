@@ -63,9 +63,24 @@ export async function signInAsNewUser(context: BrowserContext, tag: string): Pro
  * settle, not to repaint the token.
  */
 export async function settled(page: Page): Promise<void> {
-  await page.evaluate(() =>
-    Promise.all(document.getAnimations().map((a) => a.finished.catch(() => undefined))).then(() => undefined),
-  );
+  // Twice, with a frame between. One pass answers only for the animations
+  // that had already started when it was called, and a column that settles
+  // when its data lands starts its own the moment React commits — so a
+  // single pass on a surface still fetching returns instantly, truthfully,
+  // and about nothing. Phase 7 hit this the moment a list acquired an
+  // arrival cascade: the group/list a11y sweep sampled 618 elements
+  // mid-fade and reported every one of them as a contrast failure.
+  for (let pass = 0; pass < 2; pass += 1) {
+    await page.evaluate(
+      () =>
+        new Promise<void>((resolve) => {
+          requestAnimationFrame(() => resolve());
+        }),
+    );
+    await page.evaluate(() =>
+      Promise.all(document.getAnimations().map((a) => a.finished.catch(() => undefined))).then(() => undefined),
+    );
+  }
 }
 
 export async function shot(page: Page, name: string, project: string) {

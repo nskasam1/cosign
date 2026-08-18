@@ -119,7 +119,11 @@ const Home = () => {
           Near me, open now, has outlets.
         </button>
       </h1>
-      <div className="h-px w-full bg-ember" aria-hidden="true" />
+      {/* The rule under the question draws itself out from the margin as the
+          answer lands — the same 2px-ember object as the save stamp and the
+          live tab, doing the same job here: this is the live one. It is the
+          only thing above the column that moves. */}
+      <div className="cs-draw h-px w-full bg-ember" aria-hidden="true" />
 
       {/* The label voice says what the query found; the body voice says what
           it did to find it. Two lines, two jobs — running the promise about
@@ -138,7 +142,7 @@ const Home = () => {
 
       {answer ? (
         <section data-answer className="mt-6">
-          <PlaceRow place={answer} lead now={now} />
+          <PlaceRow place={answer} lead now={now} index={0} />
           {alsoMatching.length > 0 && (
             <>
               {/* The heading says exactly what the filter did — these are the
@@ -148,9 +152,12 @@ const Home = () => {
                   saying "and you can stay" over a place whose camp_ok is false
                   would be the app inventing a fact. */}
               <p className="cs-caps mt-8 text-gold">Also open now, near you, with an outlet</p>
+              {/* The cascade continues past the lead rather than restarting:
+                  these are the rest of the same answer, and a second column
+                  starting again at zero would read as a second arrival. */}
               <div className="mt-2">
-                {alsoMatching.map((p) => (
-                  <PlaceRow key={p.id} place={p} now={now} />
+                {alsoMatching.map((p, i) => (
+                  <PlaceRow key={p.id} place={p} now={now} index={i + 1} />
                 ))}
               </div>
             </>

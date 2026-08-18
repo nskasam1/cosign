@@ -1,0 +1,152 @@
+{
+  "base": "http://localhost:8791",
+  "routes": [
+    {
+      "route": "/",
+      "auth": false,
+      "chars": 1538,
+      "title": "Cosign",
+      "errors": []
+    },
+    {
+      "route": "/onboarding",
+      "auth": false,
+      "chars": 252,
+      "title": "Start your list — Cosign",
+      "errors": []
+    },
+    {
+      "route": "/onboarding",
+      "auth": true,
+      "chars": 1226,
+      "title": "Start your list — Cosign",
+      "errors": []
+    },
+    {
+      "route": "/",
+      "auth": true,
+      "chars": 4653,
+      "title": "Cosign",
+      "errors": []
+    },
+    {
+      "route": "/search",
+      "auth": true,
+      "chars": 4224,
+      "title": "Search — Cosign",
+      "errors": []
+    },
+    {
+      "route": "/maya",
+      "auth": true,
+      "chars": 4264,
+      "title": "Maya Okafor — Cosign",
+      "errors": []
+    },
+    {
+      "route": "/shop/oval-grounds",
+      "auth": true,
+      "chars": 1037,
+      "title": "Oval Grounds — Cosign",
+      "errors": []
+    },
+    {
+      "route": "/shop/oval-grounds",
+      "auth": false,
+      "chars": 909,
+      "title": "Oval Grounds — Cosign",
+      "errors": []
+    },
+    {
+      "route": "/lists/l_our-campus-ranking",
+      "auth": true,
+      "chars": 2385,
+      "title": "our ranking of campus coffee — Cosign",
+      "errors": []
+    },
+    {
+      "route": "/rank",
+      "auth": true,
+      "chars": 2102,
+      "title": "Your list — Cosign",
+      "errors": []
+    },
+    {
+      "route": "/group/new",
+      "auth": true,
+      "chars": 898,
+      "title": "Ask three people — Cosign",
+      "errors": []
+    },
+    {
+      "route": "/g/g_notatable0000",
+      "auth": false,
+      "chars": 235,
+      "title": "Nothing at this address — Cosign",
+      "errors": []
+    },
+    {
+      "route": "/shop/there-is-no-such-place/x",
+      "auth": true,
+      "chars": 175,
+      "title": "Nothing at this address — Cosign",
+      "errors": []
+    }
+  ],
+  "titles": [
+    {
+      "route": "/",
+      "title": "Cosign"
+    },
+    {
+      "route": "/onboarding",
+      "title": "Start your list — Cosign"
+    },
+    {
+      "route": "/onboarding",
+      "title": "Start your list — Cosign"
+    },
+    {
+      "route": "/",
+      "title": "Cosign"
+    },
+    {
+      "route": "/search",
+      "title": "Search — Cosign"
+    },
+    {
+      "route": "/maya",
+      "title": "Maya Okafor — Cosign"
+    },
+    {
+      "route": "/shop/oval-grounds",
+      "title": "Oval Grounds — Cosign"
+    },
+    {
+      "route": "/shop/oval-grounds",
+      "title": "Oval Grounds — Cosign"
+    },
+    {
+      "route": "/lists/l_our-campus-ranking",
+      "title": "our ranking of campus coffee — Cosign"
+    },
+    {
+      "route": "/rank",
+      "title": "Your list — Cosign"
+    },
+    {
+      "route": "/group/new",
+      "title": "Ask three people — Cosign"
+    },
+    {
+      "route": "/g/g_notatable0000",
+      "title": "Nothing at this address — Cosign"
+    },
+    {
+      "route": "/shop/there-is-no-such-place/x",
+      "title": "Nothing at this address — Cosign"
+    }
+  ],
+  "distinctTitles": 9,
+  "offOriginRequests": []
+}

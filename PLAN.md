@@ -1612,6 +1612,191 @@ product rather than reading it, and two from a new test failing on its first run
   The current run of that same suite is `evidence/phase6/profile-regression/`
   (46 passed, 0 failed). Phase 6's script does not pass `--reporter=list`.
 
+### Phase 7 — Motion, and the hairlines that were not there ✅
+
+Not a feature phase either. The brief asks every UI phase for "subtle purposeful
+motion" and a `prefers-reduced-motion` pass, and six phases had shipped three
+animations on two surfaces. This pass designed the motion layer properly, and in
+the course of looking closely at how the surfaces are drawn, found that the
+hairlines holding half of them together had not been rendering at all. Evidence:
+`evidence/phase7/`.
+
+**The motion system: three verbs, and deliberately no fourth.** A product that
+looks like print has to decide what print does when it moves, and the honest
+answer is that a printed page does not move — ink does. So the layer animates
+CHANGE and never reading:
+
+- **DRAW** — a rule extends from its origin. The 2 px ember mark is already one
+  object on three surfaces (the stamp across the column after a save, the live
+  tab, the margin of a chosen row); now it *arrives* the same way on all of them,
+  plus the mastheads of both public SSR pages and the rule under Home's question.
+- **SETTLE** — something that has just arrived lands: 6 px and a fade, optionally
+  one row after another. `.cs-column` is sugar for setting the `--i` stagger by
+  `:nth-child`, capped at six because an uncapped step down a 22-place column
+  holds the last row invisible for the better part of a second to animate
+  something nobody has scrolled to.
+- **PRESS** — the surface answers a finger inside 120 ms: the ground goes up a
+  step, a pill seats 1 px into the page, the margin mark draws down. Transform
+  and opacity only, so nothing reflows.
+
+- [x] **Every hairline in every list column in the app was missing.**
+      `.cs-row:first-child { border-top: 0 }` suppresses the rule above the first
+      row of a column — but it keys on the row's *wrapper*, and
+      `<ol><li><Link class="cs-row">` makes every row the first child of its own
+      list item. Since this design has no card, no shadow and no radius above
+      3 px, a hairline between two rows is the only thing saying where one place
+      ends and the next begins. All seven list-semantic columns rendered as one
+      undifferentiated block: 22 ranked places on `/rank`, 22 on your own
+      profile, six on a shared list, both group-session columns, both halves of
+      the Maps import. It survived five phases because a missing hairline looks
+      deliberate — and because the share page emits a flat `<ol><li>` and was
+      never affected, so the same list looked right on the one surface everybody
+      screenshotted. Measured on the running app, one digit per row, 1 = has a
+      hairline: `/maya` read **22 zeros** before and `0111111111111111111111`
+      after. Held by a new sweep in `home.spec.ts`; deleting the three restore
+      rules and rebuilding makes it fail with `[0,0,0,0,0,0]`.
+- [x] **A quarter of the stylesheet was an animation library nothing could
+      stop.** `tailwind.config.ts` carried five Lovable-era animations under its
+      own comment forbidding exactly them — `accordion-down/up` at 0.2 s
+      animating *height*, `slide-up` 0.3 s, `fade-in` 0.4 s, and
+      `shimmer 2s linear infinite`. Reduced motion here is implemented by zeroing
+      four duration tokens, so none of the five could ever be turned off; the
+      `shimmer` is the `animate-spin` trap CLAUDE.md has recorded since Phase 4,
+      already in the tree. With `tailwindcss-animate` gone the CSS bundle went
+      **56.5 kB → 25.0 kB** (gzip 10.3 → 6.0).
+- [x] **`src/design/motion.test.ts`** (11 tests) makes the rule executable, the
+      way `no-scales` and `no-bait` do: no literal time in any `animation`/
+      `transition` declaration in any of the four stylesheets, nothing
+      `infinite`, every `animation` shorthand filled `both`, every keyframe
+      ending at the resting state, every stylesheet carrying the *blanket*
+      reduced-motion block rather than a list of remembered class names, and
+      neither `framer-motion` nor `tailwindcss-animate` back in `package.json`.
+      Its scanner is held by its own fixtures and was proven to bite on the real
+      tree twice.
+- [x] **The SPA had no blanket reduced-motion rule.** It guarded three class
+      names; the share page has had the blanket rule since Phase 2. The app now
+      carries the same one, so the two public surfaces and the app stop for the
+      same people.
+- [x] **The front door was a dev tool.** `/` is the only unauthenticated route
+      that is not a token link, so `UserSwitcher` is what somebody sees who typed
+      the address rather than being sent one — and it opened "Cosign · dev build
+      / Who's this?". It does the same job with the same shapes and says the
+      product's own sentence first. Two defects on it, both of the exact shapes
+      Phase 6 fixed one component away: `api.authUsers()` was a bare `.then`, so
+      an unreachable server rendered a heading over nothing with no explanation;
+      and `switchTo` was a `try/finally` with no `catch`, so a failed sign-in put
+      every button back exactly as it was and said nothing.
+- [x] **The last bare `.then` in the app was on the privacy surface.**
+      `Profile.tsx` fetched your share tokens with no `catch`, and the section
+      cannot tell "no links" from "the list did not load": every kind then
+      rendered its *make a link* button and no list at all, so somebody with a
+      live public page was shown a page saying they had none and invited to mint
+      a second one they also could not see. Phase 6 caught the silent revoke
+      failure on this same screen; this is the same lie told earlier. It says so
+      now, and offers nothing while the answer is unknown.
+- [x] **A comment cost the hero surface its only interactive element.** The share
+      page's inline script ships through `.replace(/\n/g,"")`, so a `//` comment
+      added inside it was joined onto one line and commented out every brace
+      after it. The page rendered perfectly and the chips were dead, with
+      `Unexpected end of input` in a console nobody had open. Caught by a probe,
+      not by a test — so `shareList.test.ts` now extracts the emitted `<script>`
+      and parses it, and proves the check bites by damaging a copy the same way.
+- [x] **Two a11y sweeps had been auditing a loading screen, and only luck hid
+      it.** `settled(page)` awaits `document.getAnimations()` once, which on a
+      surface still fetching answers instantly, truthfully, and about nothing —
+      every screen here marks its own loading state with its own attribute, so
+      `main` is on screen with nothing on it. The sweeps in `home.spec.ts` and
+      `social.spec.ts` went straight from `goto` to `settled` to axe, and passed
+      only because injecting and running axe takes long enough for React to
+      commit in the meantime. The first list to acquire an arrival cascade broke
+      the illusion: axe sampled 618 elements mid-fade and reported every one as a
+      contrast failure — the Phase 3 lesson exactly, at scale. `settled` now
+      takes two passes with a frame between, and both sweeps wait for the
+      surface to arrive before they settle it.
+- [x] **The suite cannot pass while the seeded campus is shut, and nothing
+      said so.** Four assertions across `home.spec` and `social.spec` need
+      somewhere to be open — the hero query *is* "near me, open now, has
+      outlets" — and `open_now` comes from the real system clock against
+      `seed/shops.json`, whose earliest weekday opening is 06:30. A run at
+      06:14 is red for the clock, not the code, and reads exactly like a
+      regression. `scripts/phase7-evidence.sh` refuses to start in that window
+      and says why. Same class as the freshness fixture Phase 6 found that
+      expires on 2026-10-13; this one expires every night.
+- [x] **Two accuracy bugs in this phase's own evidence script**, both found by
+      reading its output against the results files rather than trusting it.
+      It reported suite results from `tail -3 | grep passed|failed`, and
+      Playwright prints the failure list *between* those two lines — so a run
+      with four failures printed "42 passed" and nothing else. It now reads
+      each suite's `playwright-results.json`. Its blanket-reduced-motion check
+      was wrong twice in a row, in opposite directions: `grep -A3` missed
+      `index.css`, whose selector is spread over three lines, and the regex
+      that replaced it required a newline before the closing brace, so it
+      missed both SSR pages, which ship the whole query minified onto one. Each
+      version printed "no rule at all" about a file that has one — the exact
+      opposite of the truth, about the one claim this phase is making. It reads
+      a 300-character window now, and it was checked against a file that has
+      the query without the universal rule and a file with neither. All of it
+      is the Phase 6 rule again: an evidence script may not print a conclusion
+      its own numbers could contradict.
+- [x] **The shadcn tree is gone.** 38 generated primitives (2,710 lines),
+      `src/lib/utils.ts` and `components.json` — nothing outside that tree
+      imported a single line of any of it, and `components.json` was still
+      configured `baseColor: slate`, which would generate blue-grey components
+      into a warm-espresso design system. It took **40 dependencies** with it
+      (every `@radix-ui/*`, `framer-motion`, `lucide-react`, `cmdk`, `vaul`,
+      `embla`, `react-day-picker`, `react-hook-form`, `zod`, `input-otp`,
+      `react-resizable-panels`, `date-fns`, `tailwindcss-animate`): **48 → 8**.
+      Same precedent as Phases 1, 3 and 6, one size larger. Four of the five
+      standing lint warnings went with it.
+- [x] **Regression: 195 e2e tests ran, 0 failed** — share 24, profile 46,
+      social 46, home 44 of 46, log 35 of 36 (the three skips are the
+      finals-week pair and the mobile-only timed run), each into its own
+      subdirectory, read-only suites first and writers last. 464 unit tests in
+      32 files, `tsc -b` exit 0, lint 0 errors, 13 routes booting clean with
+      every request on localhost. The ≤ 10 s log budget still holds with Home's
+      cascade in front of it.
+
+**Phase 7 decisions & assumptions (new — don't relitigate):**
+- **Animate change, never reading.** No surface reveals itself as you scroll past
+  it. Scroll-driven timelines (`animation-timeline: view()`) were built and then
+  rejected on three counts: they read as a landing page rather than as a page;
+  they never finish, so `settled()` in `e2e/fixtures.ts` would hang the suite;
+  and `shot()` takes `fullPage` screenshots, which scroll, so every committed
+  screenshot would catch rows mid-reveal — the Phase 3 half-faded-axe-sample bug
+  with a camera.
+- **Nothing above the fold on `/s/` may start at opacity 0.** The page is judged
+  against a 1.0 s LCP budget on simulated Slow-4G. Its one arrival animation is a
+  1 px masthead hairline: a composited transform on something that is not, and
+  cannot become, the largest contentful paint. The list itself settles only when
+  a chip changes what is in it, which is the reader's own doing.
+  **And it was priced rather than argued.** Same build, same server, same URL,
+  back to back, with the two `.wrap>.kicker` rules removed for the second arm:
+  **1060 ms with the draw, 1054 ms without** — the medians differ by 6 ms while
+  the widest spread *within* one arm is 636 ms (724 · 873 · 1060 · 1288 · 1360).
+  `/p/` took the identical animation and measured 1284 ms against Phase 6's
+  1285 ms. The gate's noise is two orders of magnitude larger than the change,
+  which is the same thing Phase 6 concluded about the gate itself. Artifacts:
+  `evidence/phase7/lighthouse-share-control-{with,no}-draw.json`.
+  **The committed gate run is one sample and is reported as one.** Three full
+  five-run gates were taken on `/s/` during this pass and the median landed at
+  1143, 1068 and 945 ms — the last of those *passes*, and it is the one in
+  `evidence/phase7/lighthouse-share.json` because it is the last one taken, not
+  because it is the best. Individual runs across the pass ranged 724–1360 ms on
+  bytes that have not changed since Phase 2. Another project's `wrangler dev`
+  was live on this machine throughout, which is exactly the load CLAUDE.md has
+  warned about since Phase 2. Phase 2 keeps its ✅ and Phase 5A keeps its
+  unchecked box; nothing here was tuned to move either.
+- **The log flow's motion was left exactly as it was.** It already has the best
+  moment in the product (the save stamp) and a per-step settle, and its ≤ 8-tap /
+  ≤ 10 s budget is a signed-off acceptance criterion measured under 4× CPU
+  throttling. Adding five staggered elements per step to a measured flow for
+  marginal gain is how a criterion quietly stops being met.
+- **`.cs-column` is not applied to a column that filters in place.** On Search the
+  surviving rows are the same DOM, and re-numbering `:nth-child` on every
+  keystroke re-times an animation that already finished. Those rows settle one at
+  a time as they appear, which is the truer signal anyway — this row is new, the
+  rest were always here.
+
 ---
 
 ## Resume protocol

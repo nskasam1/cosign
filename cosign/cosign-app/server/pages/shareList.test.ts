@@ -65,3 +65,50 @@ describe("the share page with nothing in order", () => {
     expect(desc).toContain("hasn’t put anywhere");
   });
 });
+
+// The page ships one inline script and it is minified by stripping every
+// newline, which makes a `//` comment inside it a shredder: everything after
+// it on the joined line is commented out, the HTML still renders perfectly,
+// and the only symptom is that the chips stop working. That is precisely what
+// a comment added to the filter cost — the hero surface's one interactive
+// element, dead, with `Unexpected end of input` in a console nobody had open.
+// A syntax check is two lines and would have caught it before the build.
+describe("the inline script", () => {
+  const entry: ShareData["entries"][number] = {
+    position: 1,
+    name: "Lantern Lane Cafe",
+    slug: "lantern-lane",
+    initials: "LLC",
+    palette: "warm",
+    photo: null,
+    line: "The couch by the green lamp.",
+    tags: ["deep_work"],
+    tagLabels: ["Deep work"],
+    facts: ["11 min"],
+    cosignState: "none",
+    cosigners: [],
+    cosignOthers: 0,
+  };
+  const html = renderShare({ ...data([entry]), tagCounts: [{ tag: "deep_work", label: "Deep work", count: 1 }] });
+  const script = /<script>([\s\S]*?)<\/script>/.exec(html)?.[1] ?? "";
+
+  it("is there at all, once there is a list to filter", () => {
+    expect(script.length).toBeGreaterThan(200);
+    expect(script).toContain("data-chip");
+  });
+
+  it("parses — no comment has eaten the rest of it", () => {
+    expect(() => new Function(script)).not.toThrow();
+  });
+
+  it("would have caught the comment that broke it", () => {
+    // The check above passes trivially on a script nobody has damaged, so
+    // damage one the exact way the real bug did: the shipped text is a
+    // single joined line, and a `//` dropped anywhere inside it swallows
+    // every brace to the end.
+    expect(script).not.toContain("\n");
+    const commented = script.replace("function apply(", "// a note\nfunction apply(").replace(/\n/g, "");
+    expect(commented).not.toBe(script);
+    expect(() => new Function(commented)).toThrow();
+  });
+});

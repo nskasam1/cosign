@@ -121,12 +121,24 @@
   --radius-full: 999px;
   --radius: 0.875rem;           /* shadcn primitives in the SPA */
 
-  /* ── motion ── one rhythm, and it stops when asked ──────────────────── */
+  /* ── motion ── one rhythm, and it stops when asked ────────────────────
+     Three durations and one interval, and every animation in the product
+     is built from them — `motion.test.ts` fails on a literal time value
+     anywhere in the CSS layer, which is how the five Lovable-era keyframes
+     in `tailwind.config.ts` (0.2s, 0.3s, 0.4s, and a `2s linear infinite`
+     shimmer no reduced-motion rule could reach) were finally found.
+
+     What each one is FOR, because a duration with no job drifts:
+       fast    the surface answering a finger — ground, ink, a margin mark
+       base    something that has just arrived settling onto the page
+       slow    a rule drawing itself across the column
+       stagger one place in a column after another, not all at once */
   --ease-out: cubic-bezier(0.22, 0.61, 0.36, 1);
   --ease-in: cubic-bezier(0.55, 0.06, 0.68, 0.19);
   --duration-fast: 120ms;
   --duration-base: 200ms;
   --duration-slow: 320ms;
+  --stagger: 40ms;
 
   /* ── shadcn/Tailwind compatibility ────────────────────────────────────
      Aliases, not new values. Nothing below may introduce a colour that is
@@ -165,6 +177,7 @@
     --duration-fast: 0ms;
     --duration-base: 0ms;
     --duration-slow: 0ms;
+    --stagger: 0ms;
   }
 }
 

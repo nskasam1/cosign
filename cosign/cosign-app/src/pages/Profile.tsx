@@ -21,6 +21,11 @@ const Profile = () => {
 
   const [data, setData] = useState<ProfileView | null>(null);
   const [tokens, setTokens] = useState<ShareToken[]>([]);
+  /**
+   * The list of links did not arrive. It is not the same as having none, and
+   * on this section the difference is the whole point — see `load` below.
+   */
+  const [tokensUnknown, setTokensUnknown] = useState(false);
   const [loading, setLoading] = useState(true);
   const [copied, setCopied] = useState<string | null>(null);
   /** null = not known yet (logged out, or the request is still out). */
@@ -35,7 +40,20 @@ const Profile = () => {
       .profile(username)
       .then((d) => {
         setData(d);
-        if (d.is_self) api.myShareTokens().then(({ tokens }) => setTokens(tokens));
+        // The last bare `.then` in the app, and it was on the privacy
+        // surface. A rejected request left `tokens` empty, which this section
+        // cannot tell apart from having none: every kind then rendered its
+        // "make a link" button and no list at all, so somebody with a live
+        // public page was shown a page saying they had none and invited to
+        // mint a second one they also could not see. Phase 6 caught the
+        // silent revoke failure here; this is the same lie told earlier.
+        if (d.is_self) {
+          setTokensUnknown(false);
+          api
+            .myShareTokens()
+            .then(({ tokens }) => setTokens(tokens))
+            .catch(() => setTokensUnknown(true));
+        }
         else {
           api
             .friends()
@@ -250,7 +268,17 @@ const Profile = () => {
             </p>
           )}
 
-          {SHAREABLE.map(({ kind, title, what, make }) => {
+          {tokensUnknown && (
+            <p data-tokens-unknown role="alert" className="cs-settle mt-3 text-sm text-line">
+              Cosign couldn’t read your links just now, so it won’t guess at them. Any link you have made is
+              still exactly as you left it — this screen can’t show you which. Reload to see them.
+            </p>
+          )}
+
+          {/* Nothing to offer while the answer is unknown: a "make a link"
+              button under a list that failed to load is an invitation to
+              publish a second page you cannot see. */}
+          {tokensUnknown ? null : SHAREABLE.map(({ kind, title, what, make }) => {
             const mine = tokens.filter((t) => t.kind === kind);
             const live = mine.filter((t) => !t.revoked_at);
             return (
@@ -313,7 +341,7 @@ const Profile = () => {
 
       {can_see_ranking ? (
         entries.length > 0 ? (
-          <ol className="mt-8">
+          <ol className="cs-column mt-8">
             {entries.map((e) => (
               <li key={e.shop_id}>
                 <Link

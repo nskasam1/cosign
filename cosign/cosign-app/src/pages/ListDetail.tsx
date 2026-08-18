@@ -335,7 +335,7 @@ const ListDetail = () => {
       ) : (
         // One <li> per STANDING, not per place: where two places share one,
         // the brace says which rows the numeral covers.
-        <ol className="mt-8">
+        <ol className="cs-column mt-8">
           {groups.map((group) => (
             <li
               key={group[0].shop_id}

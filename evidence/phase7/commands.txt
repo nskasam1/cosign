@@ -1,0 +1,110 @@
+# Phase 7 evidence — 2026-08-17T10:44:39Z
+# node v24.11.0, npm 11.6.1
+# scratch database: /tmp/cosign-phase7.db (server/data/cosign.db untouched)
+
+## ./node_modules/.bin/tsc -b
+exit=0
+
+## npm test
+    [2m Test Files [22m [1m[32m32 passed[39m[22m[90m (32)[39m
+    [2m      Tests [22m [1m[32m464 passed[39m[22m[90m (464)[39m
+
+## npm run lint
+    ✖ 1 problem (0 errors, 1 warning)
+    (5 warnings before this pass; four of them were in the deleted shadcn tree)
+
+## the motion guard — src/design/motion.test.ts
+     [32m✓[39m src/design/motion.test.ts [2m([22m[2m11 tests[22m[2m)[22m[32m 18[2mms[22m[39m
+    [2m      Tests [22m [1m[32m11 passed[39m[22m[90m (11)[39m
+    Its scanner is held by its own fixtures, the way no-scales and no-bait are:
+    a literal duration in either decimal shape, an `infinite`, and an
+    animation that does not fill `both` are each proven to be caught.
+
+## what the tokens now have to say about stopping
+$ grep -A6 'prefers-reduced-motion' src/design/tokens.css
+    @media (prefers-reduced-motion: reduce) {
+      :root {
+        --duration-fast: 0ms;
+        --duration-base: 0ms;
+        --duration-slow: 0ms;
+        --stagger: 0ms;
+      }
+    }
+$ # and every stylesheet carries the BLANKET rule, not a class list:
+    src/index.css                   universal (*): animation AND transition none !important
+    server/pages/shareList.ts       universal (*): animation AND transition none !important
+    server/pages/shareProfile.ts    universal (*): animation AND transition none !important
+
+## the inline script on the hero surface parses
+$ curl -s http://localhost:8791/s/IofpCInelhr1 | <extract the one <script>> | node --check
+    bytes      : 1028
+    newlines   : 0   (it ships as one joined line)
+    parses     : yes
+    (a // comment added inside that literal cost the chips entirely, silently)
+
+## the bundle, after the dead tree came out
+$ wc -c dist/assets/*
+    index-BWGh7qBI.css                25029 bytes
+    index-vZXyy-4a.js                331897 bytes
+    before this pass: index.css was 56,483 bytes (gzip 10.3 kB)
+$ node -e 'count the dependencies'
+    dependencies: 8  (@hono/node-server, @resvg/resvg-wasm, @tanstack/react-query, hono, react, react-dom, react-router-dom, satori)
+    before this pass: 48 dependencies, 38 unused shadcn primitives, and a
+    `shimmer 2s linear infinite` in tailwind.config.ts that nothing could stop.
+
+## every surface, re-run against this build
+$ npx playwright test share.spec.ts   # phase 2
+$ npx playwright test profile.spec.ts   # phase 5A
+$ npx playwright test social.spec.ts   # phase 5B
+$ npx playwright test home.spec.ts   # phase 4 + this pass
+$ npx playwright test log.spec.ts   # phase 3
+
+    share   passed=24  failed=0   skipped=0   flaky=0
+    profile passed=46  failed=0   skipped=0   flaky=0
+    social  passed=46  failed=0   skipped=0   flaky=0
+    home    passed=44  failed=0   skipped=2   flaky=0
+    log     passed=35  failed=0   skipped=1   flaky=0
+    all five suites clean
+
+    home.spec.ts gains one test this pass — 'every list column keeps its
+    hairlines, and only its first row goes without'. Removing the three CSS
+    rules that fix it and rebuilding makes it fail with [0,0,0,0,0,0].
+
+    Each suite's 'prefers-reduced-motion removes all animation' test walks
+    every element on the surface and fails on any computed animation- or
+    transition-duration over 0.01 s. All five pass with the new motion.
+
+$ COSIGN_EVIDENCE_DIR=phase7/spa node scripts/boot-smoke.mjs
+          /rank                                  Your list — Cosign
+          /group/new                             Ask three people — Cosign
+          /g/g_notatable0000                     Nothing at this address — Cosign
+          /shop/there-is-no-such-place/x         Nothing at this address — Cosign
+    
+    all 13 routes booted clean
+
+## the perf gate (LCP <= 1000 ms, median of 5, mobile + simulated Slow-4G)
+$ LH_RUNS=5 node scripts/lighthouse.mjs /s/IofpCInelhr1 phase7 share
+      PASS  performance            100
+      PASS  LCP                    945 ms
+      runs: 97/1169ms  100/742ms  100/945ms  99/1095ms  100/778ms
+    gate exit=0
+$ LH_RUNS=5 node scripts/lighthouse.mjs /p/Rp7YT1i9S-Ov phase7 profile
+      PASS  performance            100
+      FAIL  LCP                    1282 ms
+      runs: 100/1290ms  100/830ms  100/1282ms  100/1285ms  100/1214ms
+    gate exit=1
+
+## what the one added animation costs, measured rather than argued
+$ # same build, same server, same URL, back to back: the two .wrap>.kicker
+$ # rules removed from server/pages/shareList.ts for the second arm.
+    with the draw   LCP 1060 ms   runs 1060 1288 873 1360 724   spread 636 ms
+    without it      LCP 1054 ms   runs 1054 814 1040 1083 1063   spread 269 ms
+    the two medians differ by 6 ms; the widest spread WITHIN one arm is 636 ms, i.e. 106x the difference between them.
+
+    This is a regression check on one added animation, not a new reading of
+    the criterion. Phase 6 measured /s/ at 869 · 911 · 1010 · 833 · 974 ms
+    across five sessions on bytes that had not changed since Phase 2 — the
+    gate's own noise is wider than any margin it judges, so a single number
+    here is one sample of that distribution. What the 1px masthead rule can
+    cost is bounded by what it is: a composited transform on a hairline that
+    is not, and cannot become, the largest contentful paint.

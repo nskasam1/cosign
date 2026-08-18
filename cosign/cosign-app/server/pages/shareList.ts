@@ -44,6 +44,18 @@ img{display:block;max-width:100%}
 :focus-visible{outline:2px solid hsl(var(--ember));outline-offset:3px}
 .wrap{max-width:37.25rem;margin:0 auto;padding:var(--space-6) var(--gutter) var(--space-10)}
 .kicker{font:700 var(--text-2xs)/1 var(--font-body);letter-spacing:var(--tracking-caps);text-transform:uppercase;color:hsl(var(--gold));margin:0 0 var(--space-4);padding-bottom:var(--space-4);border-bottom:1px solid hsl(var(--rule))}
+/* The one thing on this page that moves on arrival, and it is a hairline.
+   A rule drawing itself out from the left margin is the product's signature
+   mark — the save stamp, the live tab, the margin of a chosen row are all
+   the same object — and this is the surface it was designed on, which had
+   never once used it. Deliberately not the headline, the photograph or the
+   list: this page is measured against a 1.0 s LCP budget on simulated
+   Slow-4G, so nothing that could be the largest contentful paint is allowed
+   to start at opacity 0, and a 1px bar composites for free. The .wrap> scopes
+   it to the masthead rule; the two kickers inside .cta are labels on a
+   section, not a masthead, and print no rule at all. */
+.wrap>.kicker{position:relative;border-bottom:0}
+.wrap>.kicker::after{content:"";position:absolute;left:0;right:0;bottom:0;height:1px;background:hsl(var(--rule));transform-origin:left;animation:draw var(--duration-slow) var(--ease-out) both}
 h1{font:400 var(--text-3xl)/var(--leading-tight) var(--font-display);letter-spacing:var(--tracking-display);margin:var(--space-5) 0;text-wrap:balance}
 .author{display:flex;align-items:center;gap:var(--space-3);margin:0 0 var(--space-4)}
 .author img{width:48px;height:48px;border-radius:var(--radius-full);flex:none;background:hsl(var(--surface))}
@@ -54,7 +66,8 @@ h1{font:400 var(--text-3xl)/var(--leading-tight) var(--font-display);letter-spac
 .meta b{color:hsl(var(--line));font-weight:400}
 .chips{display:flex;gap:var(--space-2);overflow-x:auto;scrollbar-width:none;margin:var(--space-5) calc(var(--gutter)*-1) 0;padding:0 var(--gutter) var(--space-1)}
 .chips::-webkit-scrollbar{display:none}
-.chips button{flex:none;min-height:var(--tap);padding:0 var(--space-4);border:1px solid hsl(var(--rule-strong));border-radius:var(--radius-full);background:hsl(var(--surface));color:hsl(var(--line));font:400 var(--text-xs)/1 var(--font-body);white-space:nowrap;cursor:pointer;transition:background var(--duration-fast) var(--ease-out),border-color var(--duration-fast) var(--ease-out),color var(--duration-fast) var(--ease-out)}
+.chips button{flex:none;min-height:var(--tap);padding:0 var(--space-4);border:1px solid hsl(var(--rule-strong));border-radius:var(--radius-full);background:hsl(var(--surface));color:hsl(var(--line));font:400 var(--text-xs)/1 var(--font-body);white-space:nowrap;cursor:pointer;transition:background var(--duration-fast) var(--ease-out),border-color var(--duration-fast) var(--ease-out),color var(--duration-fast) var(--ease-out),transform var(--duration-fast) var(--ease-out)}
+.chips button:active,.cta a:active{transform:translateY(1px)}
 .chips button i{font-style:normal;color:hsl(var(--muted));margin-left:.45em;font-variant-numeric:tabular-nums}
 .chips button[aria-pressed=true]{background:hsl(var(--ember));border-color:hsl(var(--ember));color:hsl(var(--bg));font-weight:700}
 .chips button[aria-pressed=true] i{color:hsl(var(--bg))}
@@ -83,7 +96,7 @@ li:first-child{border-top:0;padding-top:var(--space-4)}
 .cta{margin-top:var(--space-10);padding-top:var(--space-6);border-top:1px solid hsl(var(--rule-strong))}
 .cta h2{font:400 var(--text-xl)/1.2 var(--font-display);letter-spacing:var(--tracking-display);margin:var(--space-3) 0;text-wrap:balance}
 .cta p{font:400 var(--text-sm)/1.55 var(--font-body);color:hsl(var(--muted));margin:0 0 var(--space-5)}
-.cta a{display:inline-flex;align-items:center;min-height:var(--tap);padding:0 var(--space-5);border:1px solid hsl(var(--ember));border-radius:var(--radius-full);color:hsl(var(--ember-ink));font:700 var(--text-xs)/1 var(--font-body);letter-spacing:var(--tracking-caps);text-transform:uppercase;text-decoration:none;transition:background var(--duration-fast) var(--ease-out),color var(--duration-fast) var(--ease-out)}
+.cta a{display:inline-flex;align-items:center;min-height:var(--tap);padding:0 var(--space-5);border:1px solid hsl(var(--ember));border-radius:var(--radius-full);color:hsl(var(--ember-ink));font:700 var(--text-xs)/1 var(--font-body);letter-spacing:var(--tracking-caps);text-transform:uppercase;text-decoration:none;transition:background var(--duration-fast) var(--ease-out),color var(--duration-fast) var(--ease-out),transform var(--duration-fast) var(--ease-out)}
 .cta a:hover{background:hsl(var(--ember));color:hsl(var(--bg))}
 footer{margin-top:var(--space-8);padding-top:var(--space-5);border-top:1px solid hsl(var(--rule));font:400 var(--text-2xs)/1.7 var(--font-body);letter-spacing:.07em;text-transform:uppercase;color:hsl(var(--muted))}
 @media (min-width:40rem){
@@ -98,15 +111,40 @@ footer{margin-top:var(--space-8);padding-top:var(--space-5);border-top:1px solid
 @media (min-width:64rem){
   .lead .shot{width:calc(100% + 7rem);max-width:none;margin-left:-3.5rem;aspect-ratio:2.4/1}
 }
+/* Two verbs, ported from the app's cs-* layer rather than re-decided:
+   DRAW is a rule extending from its origin, SETTLE is something that has
+   just arrived landing on the page. The list SETTLES only when a chip
+   changes what is in it — the reader did that, and a column of twenty-two
+   places silently becoming six is the one moment on this page where the
+   page changes under you. It does not settle on load: on load the list is
+   not arriving, you are. It starts at .4 rather than 0 because a filter is
+   a re-set, not a replacement — the rows that stay are the same rows. */
+@keyframes draw{from{transform:scaleX(0)}to{transform:scaleX(1)}}
+@keyframes settle{from{opacity:.4;transform:translateY(4px)}to{opacity:1;transform:none}}
+ol[data-refilter]{animation:settle var(--duration-base) var(--ease-out) both}
 @media (prefers-reduced-motion:reduce){*,::before,::after{animation:none!important;transition:none!important;scroll-behavior:auto!important}}
 `;
 
-// ~700 bytes: the chips are the only interactive thing on the page.
+// ~800 bytes: the chips are the only interactive thing on the page.
+//
+// Every comment about this script lives OUT here, because the template
+// literal below is shipped through `.replace(/\n/g,"")` — a `//` comment
+// inside it is joined onto one line and silently comments out the rest of
+// the file. Which is exactly what happened on the first draft of the
+// re-settle below: the page kept rendering, the chips stopped working, and
+// the only sign was `Unexpected end of input` in a console nobody had open.
+//
+// The re-settle restarts rather than merely setting its flag: a second tap
+// on a page whose list is already marked would otherwise change what is in
+// the column with no acknowledgement at all. Reading `offsetWidth` is the
+// reflow that makes the browser treat the animation as new. Under
+// prefers-reduced-motion the rule it triggers is off and this costs nothing.
 const PAGE_JS = `(function(){
 var chips=[].slice.call(document.querySelectorAll('[data-chip]'));
 var all=document.querySelector('[data-chip-all]');
 var items=[].slice.call(document.querySelectorAll('[data-entry]'));
 var status=document.querySelector('[data-count]');
+var list=document.querySelector('ol');
 function apply(tag){
   var n=0;
   items.forEach(function(li){
@@ -116,6 +154,7 @@ function apply(tag){
   all.setAttribute('aria-pressed',String(!tag));
   chips.forEach(function(c){c.setAttribute('aria-pressed',String(c.getAttribute('data-chip')===tag))});
   status.textContent=tag?('Showing '+n+' of '+items.length):('All '+items.length+', in order');
+  if(list){list.removeAttribute('data-refilter');void list.offsetWidth;list.setAttribute('data-refilter','');}
 }
 chips.forEach(function(c){c.addEventListener('click',function(){
   apply(c.getAttribute('aria-pressed')==='true'?null:c.getAttribute('data-chip'));

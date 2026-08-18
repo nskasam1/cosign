@@ -183,7 +183,7 @@ const Feed = () => {
             That is the only number Cosign will ever put on a tab. It can't be raised except by a person
             doing something to you, and it can't be lowered by looking — only by answering.
           </p>
-          <ul className="mt-5">
+          <ul className="cs-column mt-5">
             {asks.map((e) => (
               <li key={e.id} data-ask={e.type} className="border-t border-rule py-5 first:border-t-0">
                 <p className="cs-caps text-line">

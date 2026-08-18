@@ -231,7 +231,9 @@ const Onboarding = () => {
             </p>
           )}
 
-          <div className="mt-4">
+          {/* The campus arriving is the one moment on this screen worth
+              marking — and the only one, since a tap here just presses. */}
+          <div className="cs-column mt-4">
             {shops.map((s) => {
               // At the cap, the other rows genuinely cannot be picked — so
               // they say so, in the markup and on screen. Leaving them

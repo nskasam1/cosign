@@ -102,13 +102,36 @@
   .cs-row:first-child {
     border-top: 0;
   }
+  /* …but `:first-child` is about the row's WRAPPER, and half the columns in
+     this app wrap. `<ol><li><Link class="cs-row">` makes every row the first
+     child of its own list item, so every row matched the rule above and the
+     hairlines that ARE the structure of this design vanished from the whole
+     column — silently, because a missing hairline looks like a design choice.
+     It had taken all seven list-semantic columns in the product: the ranked
+     list on your profile and on /rank (22 rows each, no separators at all),
+     the collaborative list, both group-session columns, and both halves of
+     the Maps import. The share page was never affected, which is exactly why
+     nobody saw it: the same list, rendered by server/pages/shareList.ts as a
+     flat `<ol><li>`, has had its hairlines since Phase 2.
+
+     Three shapes exist in the tree and each gets its row back. A row still
+     loses its hairline only when it is the first row of the whole column —
+     including the second place in a tied pair, which shares a standing but
+     is still its own place and still earns its own line. */
+  li:not(:first-child) > .cs-row,
+  li:not(:first-child) > * > .cs-row,
+  li > :not(:first-child) > .cs-row {
+    border-top: 1px solid hsl(var(--rule));
+  }
   .cs-row:active,
   .cs-row[aria-pressed="true"] {
     background: hsl(var(--surface));
   }
 
   /* The one selection mark in the product: a 2px ember rule in the page
-     margin. Same object as the save stamp, turned ninety degrees. */
+     margin. Same object as the save stamp, turned ninety degrees — so it
+     arrives the same way, turned ninety degrees too, drawing down from the
+     top edge in the time it takes the ground to change under it. */
   .cs-row[aria-pressed="true"]::before {
     content: "";
     position: absolute;
@@ -117,7 +140,38 @@
     bottom: 0;
     width: 2px;
     background: hsl(var(--ember));
+    transform-origin: top;
+    animation: cs-draw-down var(--duration-fast) var(--ease-out) both;
   }
+
+  /* A column that arrived together, and settles that way: one row after the
+     next, 40 ms apart. It is sugar over `--i` and nothing more — the same
+     custom property PlaceRow sets by hand where a cascade has to carry
+     across two containers (Home's answer, then the rest of the matches).
+     One primitive, two ways to aim it.
+
+     Depth six, and the cap is the point: an uncapped step down a 22-place
+     column would hold the last row invisible for the better part of a second
+     to animate something nobody has scrolled to. Six rows is roughly a
+     390x844 screenful, so the cascade covers exactly what you can watch
+     arrive and everything past it is already at rest.
+
+     Not used on a column that FILTERS in place (Search): there the rows that
+     survive are the same DOM, and re-numbering `:nth-child` on every
+     keystroke would re-time an animation that already finished. Those rows
+     settle one at a time as they appear, which is the truer signal anyway —
+     this row is new, the rest were always here. */
+  .cs-column > * {
+    --i: 6;
+    animation: cs-settle var(--duration-base) var(--ease-out) both;
+    animation-delay: calc(var(--i) * var(--stagger));
+  }
+  .cs-column > :nth-child(1) { --i: 0; }
+  .cs-column > :nth-child(2) { --i: 1; }
+  .cs-column > :nth-child(3) { --i: 2; }
+  .cs-column > :nth-child(4) { --i: 3; }
+  .cs-column > :nth-child(5) { --i: 4; }
+  .cs-column > :nth-child(6) { --i: 5; }
 
   /* A place's photograph, and the designed state for a place without one:
      its initials in its own imagery hue, never a missing picture. */
@@ -153,7 +207,16 @@
     font-weight: 700;
     letter-spacing: var(--tracking-caps);
     text-transform: uppercase;
-    transition: opacity var(--duration-fast) var(--ease-out);
+    transition: opacity var(--duration-fast) var(--ease-out),
+      transform var(--duration-fast) var(--ease-out);
+  }
+  /* Seated, not scaled. A pill that grows under the thumb is a toy; a pill
+     that sinks one pixel into the page is a key being pressed, and 1px of
+     transform moves nothing around it. */
+  .cs-pill:active:not([disabled]),
+  .cs-pill-ghost:active,
+  .cs-chip:active {
+    transform: translateY(1px);
   }
   .cs-pill[disabled] {
     opacity: 0.45;
@@ -173,7 +236,8 @@
     letter-spacing: var(--tracking-caps);
     text-transform: uppercase;
     transition: background-color var(--duration-fast) var(--ease-out),
-      color var(--duration-fast) var(--ease-out);
+      color var(--duration-fast) var(--ease-out),
+      transform var(--duration-fast) var(--ease-out);
   }
   .cs-pill-ghost:hover {
     background: hsl(var(--ember));
@@ -208,7 +272,8 @@
     white-space: nowrap;
     transition: background-color var(--duration-fast) var(--ease-out),
       border-color var(--duration-fast) var(--ease-out),
-      color var(--duration-fast) var(--ease-out);
+      color var(--duration-fast) var(--ease-out),
+      transform var(--duration-fast) var(--ease-out);
   }
   .cs-chip[aria-pressed="true"] {
     background: hsl(var(--ember));
@@ -256,6 +321,12 @@
   .cs-tab[aria-current="page"] {
     color: hsl(var(--ink));
   }
+  /* The live tab's rule draws itself out from the middle each time it
+     becomes the live one — a pseudo-element's animation restarts when its
+     selector starts matching, so the mark travels with the destination
+     instead of blinking on somewhere else. Out from the CENTRE rather than
+     from the left, because unlike the stamp and the margin mark this rule
+     has no reading direction: it is a mark on a word, not across a column. */
   .cs-tab[aria-current="page"]::before {
     content: "";
     position: absolute;
@@ -264,6 +335,8 @@
     right: var(--space-4);
     height: 2px;
     background: hsl(var(--ember));
+    transform-origin: center;
+    animation: cs-draw var(--duration-base) var(--ease-out) both;
   }
   /* Log is the thumb-reach primary and has no icon to be primary with, so
      it is primary by FACE, CASE and ENCLOSURE: the display serif in title
@@ -341,28 +414,70 @@
     border-radius: var(--radius-xs) 0 0 var(--radius-xs);
   }
 
+  /* ── motion: three verbs, and there is deliberately no fourth ──────────
+     A product that looks like print has to decide what print does when it
+     moves, and the honest answer is that a printed page does not move at
+     all — ink does. So this layer animates CHANGE and never reading: no
+     surface in Cosign reveals itself as you scroll past it, because the
+     list is not arriving, you are. What moves is what just happened.
+
+       DRAW    a rule extends from its origin. The 2px ember mark is the
+               same object on three surfaces (the margin of a chosen row,
+               the live tab, the stamp across the column after a save), so
+               it enters the same way each time and means the same thing:
+               this is the live one.
+       SETTLE  something that has just arrived lands on the page — 6px and
+               a fade, optionally one place after another via `--i`.
+       PRESS   the surface answers a finger inside 120 ms: the ground goes
+               up a step, a pill seats 1px into the page, the margin mark
+               draws down. Transform and opacity only, so nothing reflows.
+
+     Scroll-driven reveals (`animation-timeline: view()`) were tried and
+     rejected twice over: they read as a landing page rather than as a
+     page, and their animations never finish, so `settled()` in
+     e2e/fixtures.ts would hang and a fullPage screenshot — which scrolls —
+     would commit half-faded rows as evidence. */
+
   /* The save stamp: one ember hairline drawing itself across the column,
      which then stays put above every comparison as proof the log is safe. */
   .cs-stamp {
     height: 1px;
     background: hsl(var(--ember));
+  }
+  .cs-stamp,
+  .cs-draw {
     transform-origin: left;
-    animation: cs-stamp var(--duration-slow) var(--ease-out) both;
+    animation: cs-draw var(--duration-slow) var(--ease-out) both;
   }
   .cs-step {
     animation: cs-step-in var(--duration-base) var(--ease-out) both;
+  }
+  /* The general arrival. `--i` is the row's place in the column and it is
+     capped at the call site: an unbounded stagger on a 22-place list would
+     hold the last row invisible for the better part of a second. */
+  .cs-settle {
+    animation: cs-settle var(--duration-base) var(--ease-out) both;
+    animation-delay: calc(var(--i, 0) * var(--stagger));
   }
   .cs-fade {
     animation: cs-fade-in var(--duration-base) var(--ease-out) both;
   }
 }
 
-@keyframes cs-stamp {
+@keyframes cs-draw {
   from { transform: scaleX(0); }
   to { transform: scaleX(1); }
 }
+@keyframes cs-draw-down {
+  from { transform: scaleY(0); }
+  to { transform: scaleY(1); }
+}
 @keyframes cs-step-in {
   from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes cs-settle {
+  from { opacity: 0; transform: translateY(6px); }
   to { opacity: 1; transform: none; }
 }
 @keyframes cs-fade-in {
@@ -370,14 +485,20 @@
   to { opacity: 1; }
 }
 
-/* Every duration above is a token, and tokens.css zeroes all three under
-   prefers-reduced-motion — but a 0s animation still runs its keyframes, so
-   the final state has to be the resting state. `both` guarantees it. */
+/* Every duration in this file is a token and tokens.css zeroes all four
+   under prefers-reduced-motion — but the SPA also mounts CSS it did not
+   write, and a named-class list only guards the classes somebody remembered
+   to name. The share page has carried the blanket rule since Phase 2; this
+   is the same rule, so the two public surfaces and the app stop for the same
+   people. `animation:none` renders the resting state, which is why every
+   keyframe above ends at rest rather than starting there. */
 @media (prefers-reduced-motion: reduce) {
-  .cs-stamp,
-  .cs-step,
-  .cs-fade {
-    animation: none;
+  *,
+  ::before,
+  ::after {
+    animation: none !important;
+    transition: none !important;
+    scroll-behavior: auto !important;
   }
 }
 

@@ -114,37 +114,20 @@ export default {
         sm: "calc(var(--radius) - 4px)",
         hair: "var(--radius-sm)",
       },
-      keyframes: {
-        "accordion-down": {
-          from: { height: "0" },
-          to: { height: "var(--radix-accordion-content-height)" },
-        },
-        "accordion-up": {
-          from: { height: "var(--radix-accordion-content-height)" },
-          to: { height: "0" },
-        },
-        "slide-up": {
-          from: { transform: "translateY(100%)" },
-          to: { transform: "translateY(0)" },
-        },
-        "fade-in": {
-          from: { opacity: "0", transform: "translateY(8px)" },
-          to: { opacity: "1", transform: "translateY(0)" },
-        },
-        shimmer: {
-          from: { backgroundPosition: "-200% 0" },
-          to: { backgroundPosition: "200% 0" },
-        },
-      },
-      animation: {
-        "accordion-down": "accordion-down 0.2s ease-out",
-        "accordion-up": "accordion-up 0.2s ease-out",
-        "slide-up": "slide-up 0.3s ease-out",
-        "fade-in": "fade-in 0.4s ease-out",
-        shimmer: "shimmer 2s linear infinite",
-      },
+      // There are deliberately no `keyframes`/`animation` entries and no
+      // `tailwindcss-animate`. Five Lovable-era animations lived here, under
+      // the comment above forbidding exactly them: `accordion-down/up` at
+      // 0.2s animating HEIGHT, `slide-up` at 0.3s, `fade-in` at 0.4s, and
+      // `shimmer 2s linear infinite` — a perpetual motion no rule in this
+      // codebase could stop, because reduced-motion is implemented by zeroing
+      // the duration TOKENS and none of those five read a token. It is the
+      // same trap CLAUDE.md records for `animate-spin`. Nothing outside the
+      // deleted shadcn tree ever used one.
+      //
+      // Motion belongs to src/index.css, where every duration is
+      // `var(--duration-*)` and `src/design/motion.test.ts` fails the suite
+      // on a literal time value or an `infinite` anywhere in the CSS layer.
     },
   },
-  // eslint-disable-next-line @typescript-eslint/no-require-imports
-  plugins: [require("tailwindcss-animate")],
+  plugins: [],
 } satisfies Config;

@@ -36,7 +36,7 @@ persistence layer uses the built-in `node:sqlite`). The bun lockfiles are gone.
 | Production | `npm run prod` | `vite build` then the server on 8787 serving `dist/` + SSR |
 | Serve existing build | `npm run serve:prod` | skips the rebuild |
 | Typecheck | `./node_modules/.bin/tsc -b` | project refs: app / node / server / **e2e** |
-| Unit tests | `npm test` | Vitest, single run (~60 s cold / ~25 s of actual tests, 450 tests in 31 files) |
+| Unit tests | `npm test` | Vitest, single run (~25 s, 464 tests in 32 files — it halved when the shadcn tree left the module graph) |
 | Lint | `npm run lint` | ESLint flat config (5 pre-existing warnings, 0 errors) |
 | Bulk shop entry | `npm run import:shops -- f.csv [--dry-run]` | merges by id into `seed/shops.json` |
 | Shops → spreadsheet | `npm run export:shops -- f.csv` | round-trips back through import |
@@ -53,6 +53,7 @@ persistence layer uses the built-in `node:sqlite`). The bun lockfiles are gone.
 | Phase 5A evidence | `bash scripts/phase5a-evidence.sh` | owns its own server + scratch DB; :8787 must be free; ~8 min (three Lighthouse gates) |
 | Phase 5B evidence | `bash scripts/phase5b-evidence.sh` | owns its own server + scratch DB; :8787 must be free; no Lighthouse gate (5B ships no public SSR surface) |
 | Phase 6 evidence | `bash scripts/phase6-evidence.sh` | the closing pass: every suite re-run as a regression + the gate and its font controls; owns its server + scratch DB; ~20 min |
+| Phase 7 evidence | `bash scripts/phase7-evidence.sh` | the motion pass: the guard, the hairlines, every suite re-run, the gate as a regression; owns its server + scratch DB; ~20 min |
 | SPA boot smoke | `node scripts/boot-smoke.mjs` | `COSIGN_EVIDENCE_DIR=phase2/spa` to target a phase |
 
 `COSIGN_EVIDENCE=<phase>` picks the directory Playwright writes into. It
@@ -78,7 +79,80 @@ The Phase 2/5A Lighthouse gates run against `npm run prod` — **never**
 the local TypeScript; call `./node_modules/.bin/tsc` (or `.\node_modules\.bin\tsc.cmd`
 in PowerShell) to be sure.
 
-## Gotchas (verified on this machine, updated 2026-08-16 after the Phase 6 closing pass)
+## Gotchas (verified on this machine, updated 2026-08-16 after the Phase 7 motion pass)
+
+- **`:first-child` is about the WRAPPER, and half the columns here wrap.**
+  `.cs-row:first-child { border-top: 0 }` is meant to suppress the hairline
+  above the first row of a column. `<ol><li><Link class="cs-row">` makes every
+  row the first child of its own list item, so every row matched — and since
+  the hairlines *are* the structure of this design (no card, no shadow, no
+  radius above 3 px), all seven list-semantic columns in the app rendered as
+  one undifferentiated block. Twenty-two ranked places on `/rank` and on your
+  own profile, six on a shared list, both group-session columns, both halves
+  of the Maps import. It survived five phases because a missing hairline looks
+  deliberate, and because the share page — a flat `<ol><li>` in
+  `server/pages/shareList.ts` — was never affected, so the same list looked
+  right on the surface everybody screenshotted. Fixed by three restore rules
+  in `index.css`; held by `home.spec.ts`'s "every list column keeps its
+  hairlines", which was proven to bite by deleting them and rebuilding.
+- **A `//` comment inside `PAGE_JS` is a shredder.** The share page's inline
+  script ships through `.replace(/\n/g,"")`, so a line comment inside it is
+  joined onto one line and comments out every brace after it. The page renders
+  perfectly, the chips stop working, and the only symptom is `Unexpected end of
+  input` in a console nobody has open. Keep every comment about that script
+  *outside* the template literal. Same file, same class of trap: a **backtick**
+  in a comment inside `PAGE_CSS` ends the template literal — `` `cs-*` `` in an
+  explanatory comment was a parse error four lines later. `shareList.test.ts`
+  now parses the emitted `<script>` and proves the check bites.
+- **The e2e suite cannot pass while the seeded campus is shut.** Four
+  assertions need somewhere to be open — the hero query *is* "near me, open
+  now, has outlets", and the Open-now chip asserts it "matches something in
+  the seed" — and `open_now` is computed from the real system clock against
+  `seed/shops.json`. The earliest weekday opening is **06:30** and the last
+  close is 02:00, so a run between roughly 02:00 and 06:30 local goes red for
+  the clock and not for the code. An hour of Phase 7 went into that.
+  `scripts/phase7-evidence.sh` now refuses to start in that window and says
+  why; the other five scripts do not. Same class as the freshness fixture
+  Phase 6 found that expires on 2026-10-13 — this one expires every night.
+- **:8787 is not reliably ours on this machine.** Another project in
+  `Projects/delphi` runs `wrangler dev` on the same port, and `workerd` is
+  supervised — kill it and a new one is listening within seconds, so there is
+  no winning that fight. `scripts/phase7-evidence.sh` therefore takes
+  `PORT=8791` and exports `COSIGN_BASE` from it; the server already read
+  `PORT`, and `playwright.config.ts`, `scripts/lighthouse.mjs` and
+  `scripts/boot-smoke.mjs` already read `COSIGN_BASE`. The five earlier
+  evidence scripts still hardcode 8787 and will simply refuse to run.
+- **Never edit a bash script while it is running.** Bash reads a script
+  incrementally by byte offset, so an edit shifts everything after the cursor
+  and the shell resumes mid-token. Fixing three `echo` lines in a running
+  `phase7-evidence.sh` killed it 20 minutes in with `line 94: pair: unbound
+  variable` — a line that is a comment, in a loop that is correct.
+- **`settled(page)` on a surface that has not arrived yet answers instantly and
+  about nothing.** It awaits `document.getAnimations()`, and a column that
+  settles when its data lands starts its animations *after* that await was
+  taken — so a sweep that goes `goto` → `settled` → axe is auditing whatever
+  happened to be painted. Two a11y sweeps had been doing exactly that for
+  phases and passed only because injecting axe takes long enough for React to
+  commit; the first list with an arrival cascade made axe sample 618 elements
+  mid-fade and call every one a contrast failure. `settled` now takes two
+  passes with a frame between. Still wait for the surface first —
+  `loaded(page, "[data-x]")`, or `waitForLoadState("networkidle")` where the
+  helper has no single selector to watch.
+- **Scroll-driven animations (`animation-timeline: view()`) are barred here,
+  and not only on taste.** They never finish, so `settled()` in
+  `e2e/fixtures.ts` — which awaits `document.getAnimations()` — would hang the
+  whole suite; and `shot()` takes `fullPage` screenshots, which scroll, so
+  every committed screenshot would catch rows mid-reveal. That is the Phase 3
+  half-faded-axe-sample bug with a camera. The design position is the same
+  answer: animate change, never reading.
+- **`tailwind.config.ts` had five animations under a comment forbidding them.**
+  `accordion-down/up` at 0.2 s animating *height*, `slide-up` 0.3 s, `fade-in`
+  0.4 s, and `shimmer 2s linear infinite` — a perpetual motion nothing in this
+  codebase could stop, because reduced motion is implemented by zeroing the
+  duration tokens and none of the five read one. Nothing outside the (now
+  deleted) shadcn tree ever used them. `motion.test.ts` fails on any of it.
+
+## Older gotchas (Phase 6 closing pass)
 
 - **A default that points at a signed-off phase is a loaded gun, and this trap
   has now been sprung four times.** Phase 3 found `share.spec.ts`; Phase 4 found
@@ -345,7 +419,7 @@ in PowerShell) to be sure.
   `scripts/boot-smoke.mjs` still drives chromium directly.
 - **Windows dev machine.** Paths contain a space (`Vineet Sista`) — always quote.
   Git Bash is available for POSIX scripts; PowerShell 5.1 is the primary shell.
-- **330 kB main JS chunk** after build, 100 kB gzipped (446 kB before the Phase 6
+- **331 kB main JS chunk** after build, 100 kB gzipped (446 kB before the Phase 6
   closing pass, which deleted two toast systems and a tooltip provider that
   `App.tsx` mounted and nothing used — 116 kB, a quarter of the bundle, for three
   things no screen rendered; 400 kB before Phase 5B; 382 kB before Phase 4; 345 kB
@@ -353,6 +427,12 @@ in PowerShell) to be sure.
   Code-splitting is still unaddressed; the share page must not ship this bundle at
   all — `e2e/share.spec.ts` asserts it requests zero `/assets/*.js` and zero
   stylesheets.
+- **25 kB CSS, 6 kB gzipped** (56 kB / 10 kB before Phase 7 removed
+  `tailwindcss-animate`). Deleting the 38 unused primitives did not move the JS —
+  a file nothing imports never enters the graph — but the Tailwind plugin emitted
+  its `animate-in` / `fade-*` / `zoom-*` / `slide-*` layer regardless, and that was
+  **56% of the stylesheet** for utilities no screen used and none of which could be
+  stopped by `prefers-reduced-motion`.
 - `tsconfig.json` is loose (`strictNullChecks: false`, `noImplicitAny: false`). Match
   existing style; don't fight it mid-phase.
 
@@ -385,8 +465,15 @@ in PowerShell) to be sure.
 
 ## Conventions
 
-- Path alias `@/` → `src/`. shadcn/ui primitives in `src/components/ui/` (do not
-  hand-edit generated primitives; `components.json` configures the CLI).
+- Path alias `@/` → `src/`. **There is no shadcn tree any more.** `src/components/ui/`
+  (38 generated primitives, 2,710 lines), `src/lib/utils.ts` and `components.json`
+  are gone, and with them 40 dependencies — every `@radix-ui/*`, `framer-motion`,
+  `lucide-react`, `cmdk`, `vaul`, `embla`, `react-day-picker`, `react-hook-form`,
+  `zod`, `tailwindcss-animate`. Nothing outside that tree imported one line of it,
+  and `components.json` was still configured for `baseColor: slate` — a config
+  that would generate blue-grey components into a warm-espresso design system.
+  The design system is `src/design/tokens.css` plus the `cs-*` layer; if a
+  primitive is ever wanted again, add that one, not the set. Dependencies: **8**.
 - **`src/design/tokens.css` is the canonical design system** — colour, type,
   space, radius, motion, in one file, read by `tailwind.config.ts`,
   `src/index.css`, and `server/pages/tokens.ts` (which inlines it into the SSR
@@ -430,7 +517,20 @@ in PowerShell) to be sure.
   `Home.tsx` and `ShopDetail.tsx` are the reference implementations, and
   `src/components/Nothing.tsx` is how every empty state is set. No cards, no radius
   above 3 px except the two pills, no icons on these surfaces (lucide is gone from
-  everything outside `src/components/ui/`).
+  the repo entirely).
+- **Motion is three verbs and there is deliberately no fourth** (Phase 7). `DRAW` —
+  a rule extends from its origin (`.cs-draw`, `.cs-stamp`, the live tab's mark, the
+  margin mark of a chosen row, both SSR mastheads); `SETTLE` — something that has
+  just arrived lands, 6 px and a fade (`.cs-settle`, and `.cs-column` which is only
+  sugar for setting its `--i` stagger by `:nth-child`); `PRESS` — the surface
+  answers a finger inside `--duration-fast` (ground up a step, a pill seated 1 px,
+  the margin mark drawing down). The rule the vocabulary rests on: **animate
+  change, never reading.** No surface reveals itself as you scroll past it, because
+  the list is not arriving — you are. Scroll-driven timelines were tried and
+  rejected on two counts beyond taste (see the gotchas). Every duration is
+  `var(--duration-*)`; `src/design/motion.test.ts` fails the suite on a literal
+  time, an `infinite`, an `animation` that does not fill `both`, a keyframe that
+  does not end at rest, or a stylesheet without the blanket reduced-motion block.
 - **Ember has two jobs and gold has one.** Ember: the order (rank numerals, the
   active tab's rule, the selection mark) and the act of writing (`SAVE IT`, the
   `Log` tab). Gold: the label voice. They never do each other's job, and neither
@@ -438,11 +538,13 @@ in PowerShell) to be sure.
 - Data fetching via `@tanstack/react-query` (the log flow prefetches `shops` /
   `meta` / `ranking` on the entry pill's `pointerdown`, which is why the measured
   path makes exactly one request — the save). Motion via CSS on the duration
-  tokens; **avoid `framer-motion` on new surfaces** — `whileTap`, springs and
-  `layoutId` ignore `prefers-reduced-motion`, which is a phase gate. The package
-  is still a dependency but nothing under `src/` imports it. Tailwind's own
-  `animate-*` utilities are the same trap for the same reason: `animate-spin` is
-  `spin 1s linear infinite` and no reduced-motion block reaches it.
+  tokens. **`framer-motion` and `tailwindcss-animate` are both uninstalled**, and
+  `motion.test.ts` fails if either returns: `whileTap`, springs and `layoutId`
+  ignore `prefers-reduced-motion`, and Tailwind's `animate-*` utilities are the
+  same trap for the same reason — `animate-spin` is `spin 1s linear infinite` and
+  no reduced-motion block reaches it. Reduced motion here is implemented by
+  zeroing four tokens, so anything that spells its own duration is an animation
+  nobody can turn off.
 - Domain types in `src/types/cosign.ts`; pure domain logic in `src/lib/` —
   `calendar.ts` (terms and finals week, replacing Phase 0's placeholder
   `semester.ts`), `timeBucket.ts`, `freshness.ts`, `geo.ts`, `discover.ts`,

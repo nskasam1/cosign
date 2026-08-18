@@ -308,8 +308,12 @@ const ShopDetail = () => {
         </section>
       )}
 
+      {/* The one thing on this page that just happened, so the one thing on
+          it that moves. It replaces a whole section that vanished; without a
+          settle the answer simply appears somewhere else on a page that has
+          reflowed underneath it. */}
       {confirmed && (
-        <p data-verified role="status" className="cs-caps mt-6 text-ember-ink">
+        <p data-verified role="status" className="cs-caps cs-settle mt-6 text-ember-ink">
           Noted — checked today, by you.
         </p>
       )}

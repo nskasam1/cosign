@@ -28,7 +28,7 @@ interface NothingProps {
 const Nothing = ({ kicker, title, body, action, standalone = false }: NothingProps) => {
   const Title = standalone ? "h1" : "p";
   return (
-    <div data-nothing className="border-t border-rule-strong pt-5">
+    <div data-nothing className="cs-settle border-t border-rule-strong pt-5">
       <p className="cs-caps text-gold">{kicker}</p>
       <Title className="cs-display mt-3 text-balance text-xl text-ink sm:text-2xl">{title}</Title>
       <p className="mt-2 max-w-[34rem] text-sm text-line">{body}</p>

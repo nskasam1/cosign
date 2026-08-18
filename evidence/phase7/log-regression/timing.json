@@ -1,0 +1,11 @@
+{
+  "runs_ms": [
+    3345,
+    3703,
+    3995
+  ],
+  "median_ms": 3703,
+  "budget_ms": 10000,
+  "cpu_throttle": "4x",
+  "network": "slow-4g"
+}

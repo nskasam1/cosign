@@ -686,6 +686,10 @@ test.describe("finals week, from the calendar", () => {
 
 /** One axe run, written out as evidence, failing on serious or critical. */
 async function auditSurface(page: Page, name: string, project: string): Promise<number> {
+  // The surface has to have ARRIVED before it is settled, or `settled` waits
+  // for the loading screen's animations, of which there are none — see the
+  // note on `settled` in e2e/fixtures.ts.
+  await page.waitForLoadState("networkidle");
   await settled(page);
   const run = await new AxeBuilder({ page })
     .withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"])
@@ -744,6 +748,63 @@ test.describe("the quality gates", () => {
       await expectNoRatingScale(page, name);
     }
     expect(Object.values(results).every((v) => v === 0)).toBe(true);
+  });
+
+  /**
+   * The hairlines ARE the structure of this design — there is no card, no
+   * shadow and no radius above 3px, so a rule between two rows is the only
+   * thing saying where one place ends and the next begins. Every one of them
+   * had disappeared from every list-semantic column in the app.
+   *
+   * `.cs-row:first-child { border-top: 0 }` is meant to suppress the rule
+   * above the FIRST row of a column. It keys on the row's parent, and half
+   * the columns here wrap: `<ol><li><Link class="cs-row">` makes every row
+   * the first child of its own list item, so every row matched. Twenty-two
+   * ranked places on /rank and on your own profile, six on a shared list,
+   * both group-session columns and both halves of the Maps import rendered
+   * as one undifferentiated block — and it looked deliberate, which is why
+   * it survived. The share page was never affected: server/pages/shareList.ts
+   * emits a flat `<ol><li>` and has had its rules since Phase 2.
+   *
+   * Checked on lists only, deliberately. A `<div>` column may legitimately
+   * hold two sections with a heading between them — Home's answer and the
+   * rest of its matches — and each of those starts its own column.
+   */
+  test("every list column keeps its hairlines, and only its first row goes without", async ({
+    page,
+    context,
+  }) => {
+    await signIn(context, VIEWER);
+    let columns = 0;
+    let rows = 0;
+    for (const [name, path] of await surfaces(page)) {
+      await page.goto(path);
+      await expect(page.locator("main")).toBeVisible();
+      // `main` is on screen while the column is still in flight — every
+      // surface here marks its own loading state — and a sweep that reads
+      // the DOM once finds the loading screen. This one has to COUNT what
+      // it found, so it cannot lean on Playwright's retry.
+      await page.waitForLoadState("networkidle");
+      await settled(page);
+      const found = await page.evaluate(() =>
+        [...document.querySelectorAll("ol, ul")]
+          .map((list) => [...list.querySelectorAll(".cs-row")])
+          .filter((r) => r.length > 1)
+          .map((r) => r.map((el) => (getComputedStyle(el).borderTopWidth === "0px" ? 0 : 1))),
+      );
+      for (const column of found) {
+        columns += 1;
+        rows += column.length;
+        expect(column.filter((n) => n === 0), `${name}: rows with no hairline`).toHaveLength(1);
+        expect(column[0], `${name}: the first row should be the bare one`).toBe(0);
+      }
+    }
+    // Without this the sweep could pass by visiting nothing, which is the
+    // shape of the four assertions Phase 6 found that could not fail. The
+    // viewer here has six ranked places and sees them on two surfaces, so
+    // two columns and ten rows is the floor the fixtures guarantee.
+    expect(columns, "the sweep found no list column to check").toBeGreaterThanOrEqual(2);
+    expect(rows).toBeGreaterThanOrEqual(10);
   });
 
   test("every target on every destination clears 44px", async ({ page, context }) => {

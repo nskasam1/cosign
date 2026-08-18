@@ -110,7 +110,7 @@ const RankingFlow = () => {
           </div>
         </div>
       ) : (
-        <ol className="mt-6">
+        <ol className="cs-column mt-6">
           {entries.map((e) => (
             <li key={e.shop_id}>
               <Link

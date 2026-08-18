@@ -377,7 +377,7 @@ const GroupSession = () => {
                   <p className="mt-3 text-sm text-line">
                     Each of these fails exactly one thing somebody asked for, and it says which, and whose.
                   </p>
-                  <ul className="mt-4">
+                  <ul className="cs-column mt-4">
                     {view.one_need_away.map((n) => {
                       const p = view.places[n.shop_id];
                       const who = namesFor(view, n.askedBy);
@@ -452,7 +452,7 @@ const GroupSession = () => {
                     ? `. The ${view.unknown_to_all.length} nearest are below.`
                     : "."}
                 </p>
-                <ul className="mt-5">
+                <ul className="cs-column mt-5">
                   {view.unknown_to_all.map((id) => {
                     const p = view.places[id];
                     return (

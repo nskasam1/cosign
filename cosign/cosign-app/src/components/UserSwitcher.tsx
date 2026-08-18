@@ -1,6 +1,15 @@
 // The dev user-switcher — auth v1's entire sign-in surface. Pick a seeded
 // user, or head to onboarding to make a new one. Replaces the deleted
 // email/password LoginScreen; there is no password anywhere in this product.
+//
+// It is also, and this had gone unnoticed for five phases, the FRONT DOOR:
+// `/` is the only unauthenticated route in the app that is not a token link,
+// so this is what a person sees who typed the address rather than being sent
+// one. It opened with "Cosign · dev build / Who's this?" — a tool's screen,
+// on the one surface where somebody has not yet been told what any of this
+// is. It still does exactly the same job with exactly the same shapes; it
+// just says the product's own sentence first, the way the share page does
+// before it shows you a list.
 
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
@@ -12,21 +21,45 @@ const UserSwitcher = () => {
   const { switchTo } = useAuth();
   const [users, setUsers] = useState<User[]>([]);
   const [busy, setBusy] = useState<string | null>(null);
+  /** Neither the list arrived nor a switch went through. Not `isError`. */
+  const [unreachable, setUnreachable] = useState(false);
+  const [trouble, setTrouble] = useState<string | null>(null);
   const navigate = useNavigate();
 
   useEffect(() => {
-    api.authUsers().then(({ users }) => setUsers(users));
+    // A bare `.then`, on the front door, for five phases: with the server
+    // down this screen rendered its heading over nothing at all and gave no
+    // reason — the same silence Phase 6 found in Onboarding, in the same
+    // shape, one component away. Gate on the DATA rather than on a loading
+    // flag: a request the browser paused because it went offline is neither
+    // loading nor errored.
+    api
+      .authUsers()
+      .then(({ users }) => setUsers(users))
+      .catch(() => setUnreachable(true));
   }, []);
 
   return (
     <main data-switcher className="cs-wrap pb-16 pt-[max(var(--space-8),env(safe-area-inset-top))]">
-      <p className="cs-caps border-b border-rule pb-4 text-gold">Cosign · dev build</p>
-      <h1 className="cs-display mt-6 text-3xl text-ink sm:text-4xl">Who's this?</h1>
-      <p className="mt-3 text-sm text-line">
-        Pick a seeded person. There are no passwords here — this whole thing runs on your machine.
+      <p className="cs-caps border-b border-rule pb-4 text-gold">Cosign</p>
+      <h1 className="cs-display mt-6 text-balance text-3xl text-ink sm:text-4xl">
+        Places near campus, cosigned by the people you’d actually ask.
+      </h1>
+      {/* The same rule, drawing itself, that sits under Home's question and
+          marks the live tab — the product's one recurring mark, and this is
+          the first time anybody arriving here sees it. */}
+      <div className="cs-draw mt-5 h-px w-full bg-ember" aria-hidden="true" />
+      {/* One line of caps, not two. Tracked small caps are the label voice
+          and a wrapped one is a wall of shouting — the same note Phase 4
+          wrote about Home's hero summary. The rest of the sentence goes in
+          the body voice underneath, where it belongs. */}
+      <p className="cs-caps mt-3 text-gold">Never scored, never bought</p>
+      <p className="mt-4 text-sm text-line">
+        Ranked head to head, one place at a time. Pick somebody to look around as — no passwords, and none of
+        it leaves this machine.
       </p>
 
-      <div className="mt-6">
+      <div className="cs-column mt-6">
         {users.map((u) => (
           <button
             key={u.id}
@@ -35,8 +68,14 @@ const UserSwitcher = () => {
             disabled={busy !== null}
             onClick={async () => {
               setBusy(u.id);
+              setTrouble(null);
               try {
                 await switchTo(u.id);
+              } catch {
+                // A try/finally with no catch put every button back exactly
+                // as it was and said nothing, which reads as "that worked"
+                // to somebody still looking at the list they just tapped.
+                setTrouble(`Couldn't sign in as ${u.display_name.split(" ")[0]}. Tap it again.`);
               } finally {
                 setBusy(null);
               }
@@ -57,6 +96,19 @@ const UserSwitcher = () => {
           </button>
         ))}
       </div>
+
+      {users.length === 0 && unreachable && (
+        <p data-users-unreachable role="alert" className="mt-6 border-t border-rule pt-5 text-sm text-line">
+          Cosign can't reach its own server, so it can't offer you anybody to be. Nothing is broken on your
+          end — try again in a moment.
+        </p>
+      )}
+
+      {trouble && (
+        <p role="alert" className="mt-5 text-sm text-line">
+          {trouble}
+        </p>
+      )}
 
       <div className="mt-8 border-t border-rule-strong pt-6">
         <button type="button" onClick={() => navigate("/onboarding")} className="cs-pill-ghost">

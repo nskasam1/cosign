@@ -599,6 +599,12 @@ test.describe("accessibility", () => {
       if (s.as) await signIn(context, s.as);
       else await context.clearCookies();
       await page.goto(s.path ?? (s.name === "group-join" ? `/g/${session.id}` : `/g/${answered}`));
+      // Every surface here fetches, and every one of them marks its own
+      // loading state with its own attribute — so `main` is on screen with
+      // nothing on it. Auditing that was auditing a loading screen; it only
+      // ever passed because injecting and running axe takes long enough for
+      // React to commit in the meantime, which is luck, not a wait.
+      await page.waitForLoadState("networkidle");
       await settled(page);
       const results = await new AxeBuilder({ page })
         .withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"])

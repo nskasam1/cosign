@@ -54,6 +54,13 @@ img{display:block;max-width:100%}
 :focus-visible{outline:2px solid hsl(var(--ember));outline-offset:3px}
 .wrap{max-width:37.25rem;margin:0 auto;padding:var(--space-6) var(--gutter) var(--space-10)}
 .kicker{font:700 var(--text-2xs)/1 var(--font-body);letter-spacing:var(--tracking-caps);text-transform:uppercase;color:hsl(var(--gold));margin:0 0 var(--space-4);padding-bottom:var(--space-4);border-bottom:1px solid hsl(var(--rule))}
+/* The masthead rule draws itself, exactly as it does on /s/ — the two
+   public surfaces share a vocabulary, not a template, and that now includes
+   how they open. Same scoping rule: the kicker inside .cta is a section
+   label and prints no rule. */
+.wrap>.kicker{position:relative;border-bottom:0}
+.wrap>.kicker::after{content:"";position:absolute;left:0;right:0;bottom:0;height:1px;background:hsl(var(--rule));transform-origin:left;animation:draw var(--duration-slow) var(--ease-out) both}
+@keyframes draw{from{transform:scaleX(0)}to{transform:scaleX(1)}}
 .who{display:flex;align-items:center;gap:var(--space-3);margin:0 0 var(--space-5)}
 .who img{width:48px;height:48px;border-radius:var(--radius-full);flex:none;background:hsl(var(--surface))}
 h1{font:400 var(--text-xl)/var(--leading-tight) var(--font-display);letter-spacing:var(--tracking-display);margin:0}
@@ -110,8 +117,9 @@ h3{font:400 var(--text-lg)/var(--leading-snug) var(--font-display);letter-spacin
 .cta{margin-top:var(--space-10);padding-top:var(--space-6);border-top:1px solid hsl(var(--rule-strong))}
 .cta h2{font:400 var(--text-xl)/1.2 var(--font-display);letter-spacing:var(--tracking-display);margin:var(--space-3) 0;text-wrap:balance}
 .cta p{font:400 var(--text-sm)/1.55 var(--font-body);color:hsl(var(--muted));margin:0 0 var(--space-5)}
-.cta a{display:inline-flex;align-items:center;min-height:var(--tap);padding:0 var(--space-5);border:1px solid hsl(var(--ember));border-radius:var(--radius-full);color:hsl(var(--ember-ink));font:700 var(--text-xs)/1 var(--font-body);letter-spacing:var(--tracking-caps);text-transform:uppercase;text-decoration:none;transition:background var(--duration-fast) var(--ease-out),color var(--duration-fast) var(--ease-out)}
+.cta a{display:inline-flex;align-items:center;min-height:var(--tap);padding:0 var(--space-5);border:1px solid hsl(var(--ember));border-radius:var(--radius-full);color:hsl(var(--ember-ink));font:700 var(--text-xs)/1 var(--font-body);letter-spacing:var(--tracking-caps);text-transform:uppercase;text-decoration:none;transition:background var(--duration-fast) var(--ease-out),color var(--duration-fast) var(--ease-out),transform var(--duration-fast) var(--ease-out)}
 .cta a:hover{background:hsl(var(--ember));color:hsl(var(--bg))}
+.cta a:active{transform:translateY(1px)}
 footer{margin-top:var(--space-8);padding-top:var(--space-5);border-top:1px solid hsl(var(--rule));font:400 var(--text-2xs)/1.7 var(--font-body);letter-spacing:.07em;text-transform:uppercase;color:hsl(var(--muted))}
 @media (min-width:40rem){
   h1{font-size:var(--text-2xl)}
