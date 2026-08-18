@@ -54,6 +54,7 @@ persistence layer uses the built-in `node:sqlite`). The bun lockfiles are gone.
 | Phase 5B evidence | `bash scripts/phase5b-evidence.sh` | owns its own server + scratch DB; :8787 must be free; no Lighthouse gate (5B ships no public SSR surface) |
 | Phase 6 evidence | `bash scripts/phase6-evidence.sh` | the closing pass: every suite re-run as a regression + the gate and its font controls; owns its server + scratch DB; ~20 min |
 | Phase 7 evidence | `bash scripts/phase7-evidence.sh` | the motion pass: the guard, the hairlines, every suite re-run, the gate as a regression; owns its server + scratch DB; ~20 min |
+| Post-commit verify | `PORT=8791 bash scripts/postcommit-verify.sh` | not a phase's evidence: writes to `evidence/scratch/`; owns its server + scratch DB; runs home/social **only when the campus is open** |
 | SPA boot smoke | `node scripts/boot-smoke.mjs` | `COSIGN_EVIDENCE_DIR=phase2/spa` to target a phase |
 
 `COSIGN_EVIDENCE=<phase>` picks the directory Playwright writes into. It
@@ -79,7 +80,16 @@ The Phase 2/5A Lighthouse gates run against `npm run prod` — **never**
 the local TypeScript; call `./node_modules/.bin/tsc` (or `.\node_modules\.bin\tsc.cmd`
 in PowerShell) to be sure.
 
-## Gotchas (verified on this machine, updated 2026-08-16 after the Phase 7 motion pass)
+## Gotchas (verified on this machine, updated 2026-08-18 after the post-commit pass)
+
+- **A `fullPage` screenshot can fail under load, and it is not the size cap.**
+  `page.screenshot({fullPage:true})` on the mobile share page threw
+  `Protocol error (Page.captureScreenshot): Unable to capture screenshot` once
+  mid-suite beside a build and a server, then passed 3/3 in isolation. Measure
+  before you chase it: that page is 2302 CSS px, i.e. 4604 device px at the
+  suite's deviceScaleFactor, against Chromium's ~16384 texture cap — nowhere
+  near it. Same cause as the Lighthouse spread. Retry; do not add a wait to a
+  test that is already correct.
 
 - **`:first-child` is about the WRAPPER, and half the columns here wrap.**
   `.cs-row:first-child { border-top: 0 }` is meant to suppress the hairline
