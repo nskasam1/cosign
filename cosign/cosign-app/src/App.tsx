@@ -2,6 +2,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Route, Routes } from "react-router-dom";
 import { AuthProvider } from "@/hooks/useAuth";
 import AppShell from "@/components/AppShell";
+import RouteFocus from "@/components/RouteFocus";
 import RequireAuth from "@/components/RequireAuth";
 import Home from "./pages/Home";
 import LogFlow from "./pages/LogFlow";
@@ -33,6 +34,11 @@ const App = () => (
   <QueryClientProvider client={queryClient}>
     <AuthProvider>
       <BrowserRouter>
+        {/* Once, here, and never inside a <Route element>: AppShell is
+            instantiated per route and remounts whenever the surrounding
+            structure changes, which silently re-arms the first-render guard.
+            See the comment in RouteFocus.tsx. */}
+        <RouteFocus />
         <Routes>
           {/* The shell wraps destinations, never journeys: the log flow,
               the head-to-head and onboarding each have one way out and

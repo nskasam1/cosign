@@ -15,6 +15,15 @@
 # `npx playwright test` silently measures the stale server and the previous
 # build. So kill the wrapper (so it does not linger as an orphan) and then
 # whatever actually owns the port.
+#
+# It must also not RETURN until the port is genuinely free, and that is not
+# fussiness. `powershell -NoProfile` takes the better part of a second to
+# start; if the trap returns before the kill lands, the next script in the same
+# shell can seed, build and stand its own server on that port inside the
+# window — and the kill then arrives and takes out the NEW server. That
+# happened twice on 2026-08-18: once it made seven social.spec tests fail with
+# ECONNREFUSED and read exactly like a code regression, and once it killed a
+# gate run's server whose own log showed a clean start and no error at all.
 stop_server() {
   kill "$1" 2>/dev/null
   shift
@@ -22,6 +31,12 @@ stop_server() {
     powershell -NoProfile -Command \
       "Get-NetTCPConnection -LocalPort $port -State Listen -ErrorAction SilentlyContinue | ForEach-Object { Stop-Process -Id \$_.OwningProcess -Force }" \
       >/dev/null 2>&1
+    # Wait for it to be gone rather than assuming it is. Ten seconds is far
+    # longer than the kill has ever taken, and still bounded.
+    for _ in $(seq 1 20); do
+      curl -s -o /dev/null --max-time 1 "http://localhost:$port/api/meta" || break
+      sleep 0.5
+    done
   done
 }
 

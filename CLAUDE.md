@@ -55,6 +55,11 @@ persistence layer uses the built-in `node:sqlite`). The bun lockfiles are gone.
 | Phase 6 evidence | `bash scripts/phase6-evidence.sh` | the closing pass: every suite re-run as a regression + the gate and its font controls; owns its server + scratch DB; ~20 min |
 | Phase 7 evidence | `bash scripts/phase7-evidence.sh` | the motion pass: the guard, the hairlines, every suite re-run, the gate as a regression; owns its server + scratch DB; ~20 min |
 | Post-commit verify | `PORT=8791 bash scripts/postcommit-verify.sh` | not a phase's evidence: writes to `evidence/scratch/`; owns its server + scratch DB; runs home/social **only when the campus is open** |
+| Perf gate + a11y probe | `PORT=8791 bash scripts/gate-and-a11y.sh` | the restated criterion on both public pages, then the accessibility checks axe cannot make; owns its server + scratch DB |
+| A11y probe alone | `COSIGN_BASE=http://localhost:8791 node scripts/a11y-probe.mjs` | tab order, focus indicators, names, live regions, focus on route/step change |
+| Price font subsetting | `node scripts/subset-fonts.mjs` | report only; needs `pip install --user fonttools brotli`. `--write` exists and is deliberately unused |
+| Gate, measured 3 ways | `PORT=8791 bash scripts/gate-experiment.sh` | simulate vs devtools vs cpu, both public pages — the experiment behind the restated criterion |
+| Prove the focus test bites | `PORT=8791 bash scripts/prove-route-focus.sh` | removes `<RouteFocus />`, rebuilds, expects red, restores |
 | SPA boot smoke | `node scripts/boot-smoke.mjs` | `COSIGN_EVIDENCE_DIR=phase2/spa` to target a phase |
 
 `COSIGN_EVIDENCE=<phase>` picks the directory Playwright writes into. It
@@ -80,7 +85,79 @@ The Phase 2/5A Lighthouse gates run against `npm run prod` — **never**
 the local TypeScript; call `./node_modules/.bin/tsc` (or `.\node_modules\.bin\tsc.cmd`
 in PowerShell) to be sure.
 
-## Gotchas (verified on this machine, updated 2026-08-18 after the post-commit pass)
+## Gotchas (verified on this machine, updated 2026-08-18 after Phase 8)
+
+- **The perf gate no longer decides on LCP, and the reason is three
+  measurements rather than an argument.** `simulated LCP <= 1.0 s, median of
+  five` is gone; the gate is now `perf >= 90`, `a11y >= 95`, and the simulated
+  LCP as a **tripwire at 1.5 s**, with the real protection being the
+  deterministic page-weight assertions in `share.spec.ts`/`profile.spec.ts`.
+  `/p/` cannot reach 1.0 s (947 ms is its floor with the fonts blocked
+  entirely); `/s/` passes it about half the time on unchanged bytes (eleven
+  medians, 745–1143 ms); and **both attempts to measure it better came out
+  worse** — `LH_METHOD=devtools` ranged 1062–3421 ms and reversed which page
+  looks faster, `LH_METHOD=cpu` spread 813 ms and 2702 ms against ~310 ms for
+  `simulate`. Both survive as diagnostics that can never report a pass. Every
+  results JSON still carries `legacyPassed` against the old 1.0 s bar, so this
+  is auditable and reverses in one line of `GATE`.
+- **Font subsetting is worth 6.9 kB, not 21, and is rejected anyway.**
+  `scripts/subset-fonts.mjs` prices it: 52.2 -> 45.3 kB, ~44 ms. PLAN's earlier
+  "~110 ms" was 2.5x optimistic because `public/fonts/*.woff2` were extracted
+  from `@fontsource` *already Latin-subset* — 227 mapped codepoints, not the
+  ~700 of a full face. What the 6.9 kB would drop includes **U+2018**, five
+  combining accents, the euro sign and the bullet. `smart()` only ever emits
+  U+2019, so scanning the tree does not see U+2018 — but a phone's own smart
+  quotes do, and these are public pages carrying text a person typed. Don't.
+- **`stop_server` must not return before the port is free, and now doesn't.**
+  `powershell -NoProfile` takes ~1 s to start. If the trap returns first, the
+  next script in the same shell can seed, build and stand its own server on
+  that port inside the window — and the kill lands on the NEW server. This
+  happened twice in one evening: seven `social.spec` tests failed with
+  `ECONNREFUSED` and read exactly like a code regression, and a gate run
+  reported "stopped answering" about a server whose own log showed a clean
+  start and no error. If a suite fails with connection-refused, check for an
+  overlapping run before you read the diff.
+- **An evidence script may not report a result its own run did not produce.**
+  Phase 6's rule, broken again by a script written after it: when the server
+  died before the gate started, `gate-and-a11y.sh`'s summary read the JSON
+  sitting on disk and printed the *previous* run's numbers as this run's. It
+  stamps `RUN_STARTED_MS` now and prints `STALE` for anything older. Same
+  family as the `postcommit-verify.sh` bug below.
+- **A probe that guesses a field name will confidently answer the opposite of
+  the truth.** `postcommit-verify.sh` read `j.results || j.places || j.shops`
+  off `/api/discover` — the field is **`entries`** — and so printed "campus is
+  SHUT" at 18:44 on a Tuesday with 17 of 22 places open, then skipped two whole
+  suites on the strength of it. It survived its first run only because at 03:40
+  the campus really was shut. Assert the shape; a zero and a parse failure must
+  not look alike.
+- **`AppShell` is instantiated per `<Route element>`, so anything that keeps
+  state across navigations cannot live in it.** React reuses the instance only
+  while the surrounding structure matches: `/`, `/search` and `/rank` are all
+  `<RequireAuth><AppShell>` and reconcile to one instance, but `/:username` is
+  a bare `<AppShell>` and `*` has no shell at all, so both MOUNT a fresh one.
+  A "skip the first render" guard therefore re-arms and the effect never fires.
+  Measured, focus one second after tapping Search: from `/` H1, from `/rank`
+  H1, from `/maya` **body**, from a 404 **body**. `RouteFocus` lives outside
+  `<Routes>` for exactly this reason, and it covers the journeys too.
+- **The seeded academic calendar had autumn finals two days early, both years.**
+  `finals_start` was the last day of *instruction*, not the first day of
+  finals, in Autumn 2025 and Autumn 2026 but in neither spring term. Checked
+  against OSU's published five-year view and corrected, along with a Summer
+  2026 start that was two days late. If you touch `seed/academic-calendar.json`,
+  `server/repo/discover.test.ts`'s `FINALS` fixture is coupled to it — and note
+  its pair of dates must share a weekday, because the test's whole premise is
+  that the open-shop set is identical and only the phase differs.
+- **axe has never been able to answer the question people mean by
+  "accessible".** It audits one static DOM: it cannot press Tab, and it has no
+  opinion about what happened *between* two DOMs. Twelve green axe reports
+  across seven phases said nothing at all about focus being dropped on every
+  route change in the app. `node scripts/a11y-probe.mjs` covers what they
+  cannot — tab order, focus indicators, accessible names, live regions, and
+  focus on change. Its 10 standing warnings are deliberate: six *no skip link*
+  (content precedes `<nav>` in DOM order here, so tabbing already starts in the
+  content) and four *no live region* on surfaces with nothing async to say.
+
+## Older gotchas (Phase 7 motion pass)
 
 - **A `fullPage` screenshot can fail under load, and it is not the size cap.**
   `page.screenshot({fullPage:true})` on the mobile share page threw

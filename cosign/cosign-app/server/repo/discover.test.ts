@@ -45,10 +45,17 @@ const CALENDAR: AcademicCalendar = JSON.parse(
   readFileSync(join(DEFAULT_SEED_DIR, "academic-calendar.json"), "utf-8"),
 );
 
-// Both are Thursdays at 2pm, so the shops that are open are exactly the same
+// Both are WEDNESDAYS at 2pm, so the shops that are open are exactly the same
 // set — the only thing that differs between these two runs is the phase.
-const MID_SEMESTER = new Date("2026-10-15T14:00:00-04:00");
-const FINALS = new Date("2026-12-10T14:00:00-05:00");
+//
+// They were Thursdays until 2026-08-18, when the seeded calendar was checked
+// against what the registrar actually publishes and Autumn's `finals_start`
+// turned out to be the last day of INSTRUCTION rather than the first day of
+// finals — two days early, in both autumn terms and neither spring one. The
+// old FINALS date (Thu 2026-12-10) is mid-semester under the corrected
+// calendar, so it moved rather than the calendar bending to fit the test.
+const MID_SEMESTER = new Date("2026-10-14T14:00:00-04:00");
+const FINALS = new Date("2026-12-16T14:00:00-05:00");
 
 type View = ReturnType<typeof discover>;
 const ids = (v: View) => v.entries.map((e) => e.id);

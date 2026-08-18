@@ -19,6 +19,7 @@ import {
   EVIDENCE,
   expectNoRatingScale,
   expectTapTargets,
+  loaded,
   settled,
   shot,
   shotViewport,
@@ -524,6 +525,60 @@ test.describe("the shell", () => {
     await page.locator('[data-tab="log"]').click();
     await expect(page.locator('[data-logflow][data-step="where"]')).toBeVisible();
     await expect(page.locator("[data-shell]")).toHaveCount(0);
+  });
+
+  test("a route change moves focus to the new page, not nowhere", async ({ page, context }) => {
+    // The shelf swaps the whole document. Without focus management a sighted
+    // person sees a new page and somebody on a screen reader hears nothing at
+    // all, still standing on the tab they pressed. The log flow has handled
+    // this since Phase 3 (`StepTitle`); every other route in the app did not,
+    // and no axe report can see it — axe audits one static DOM and has no
+    // opinion about what happened between two of them.
+    //
+    // Deliberately asserts the SECOND navigation onward, never the first
+    // paint: on a cold load the browser's own focus is correct and stealing it
+    // is its own bug, so `useRouteFocus` skips that one on purpose.
+    await signIn(context, VIEWER);
+    await page.goto("/");
+    await loaded(page, "[data-home]");
+    const landed = await page.evaluate(() => document.activeElement?.tagName);
+    expect(landed, "a cold load must not have its focus stolen").toBe("BODY");
+
+    // Two transitions, because the first version of this only checked one and
+    // the fix it was guarding was half broken. `/` and `/search` are both
+    // `<RequireAuth><AppShell>`, so React reconciles them to the SAME AppShell
+    // instance; a profile is a bare `<AppShell>` and mounts a fresh one. When
+    // the focus hook lived inside AppShell it therefore worked from Home and
+    // did nothing at all from a profile, and a test that only walked the first
+    // path called that a pass.
+    const focusAfter = async () =>
+      page.evaluate(() => ({
+        tag: document.activeElement?.tagName,
+        onBody: document.activeElement === document.body,
+        inMain: !!document.activeElement?.closest("main"),
+        text: document.activeElement?.textContent?.trim().slice(0, 40) ?? "",
+      }));
+
+    await page.locator('[data-tab="search"]').click();
+    await expect(page.locator("[data-search]")).toBeVisible();
+    const fromHome = await focusAfter();
+    expect(fromHome.onBody, "focus fell to <body> going home -> search").toBe(false);
+    expect(fromHome.inMain, "focus should land inside the new page's main").toBe(true);
+    expect(fromHome.tag).toBe("H1");
+
+    // ...and it is the NEW page's heading, not the one that was there before.
+    const heading = await page.locator("main h1").first().innerText();
+    expect(fromHome.text.length).toBeGreaterThan(0);
+    expect(heading.startsWith(fromHome.text.slice(0, 20))).toBe(true);
+
+    // Now the transition that remounts the shell.
+    await page.locator('[data-tab="you"]').click();
+    await expect(page.locator("[data-profile]")).toBeVisible();
+    await page.locator('[data-tab="search"]').click();
+    await expect(page.locator("[data-search]")).toBeVisible();
+    const fromProfile = await focusAfter();
+    expect(fromProfile.onBody, "focus fell to <body> going profile -> search").toBe(false);
+    expect(fromProfile.tag).toBe("H1");
   });
 
   test("is absent from the journeys, which have their own way out", async ({ page, context }) => {
