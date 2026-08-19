@@ -218,7 +218,23 @@
   .cs-chip:active {
     transform: translateY(1px);
   }
-  .cs-pill[disabled] {
+  /* Disabled, for every pressable shape in the vocabulary and not just the
+     one that happened to need it first.
+
+     `.cs-pill` has had this since Phase 3; `.cs-pill-ghost` and `.cs-word`
+     never got it, and nothing noticed until a measured audit found Phase 9's
+     "Not now" rendering identically enabled and disabled. A word that looks
+     pressable and does nothing is the worst of the three states, because the
+     person keeps pressing it. `pointer-events: none` is what makes the
+     difference honest rather than decorative — the control stops answering as
+     well as stops looking available.
+
+     `src/design/disabled.test.ts` fails if a new pressable class arrives
+     without one. */
+  .cs-pill[disabled],
+  .cs-pill-ghost[disabled],
+  .cs-word[disabled],
+  .cs-chip[disabled] {
     opacity: 0.45;
     pointer-events: none;
   }

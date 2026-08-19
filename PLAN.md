@@ -2010,6 +2010,47 @@ $ curl :8792/api/auth/users
       eight things only being in the room can tell you, and says which of the
       pre-filled fields came from a web search and are therefore unverified.
 
+- [x] **The design review Phase 9 should have had first.** PLAN asks every UI
+      phase to invoke `frontend-design` + `ui-ux-pro-max` *before* the work;
+      Phase 9 shipped three new surfaces without it. Run afterwards as
+      `scripts/ui-audit.mjs`, which measures the CRITICAL/HIGH rules on the
+      running app rather than looking them up — contrast ratios computed from
+      resolved colours (translucent foregrounds flattened onto their real
+      background first), tap targets and the gaps between them from live
+      bounding boxes, disabled controls, and applied motion durations.
+      **42 checks across seven surfaces: 0 fail, 0 warn** — after two real
+      defects, one in the product and one in the audit itself.
+      *(The skill's own CSV database and `search.py` are not installed on this
+      machine — `data/` and `scripts/` are 31-byte stubs pointing at a
+      `.claude/src/` that does not exist — so the rules were applied from
+      SKILL.md and measured rather than queried.)*
+- [x] **Two shapes in the `cs-*` vocabulary had no disabled state, for six
+      phases.** `.cs-pill` got `opacity: .45; pointer-events: none` in Phase 3
+      and `.cs-pill-ghost`, `.cs-word` and `.cs-chip` never did. Nothing noticed
+      until Phase 9 put a `disabled` `.cs-word` on onboarding — "Not now" —
+      which rendered identically enabled and disabled. A control that looks
+      pressable and does nothing is worse than a missing one, because the person
+      keeps pressing it. One shared rule now covers all four, and
+      `src/design/disabled.test.ts` (6 tests) fails if a pressable class arrives
+      without one or if the four drift apart. Proven to bite: reverting the rule
+      to `.cs-pill` alone fails four of the six.
+- [x] **`\u00b7` was rendering as six literal characters on the front door.**
+      In a string literal JavaScript resolves the escape; in JSX *text* nothing
+      does. Phase 9's patch wrote one into the roster caption, under `.cs-caps`,
+      which uppercases — so the first surface a stranger sees read **DEV BUILD
+      \U00B7 LOOK AROUND AS SOMEBODY**. Typecheck was happy (valid text), lint
+      was happy, the e2e assert on `[data-*]` hooks rather than prose, and the
+      measured audit has no opinion about spelling. It took looking at a
+      screenshot. `src/design/jsx-text.test.ts` (30 tests) strips string and
+      template literals and comments, then scans what is left of every `.tsx`
+      for `\uXXXX`/`\xXX`/`\n`/`\t`, and proves its own stripper still sees a
+      planted one.
+- [x] **The front door's pitch still described the dev switcher as the way in.**
+      "Pick somebody to look around as — no passwords" was written when the
+      roster was the only door. It now leads with the passkey, and the roster
+      sits under its own `Dev build ·` label as the subordinate thing it is —
+      one primary CTA per screen, which is the rule the surface was breaking.
+
 **Phase 9 decisions & assumptions (new — don't relitigate):**
 - **Attestation is refused unless `fmt` is `"none"`.** Verifying an attestation
   statement means shipping and maintaining a trust store of authenticator root
@@ -2065,6 +2106,7 @@ npm run build         JS 338.85 kB (gzip 102.64) · CSS 25.13 kB (gzip 5.99)
 e2e                   218 passed, 0 failed, 3 skipped  (196 + 22 passkey)
 perf gate             /s/ 745 ms · /p/ 1280 ms — both PASS the restated criterion
 a11y probe            0 FAIL, 10 warn, 32 checks
+ui audit              0 FAIL, 0 warn, 42 checks across 7 surfaces
 the strict server     POST /api/auth/switch -> 403, /api/auth/users -> []
 ```
 

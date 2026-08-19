@@ -86,7 +86,7 @@ const UserSwitcher = () => {
           the body voice underneath, where it belongs. */}
       <p className="cs-caps mt-3 text-gold">Never scored, never bought</p>
       <p className="mt-4 text-sm text-line">
-        Ranked head to head, one place at a time. Pick somebody to look around as — no passwords, and none of
+        Ranked head to head, one place at a time. No passwords — your own device is the key, and none of
         it leaves this machine.
       </p>
 
@@ -116,7 +116,7 @@ const UserSwitcher = () => {
 
       {devAuth === true && (
         <p className="cs-caps mt-8 border-t border-rule-strong pt-6 text-gold">
-          Dev build \u00b7 look around as somebody
+          Dev build · look around as somebody
         </p>
       )}
 

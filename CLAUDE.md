@@ -57,6 +57,7 @@ persistence layer uses the built-in `node:sqlite`). The bun lockfiles are gone.
 | Post-commit verify | `PORT=8791 bash scripts/postcommit-verify.sh` | not a phase's evidence: writes to `evidence/scratch/`; owns its server + scratch DB; runs home/social **only when the campus is open** |
 | Phase 9 evidence | `PORT=8791 bash scripts/phase9-evidence.sh` | passkeys: owns **two** servers (:8791 permissive, :8792 strict) + scratch DB; both ports free |
 | Passkey e2e | `COSIGN_EVIDENCE=phase9 npx playwright test passkey.spec.ts` | 22 tests; **writes**; the 4 strict ones skip without `COSIGN_STRICT_BASE` |
+| Measured UI audit | `COSIGN_BASE=http://localhost:8791 node scripts/ui-audit.mjs` | contrast, tap targets, tap spacing, disabled states, motion — 7 surfaces, signed-in and signed-out |
 | Perf gate + a11y probe | `PORT=8791 bash scripts/gate-and-a11y.sh` | the restated criterion on both public pages, then the accessibility checks axe cannot make; owns its server + scratch DB |
 | A11y probe alone | `COSIGN_BASE=http://localhost:8791 node scripts/a11y-probe.mjs` | tab order, focus indicators, names, live regions, focus on route/step change |
 | Price font subsetting | `node scripts/subset-fonts.mjs` | report only; needs `pip install --user fonttools brotli`. `--write` exists and is deliberately unused |
@@ -88,6 +89,37 @@ the local TypeScript; call `./node_modules/.bin/tsc` (or `.\node_modules\.bin\ts
 in PowerShell) to be sure.
 
 ## Gotchas (verified on this machine, updated 2026-08-18 after Phase 9)
+
+- **`\uXXXX` in JSX *text* is six characters, not an escape.** In a string
+  literal (`"That\u2019s me"`) JavaScript resolves it; between tags nothing
+  does. One reached the front door under `.cs-caps`, which uppercases, so it
+  read **DEV BUILD \U00B7 LOOK AROUND AS SOMEBODY**. tsc, lint and the e2e all
+  passed it — the e2e assert on `[data-*]` hooks, not prose. `src/design/
+  jsx-text.test.ts` scans for it now. Beware especially when patching `.tsx`
+  through a script: a shell heredoc or a Python replace will happily write the
+  literal.
+- **A pressable `cs-*` class needs a `[disabled]` rule, and `src/design/
+  disabled.test.ts` enforces it.** `.cs-pill` had one from Phase 3;
+  `.cs-pill-ghost`, `.cs-word` and `.cs-chip` did not, for six phases, and a
+  disabled `.cs-word` on onboarding rendered identically to an enabled one. All
+  four share one rule now (`opacity: .45; pointer-events: none`) — the second
+  half matters as much as the first, or the control still fires.
+- **`/` is two different screens and an audit must say which one it measured.**
+  Signed out it is the UserSwitcher (the front door, where the passkey button
+  lives); signed in it is Home. `ui-audit.mjs` signed in first and then measured
+  `/`, reporting "28 targets" under the heading "front door — passkey sign-in"
+  about a screen it had never loaded. It runs two browser contexts now and
+  prints the `[data-*]` marker it actually found, so a mismatch between the
+  label and the numbers is visible instead of hidden inside them. `/home` is
+  not a route at all — it 404s.
+- **A 1×1 `<input>` is usually correct, not a tap-target failure.** A visually
+  hidden file input driven by a styled label is the right pattern, in both its
+  forms: `<label for>` (the Takeout picker) and a wrapping `<label>` (the log
+  flow's photo input). The label is the target and carries the focus ring.
+  `ui-audit.mjs` measures the label; measuring the input and failing it sends
+  somebody to fix a control that is already right.
+
+## Older gotchas (Phase 9 build)
 
 - **`POST /api/auth/switch` is OFF in production, and the e2e suites depend on
   it.** It takes a user id and no credential and returns that person's session.
