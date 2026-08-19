@@ -30,7 +30,7 @@ cp "$SRC" "$BACKUP"
 rm -f "$SCRATCH" "$SCRATCH"-shm "$SCRATCH"-wal
 COSIGN_DB="$SCRATCH" npm run seed > /tmp/prove-seed.log 2>&1 || { cat /tmp/prove-seed.log; exit 1; }
 npm run build > /tmp/prove-build.log 2>&1 || { tail -20 /tmp/prove-build.log; exit 1; }
-COSIGN_DB="$SCRATCH" npm run serve:prod > /tmp/prove-server.log 2>&1 &
+COSIGN_DEV_AUTH=1 COSIGN_DB="$SCRATCH" npm run serve:prod > /tmp/prove-server.log 2>&1 &
 SERVER=$!
 wait_for_port "$PORT" || { tail -20 /tmp/prove-server.log; exit 1; }
 

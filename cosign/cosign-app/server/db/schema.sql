@@ -282,3 +282,40 @@ CREATE TABLE IF NOT EXISTS analytics_events (
   created_at TEXT NOT NULL
 );
 CREATE INDEX IF NOT EXISTS analytics_event_time ON analytics_events(event, created_at);
+
+-- ── passkeys (Phase 9) ──────────────────────────────────────────────────────
+-- The product's real credential. A person is their device, not a password:
+-- nothing here is a secret, so a stolen copy of this table cannot sign in as
+-- anybody. `public_key` is the COSE key exactly as the authenticator sent it;
+-- `credential_id` is base64url and is what the browser hands back at login.
+--
+-- A user may have several — a phone, a laptop, a hardware key — and losing all
+-- of them is the account-recovery problem this schema deliberately does NOT
+-- solve, because every recovery channel worth having (email, SMS) is an
+-- external service. See PLAN.md Phase 9.
+CREATE TABLE IF NOT EXISTS credentials (
+  id            TEXT PRIMARY KEY,
+  user_id       TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  credential_id TEXT NOT NULL UNIQUE,
+  public_key    TEXT NOT NULL,
+  alg           INTEGER NOT NULL,
+  sign_count    INTEGER NOT NULL DEFAULT 0,
+  -- What the person will recognise it by when they come to revoke one.
+  label         TEXT NOT NULL,
+  created_at    TEXT NOT NULL,
+  last_used_at  TEXT
+);
+CREATE INDEX IF NOT EXISTS credentials_user ON credentials(user_id);
+
+-- A challenge is single-use and short-lived, and it lives in the database
+-- rather than in memory so that it is single-use across restarts too, and so
+-- that "was this challenge already spent" is a question with one answer rather
+-- than one per process. Deleted on use; swept by age on every issue.
+CREATE TABLE IF NOT EXISTS webauthn_challenges (
+  challenge  TEXT PRIMARY KEY,
+  purpose    TEXT NOT NULL CHECK (purpose IN ('register','authenticate')),
+  -- Set only for a registration, which is bound to the account making it.
+  user_id    TEXT REFERENCES users(id) ON DELETE CASCADE,
+  created_at TEXT NOT NULL,
+  expires_at TEXT NOT NULL
+);

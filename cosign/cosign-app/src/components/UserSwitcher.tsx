@@ -15,16 +15,27 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { api } from "@/lib/api";
 import { useAuth } from "@/hooks/useAuth";
+import { Cancelled, signInWithPasskey, isSupported, unsupportedReason } from "@/lib/passkey";
 import type { User } from "@/types/cosign";
 
 const UserSwitcher = () => {
-  const { switchTo } = useAuth();
+  const { switchTo, adopt } = useAuth();
   const [users, setUsers] = useState<User[]>([]);
   const [busy, setBusy] = useState<string | null>(null);
   /** Neither the list arrived nor a switch went through. Not `isError`. */
   const [unreachable, setUnreachable] = useState(false);
   const [trouble, setTrouble] = useState<string | null>(null);
+  /**
+   * Whether the credential-free switcher exists at all. The server decides
+   * (COSIGN_DEV_AUTH), and it is `null` until it has answered — rendering
+   * either the passkey door or the roster before knowing would flash one and
+   * replace it with the other on the one screen where somebody is deciding
+   * whether this is a real product.
+   */
+  const [devAuth, setDevAuth] = useState<boolean | null>(null);
+  const [signingIn, setSigningIn] = useState(false);
   const navigate = useNavigate();
+  const noPasskeys = unsupportedReason();
 
   useEffect(() => {
     // A bare `.then`, on the front door, for five phases: with the server
@@ -35,9 +46,29 @@ const UserSwitcher = () => {
     // loading nor errored.
     api
       .authUsers()
-      .then(({ users }) => setUsers(users))
+      .then(({ users, dev_auth }) => {
+        setUsers(users);
+        setDevAuth(Boolean(dev_auth));
+      })
       .catch(() => setUnreachable(true));
   }, []);
+
+  const signIn = async () => {
+    setSigningIn(true);
+    setTrouble(null);
+    try {
+      adopt(await signInWithPasskey());
+      navigate("/");
+    } catch (err) {
+      // Abandoning the platform sheet is not a failure and must not paint a
+      // red line — the person changed their mind, which is allowed.
+      if (!(err instanceof Cancelled)) {
+        setTrouble(err instanceof Error ? err.message : "That passkey wasn\u2019t recognised.");
+      }
+    } finally {
+      setSigningIn(false);
+    }
+  };
 
   return (
     <main data-switcher className="cs-wrap pb-16 pt-[max(var(--space-8),env(safe-area-inset-top))]">
@@ -59,8 +90,39 @@ const UserSwitcher = () => {
         it leaves this machine.
       </p>
 
+      {isSupported() && (
+        <div data-passkey-door className="mt-7 border-t border-rule pt-6">
+          <button
+            type="button"
+            data-passkey-signin
+            disabled={signingIn}
+            onClick={signIn}
+            className="cs-pill"
+          >
+            {signingIn ? "Waiting for your device\u2026" : "Sign in with a passkey"}
+          </button>
+          <p className="mt-3 text-xs text-muted">
+            Your device holds the key. Nothing to remember, nothing to leak, and no account anywhere but
+            this machine.
+          </p>
+        </div>
+      )}
+
+      {noPasskeys && (
+        <p data-passkey-unsupported className="mt-7 border-t border-rule pt-6 text-sm text-line">
+          {noPasskeys} You can still make a profile below.
+        </p>
+      )}
+
+      {devAuth === true && (
+        <p className="cs-caps mt-8 border-t border-rule-strong pt-6 text-gold">
+          Dev build \u00b7 look around as somebody
+        </p>
+      )}
+
       <div className="cs-column mt-6">
-        {users.map((u) => (
+        {devAuth === true &&
+          users.map((u) => (
           <button
             key={u.id}
             type="button"

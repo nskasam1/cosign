@@ -10,6 +10,7 @@ import type { ShareToken } from "@/types/cosign";
 import PlacePlate from "@/components/log/PlacePlate";
 import Nothing from "@/components/Nothing";
 import Feed from "@/components/Feed";
+import Passkeys from "@/components/Passkeys";
 
 // In-app profile: the owner's view of their ranking and their share links.
 // The public artifact is the SSR page at /s/:token — minting and revoking
@@ -254,6 +255,8 @@ const Profile = () => {
       )}
 
       {is_self && <Feed />}
+
+      {is_self && <Passkeys />}
 
       {is_self && (
         <section data-share className="mt-8 border-t border-rule-strong pt-5">

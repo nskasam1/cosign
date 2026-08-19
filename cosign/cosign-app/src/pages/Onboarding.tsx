@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
+import { Cancelled, createPasskey, isSupported, unsupportedReason } from "@/lib/passkey";
 import { ApiError, api, type ShopSummary } from "@/lib/api";
 import { useTitle } from "@/lib/title";
 import ImportTakeout from "@/components/ImportTakeout";
@@ -36,7 +37,7 @@ function signupTrouble(e: unknown): string {
 
 const Onboarding = () => {
   useTitle("Start your list");
-  const { user, createAccount, refresh } = useAuth();
+  const { user, createAccount, adopt, refresh } = useAuth();
   const navigate = useNavigate();
 
   const [step, setStep] = useState<1 | 2>(user ? 2 : 1);
@@ -91,6 +92,38 @@ const Onboarding = () => {
       setStep(2);
     } catch (e) {
       setError(signupTrouble(e));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  /**
+   * The same step, with a passkey instead of nothing at all.
+   *
+   * The account and the credential are made in one ceremony: the options call
+   * creates the user, and the verify call is what mints the session. If the
+   * person abandons the platform sheet they are left with an account and no
+   * passkey on it — which is recoverable (the button is still there, and the
+   * server will happily register the first credential against the session they
+   * now hold) and is a great deal better than losing the name they just chose.
+   */
+  const submitWithPasskey = async () => {
+    setBusy(true);
+    setError(null);
+    try {
+      adopt(
+        await createPasskey({
+          username: username.trim(),
+          display_name: displayName.trim(),
+        }),
+      );
+      setStep(2);
+    } catch (e) {
+      if (e instanceof Cancelled) {
+        setError("Your device didn\u2019t finish that. Nothing is lost \u2014 try again when you are ready.");
+      } else {
+        setError(signupTrouble(e));
+      }
     } finally {
       setBusy(false);
     }
@@ -194,14 +227,48 @@ const Onboarding = () => {
           )}
 
           <div className="mt-8 border-t border-rule-strong pt-6">
-            <button
-              type="button"
-              onClick={submitProfile}
-              disabled={busy || !username.trim() || !displayName.trim() || !schoolId}
-              className="cs-pill"
-            >
-              {busy ? "Making it…" : "That's me"}
-            </button>
+            {/* A passkey is the primary door when the browser has one: it is
+                the only credential in this product, and the alternative below
+                it exists so that a browser without WebAuthn — or a person who
+                would rather not — is not stopped at the entrance. */}
+            {isSupported() ? (
+              <>
+                <button
+                  type="button"
+                  data-passkey-create
+                  onClick={submitWithPasskey}
+                  disabled={busy || !username.trim() || !displayName.trim() || !schoolId}
+                  className="cs-pill"
+                >
+                  {busy ? "Ask your device\u2026" : "That\u2019s me \u2014 use a passkey"}
+                </button>
+                <p className="mt-3 text-xs text-muted">
+                  Your phone or laptop keeps the key and unlocks it the way it already unlocks itself.
+                  Nothing to remember, and nothing here to steal.
+                </p>
+                <button
+                  type="button"
+                  data-skip-passkey
+                  onClick={submitProfile}
+                  disabled={busy || !username.trim() || !displayName.trim() || !schoolId}
+                  className="cs-word mt-5 block text-muted"
+                >
+                  Not now
+                </button>
+              </>
+            ) : (
+              <>
+                <button
+                  type="button"
+                  onClick={submitProfile}
+                  disabled={busy || !username.trim() || !displayName.trim() || !schoolId}
+                  className="cs-pill"
+                >
+                  {busy ? "Making it\u2026" : "That\u2019s me"}
+                </button>
+                <p className="mt-3 text-xs text-muted">{unsupportedReason()}</p>
+              </>
+            )}
           </div>
         </>
       ) : (

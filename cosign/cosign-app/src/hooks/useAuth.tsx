@@ -10,6 +10,14 @@ interface AuthContextValue {
   user: User | null;
   loading: boolean;
   switchTo: (userId: string) => Promise<void>;
+  /**
+   * Take a session the server has already established. The passkey routes set
+   * the cookie themselves as part of verifying the assertion, so there is
+   * nothing left to POST — the only thing missing is that this provider does
+   * not yet know who it is. Calling `refresh()` instead would work and would
+   * cost a round trip to learn something the response already told us.
+   */
+  adopt: (user: User) => void;
   createAccount: (input: { username: string; display_name: string; school_id?: string }) => Promise<void>;
   signOut: () => Promise<void>;
   refresh: () => Promise<void>;
@@ -41,6 +49,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     setUser(user);
   }, []);
 
+  const adopt = useCallback((next: User) => setUser(next), []);
+
   const createAccount = useCallback(async (input: { username: string; display_name: string; school_id?: string }) => {
     const { user } = await api.createUser(input);
     setUser(user);
@@ -52,7 +62,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   }, []);
 
   return (
-    <AuthContext.Provider value={{ user, loading, switchTo, createAccount, signOut, refresh }}>
+    <AuthContext.Provider value={{ user, loading, switchTo, adopt, createAccount, signOut, refresh }}>
       {children}
     </AuthContext.Provider>
   );

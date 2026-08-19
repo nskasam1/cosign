@@ -280,7 +280,7 @@ export const api = {
   me: () => req<{ user: User | null }>("/api/me"),
   meta: () => req<Meta>("/api/meta"),
 
-  authUsers: () => req<{ users: User[] }>("/api/auth/users"),
+  authUsers: () => req<{ users: User[]; dev_auth: boolean }>("/api/auth/users"),
   switchUser: (userId: string) => post<{ user: User }>("/api/auth/switch", { userId }),
   createUser: (input: { username: string; display_name: string; school_id?: string }) =>
     post<{ user: User }>("/api/auth/create", input),

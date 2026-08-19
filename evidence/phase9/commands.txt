@@ -1,0 +1,35 @@
+# Phase 9 evidence — 2026-08-19T00:24:46Z
+# node v24.11.0, npm 11.6.1
+# scratch database: /tmp/cosign-phase9.db (server/data/cosign.db untouched)
+# :8791 COSIGN_DEV_AUTH=1   :8792 NODE_ENV=production, no COSIGN_DEV_AUTH
+
+## the door, both ways
+$ curl -X POST :8791/api/auth/switch -d '{"userId":"u_maya"}'
+  permissive -> HTTP 200
+$ curl -X POST :8792/api/auth/switch -d '{"userId":"u_maya"}'
+{"error":"the user switcher is off — sign in with a passkey","dev_auth":false}  strict     -> HTTP 403  
+$ curl :8792/api/auth/users
+{"users":[],"dev_auth":false}
+
+## sign-in options name nobody
+  keys: challenge, rpId, userVerification, timeout
+  allowCredentials present: false
+  challenge bytes: 32
+
+## ./node_modules/.bin/tsc -b
+exit=0
+
+## npm test (unit)
+[2m      Tests [22m [1m[32m500 passed[39m[22m[90m (500)[39m
+[2m   Start at [22m 20:25:18
+[2m   Duration [22m 28.38s[2m (transform 5.37s, setup 60.17s, collect 34.92s, tests 19.11s, environment 5.29s, prepare 40.03s)[22m
+
+
+## npx playwright test passkey.spec.ts
+  ✓  19 [desktop] › e2e\passkey.spec.ts:206:3 › the credential-free door, when the operator has not opened it › POST /api/auth/switch is refused (35ms)
+  ✓  20 [desktop] › e2e\passkey.spec.ts:214:3 › the credential-free door, when the operator has not opened it › the roster is not readable, so the accounts are not even listed (27ms)
+  ✓  21 [desktop] › e2e\passkey.spec.ts:222:3 › the credential-free door, when the operator has not opened it › the front door shows no roster to pick from (828ms)
+  ✓  22 [desktop] › e2e\passkey.spec.ts:230:3 › the credential-free door, when the operator has not opened it › passkeys still work there — the door is shut, not the building (443ms)
+
+  22 passed (54.0s)
+passkey.spec  passed=22 failed=0 flaky=0 skipped=0

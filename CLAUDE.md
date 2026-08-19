@@ -9,7 +9,7 @@ resume from it alone.
 ## Repo layout
 
 ```
-<repo root>              ← docs (this file, PLAN.md), git root
+<repo root>              ← docs (this file, PLAN.md, DEPLOY.md), git root
 └── cosign/
     └── cosign-app/      ← the entire app
         ├── src/         ← Vite + React SPA
@@ -55,6 +55,8 @@ persistence layer uses the built-in `node:sqlite`). The bun lockfiles are gone.
 | Phase 6 evidence | `bash scripts/phase6-evidence.sh` | the closing pass: every suite re-run as a regression + the gate and its font controls; owns its server + scratch DB; ~20 min |
 | Phase 7 evidence | `bash scripts/phase7-evidence.sh` | the motion pass: the guard, the hairlines, every suite re-run, the gate as a regression; owns its server + scratch DB; ~20 min |
 | Post-commit verify | `PORT=8791 bash scripts/postcommit-verify.sh` | not a phase's evidence: writes to `evidence/scratch/`; owns its server + scratch DB; runs home/social **only when the campus is open** |
+| Phase 9 evidence | `PORT=8791 bash scripts/phase9-evidence.sh` | passkeys: owns **two** servers (:8791 permissive, :8792 strict) + scratch DB; both ports free |
+| Passkey e2e | `COSIGN_EVIDENCE=phase9 npx playwright test passkey.spec.ts` | 22 tests; **writes**; the 4 strict ones skip without `COSIGN_STRICT_BASE` |
 | Perf gate + a11y probe | `PORT=8791 bash scripts/gate-and-a11y.sh` | the restated criterion on both public pages, then the accessibility checks axe cannot make; owns its server + scratch DB |
 | A11y probe alone | `COSIGN_BASE=http://localhost:8791 node scripts/a11y-probe.mjs` | tab order, focus indicators, names, live regions, focus on route/step change |
 | Price font subsetting | `node scripts/subset-fonts.mjs` | report only; needs `pip install --user fonttools brotli`. `--write` exists and is deliberately unused |
@@ -85,7 +87,44 @@ The Phase 2/5A Lighthouse gates run against `npm run prod` — **never**
 the local TypeScript; call `./node_modules/.bin/tsc` (or `.\node_modules\.bin\tsc.cmd`
 in PowerShell) to be sure.
 
-## Gotchas (verified on this machine, updated 2026-08-18 after Phase 8)
+## Gotchas (verified on this machine, updated 2026-08-18 after Phase 9)
+
+- **`POST /api/auth/switch` is OFF in production, and the e2e suites depend on
+  it.** It takes a user id and no credential and returns that person's session.
+  It now needs `COSIGN_DEV_AUTH=1` or a non-production `NODE_ENV`, and so does
+  `GET /api/auth/users`. **Every script that stands a server must export
+  `COSIGN_DEV_AUTH=1`** or all 196 pre-Phase-9 e2e tests fail at sign-in —
+  `postcommit-verify.sh`, `gate-and-a11y.sh`, `gate-experiment.sh`,
+  `prove-route-focus.sh` and the permissive half of `phase9-evidence.sh` all do.
+  Passkeys are always on; they are the credential a real person uses.
+- **`COSIGN_RP_ID` is a registrable domain and it is irreversible.**
+  `cosign.example`, never `https://cosign.example`, never with a port. A passkey
+  is bound to it inside a credential stored on somebody else's phone: change it
+  and every passkey ever registered stops working, with no migration path. If
+  both apex and `www` are served, set the RP id to the apex and put both in
+  `COSIGN_ORIGINS`. See `DEPLOY.md`.
+- **WebAuthn needs a secure context, so passkeys are absent over LAN HTTP.**
+  They work on `https://` and on `http://localhost` and nowhere else. Testing on
+  a phone at `http://192.168.x.x` will show no sign-in button at all — that is
+  `isSecureContext` in `src/lib/passkey.ts` refusing to render a control that
+  would throw, not a bug.
+- **An e2e must never import `src/lib/*` into the page.** The first passkey spec
+  did `await import("/src/lib/passkey.ts")` inside `page.evaluate`, which works
+  only under `npm run dev` where Vite serves the source. Against the production
+  build — the mode every suite actually runs in — there is no such URL. Drive
+  the UI or the HTTP API.
+- **`page.evaluate` that returns a promise blocks the test.** Capturing a
+  request by resolving a promise from inside `evaluate`, then awaiting it before
+  the click that triggers the request, hangs for the full 30 s timeout. Install
+  the hook in an evaluate that returns immediately, stash the value on `window`,
+  click, then `expect.poll`.
+- **The seeding worksheet refuses to import on purpose.**
+  `seed/scouting/high-street-worksheet.csv` leaves `natural_light` and `camp_ok`
+  blank, and `parseShopsCsv` requires literal `true`/`false` — so
+  `npm run import:shops -- … --dry-run` names the row and column that still
+  needs somebody who was in the room. Do not "fix" it by filling those in.
+
+## Older gotchas (Phase 8)
 
 - **The perf gate no longer decides on LCP, and the reason is three
   measurements rather than an argument.** `simulated LCP <= 1.0 s, median of
@@ -528,6 +567,11 @@ in PowerShell) to be sure.
 - **Zero external services.** Local SQLite (`node:sqlite`) / file persistence only.
   No API keys, no CDNs (fonts included — self-host), no remote backend. Maps/geo/auth
   behind provider interfaces with local stubs (fixed campus coordinate).
+  **Phase 9 found the one credential that keeps this rule: passkeys.** WebAuthn
+  needs no service — the authenticator is the person's own device and the only
+  party is this server. It is the product's real sign-in; the dev user-switcher
+  is now off unless `COSIGN_DEV_AUTH=1`. The cost is that there is **no account
+  recovery**, which `DEPLOY.md` states plainly rather than papering over.
 - **No rating-scale inputs anywhere** — no stars, sliders, 1–10, numeric scales, or
   thumbs. Ranking input is head-to-head comparison only (binary-search insertion into
   the user's ordered list). Qualitative place data (noise etc.) uses labeled enum

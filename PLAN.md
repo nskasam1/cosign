@@ -1935,34 +1935,155 @@ had ever been able to answer.
 
 ---
 
+### Phase 9 — Passkeys, and shutting the door that had no lock ✅
+
+The founder's list opened with "decide how a person proves who they are", and
+noted that every workable answer breaks non-negotiable "zero external services"
+— except one. **WebAuthn needs no service at all:** the authenticator is the
+person's own device, the ceremony is a browser API, and the only party involved
+is this server. So it was built. Evidence: `evidence/phase9/`.
+
+The phase's central claim is a difference between two servers running the same
+build, and `scripts/phase9-evidence.sh` stands both at once to show it:
+
+```
+$ curl -X POST :8791/api/auth/switch -d '{"userId":"u_maya"}'   # COSIGN_DEV_AUTH=1
+  permissive -> HTTP 200
+$ curl -X POST :8792/api/auth/switch -d '{"userId":"u_maya"}'   # NODE_ENV=production
+  {"error":"the user switcher is off — sign in with a passkey","dev_auth":false}
+  strict     -> HTTP 403
+$ curl :8792/api/auth/users
+  {"users":[],"dev_auth":false}
+```
+
+- [x] **`POST /api/auth/switch` is off unless an operator turns it on.** It took
+      a user id and no credential and returned that person's session — auth v1
+      exactly as the brief specifies, correct on a laptop, an open door with a
+      doorbell on anything reachable from outside. It now requires
+      `COSIGN_DEV_AUTH=1` or a non-production `NODE_ENV`, and `/api/auth/users`
+      — a list of every account on the server — is behind the same gate. Every
+      evidence script sets the flag, because the other 196 e2e tests sign in
+      through that route and the alternative is a WebAuthn authenticator in CI.
+- [x] **WebAuthn registration and assertion, verified by hand** —
+      `server/auth/webauthn.ts` against W3C Level 2 §7.1/§7.2, and
+      `server/auth/cbor.ts`, because the attestation object and the COSE key are
+      CBOR and the obvious move is a dependency. Phase 7 took this repo from 48
+      dependencies to 8; the two structures involved use six CBOR major types
+      between them, so it is 160 lines and it is **strict** — trailing bytes,
+      indefinite lengths, duplicate map keys and tags all throw by name rather
+      than being skipped, because a decoder that guesses can be made to disagree
+      with the authenticator about what was signed. **36 unit tests** (500 total,
+      up from 464), built on real P-256 and RSA keys and real signatures, and
+      the refusals outnumber the happy paths four to one.
+- [x] **22 e2e tests against a real virtual authenticator** (`passkey.spec.ts`,
+      both viewports), driving the product's own UI: sign up through onboarding
+      with a passkey, sign out, sign back in **with no username typed**, and
+      four more against the strict server proving the credential-free door is
+      shut while passkeys still work. Chrome's CDP `WebAuthn` domain does real
+      key generation and real signing, so a wrong verification fails here
+      exactly as it would on a phone.
+- [x] **A captured assertion cannot be replayed.** Challenges live in the
+      database rather than in memory — single-use across restarts, and "was this
+      spent" has one answer rather than one per process — and are deleted on a
+      *failed* read as well as a successful one. The e2e captures a complete,
+      valid assertion as the app sends it and posts the identical body a second
+      time: 400.
+- [x] **The login screen cannot be used to enumerate accounts.**
+      `allowCredentials` is deliberately empty, so the platform offers whichever
+      passkeys it holds and the server works out who that is from the credential
+      that comes back. Naming the credentials for a username would answer "does
+      this person have an account here" to anybody who asks, about a product
+      whose whole privacy model is friends-only. Asserted in the e2e.
+- [x] **`DEPLOY.md`** — the repo had no deployment story at all, which was
+      correct while the only credential was a dev switcher and is not any more.
+      Node ≥ 24, one file, five environment variables, four `curl`s to run
+      afterwards, and the backup procedure. It leads on the one that is
+      irreversible: `COSIGN_RP_ID` is a registrable domain, a passkey is bound
+      to it forever, and changing it later breaks every passkey anybody has
+      registered with no way to migrate them.
+- [x] **`seed/scouting/` — the High Street weekend, pre-routed.** Eleven real
+      shops near campus with the six addresses that could be sourced, in the
+      exact `IMPORT_FORMAT.md` header, and **it deliberately does not parse**:
+      `natural_light` and `camp_ok` refuse to be blank, so
+      `npm run import:shops -- … --dry-run` walks down the file naming the row
+      and column that still needs somebody who was there. The README lists the
+      eight things only being in the room can tell you, and says which of the
+      pre-filled fields came from a web search and are therefore unverified.
+
+**Phase 9 decisions & assumptions (new — don't relitigate):**
+- **Attestation is refused unless `fmt` is `"none"`.** Verifying an attestation
+  statement means shipping and maintaining a trust store of authenticator root
+  certificates, and what it buys a first-party consumer RP is the ability to
+  say which brand of device somebody used. Cosign has no reason to care.
+  Registration asks for `none`, and anything else is rejected rather than
+  parsed and ignored — a statement we do not check must not be one we accept.
+- **`signCount` is enforced only when the authenticator uses it.** Synced
+  platform passkeys (iCloud Keychain, Google Password Manager) always report 0,
+  because a credential on five devices cannot keep a per-authenticator counter.
+  So 0-and-0 is fine; a counter that has ever moved must keep moving, and a
+  regression is treated as a clone and refused.
+- **Only ES256 and RS256.** Both are required of every conforming
+  authenticator. An algorithm we did not ask for arriving in a response is a
+  reason to stop, not to widen the switch.
+- **"No such passkey" and "wrong signature" are the same 401 with the same
+  words.** Distinguishing them turns the login endpoint into an oracle for
+  which credential ids exist.
+- **The user handle is the account id, never the username.** It is stored on the
+  authenticator and shown in the platform's own passkey manager; a handle that
+  changes when somebody renames themselves is a handle that stops matching an
+  account.
+- **There is no account recovery, and the product says so rather than implying
+  one.** Every route back in — an email, a text — is somebody else's service.
+  The profile screen states how many devices open the account, tells a person
+  with exactly one that there is no way back if they lose it, and makes adding a
+  second a single tap; the server refuses to remove the last passkey. The three
+  real options (recovery codes, a friend vouching, email) are written up at the
+  end of `DEPLOY.md` as a decision to make deliberately rather than to discover
+  when somebody drops a phone. **Nothing has been built for any of them.**
+- **The e2e drives the UI, never `src/lib/passkey.ts`.** The first draft imported
+  the module into the page, which works only under `npm run dev` where Vite
+  serves the source — against the production build there is no
+  `/src/lib/passkey.ts`, so the suite would have passed in dev and 404'd in the
+  mode every other suite runs in.
+
+---
+
 ## Where the build stands (2026-08-18)
 
-**Every phase 0 through 8 is complete and committed, and PLAN.md has no
+**Every phase 0 through 9 is complete and committed, and PLAN.md has no
 unchecked boxes.** The Phase 5A perf criterion was restated rather than met on
-its original terms; that is written up in full in its own box, it is auditable
+its original terms; that is written up in its own box, it is auditable
 (`legacyPassed` in every results JSON) and it reverses in one line.
 
 Verified on this machine after the last commit:
 
 ```
 tsc -b                exit 0
-npm test              464 passed / 32 files
+npm test              500 passed / 34 files
 npm run lint          0 errors, 1 warning
-npm run build         JS 331.60 kB (gzip 100.38) · CSS 25.03 kB (gzip 5.98)
-e2e, all five suites  196 passed, 0 failed, 3 skipped
+npm run build         JS 338.85 kB (gzip 102.64) · CSS 25.13 kB (gzip 5.99)
+e2e                   218 passed, 0 failed, 3 skipped  (196 + 22 passkey)
 perf gate             /s/ 745 ms · /p/ 1280 ms — both PASS the restated criterion
 a11y probe            0 FAIL, 10 warn, 32 checks
+the strict server     POST /api/auth/switch -> 403, /api/auth/users -> []
 ```
 
-**What is left needs a person, and this is the whole list:** count the outlets
-and test the wifi in twenty-two real rooms (`seed/IMPORT_FORMAT.md` and
-`npm run import:shops` are already built and tested for it); photograph them;
-ask the owners before publishing their door codes; decide how a person proves
-who they are, which changes a non-negotiable and needs an account in somebody's
-name; put it somewhere, which needs a domain and a host; recruit the first
-cohort on one campus; log a visit on a real phone on real campus wifi; and sit
-with somebody who uses a screen reader daily. Nothing on that list is blocked
-by the code.
+**What is left needs a person, and this is the whole list.** Nothing on it is
+blocked by the code, and two of them are now half-done rather than untouched:
+
+1. **Walk High Street.** `seed/scouting/` has eleven real shops and a
+   worksheet that refuses to import until somebody has been in the room.
+2. **Photograph them.** All 105 images are generated placeholders.
+3. **Ask the owners** before publishing door codes, prices and wifi speeds.
+4. **Put it somewhere.** `DEPLOY.md` is the checklist; it needs a domain, a
+   machine and a certificate, which need an account in somebody's name.
+   `COSIGN_RP_ID` is irreversible — read that section first.
+5. **Decide account recovery**, or accept that there is none. Three options are
+   written up at the end of `DEPLOY.md`; none is built.
+6. **Recruit the first cohort** on one campus.
+7. **Log a visit on a real phone**, and **register a passkey on one** — the
+   platform sheet is the one surface no harness here can drive.
+8. **Sit with somebody who uses a screen reader daily.**
 
 ---
 

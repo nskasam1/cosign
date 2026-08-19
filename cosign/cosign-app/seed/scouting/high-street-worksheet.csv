@@ -1,0 +1,12 @@
+id,slug,name,address,lat,lng,price_drip,price_latte,student_discount,hours,outlet_count,outlet_note,seat_count,table_size,wifi_mbps,bathroom_access,bathroom_code,natural_light,camp_ok,one_liner
+s_sweetwaters,sweetwaters,Sweetwaters Coffee & Tea,"15 E 17th Ave, Columbus, OH",,,,,,,,,,,,,,,,
+s_staufs,staufs,Stauf's Coffee Roasters,"1334 Neil Ave, Columbus, OH",,,,,,,,,,,,,,,,
+s_coffee-underground,coffee-underground,Coffee Underground,"2141 Indianola Ave, Columbus, OH",,,,,,,,,,,,,,,,
+s_connecting-grounds,connecting-grounds,Connecting Grounds,"160 W Woodruff Ave, Columbus, OH",,,,,,,,,,,,,,,,
+s_fox-in-the-snow,fox-in-the-snow,Fox in the Snow,"1031 N 4th St, Columbus, OH",,,,,,,,,,,,,,,,
+s_daydreamer,daydreamer,Daydreamer Coffee,"222 W Lane Ave, Columbus, OH",,,,,,,,,,,,,,,,
+s_kafe-kerouac,kafe-kerouac,Kafe Kerouac,,,,,,,,,,,,,,,,,
+s_buckeye-donuts,buckeye-donuts,Buckeye Donuts,,,,,,,,,,,,,,,,,
+s_crimson-cup,crimson-cup,Crimson Cup,,,,,,,,,,,,,,,,,
+s_grandview-grind,grandview-grind,Grandview Grind,,,,,,,,,,,,,,,,,
+s_coffee-connections,coffee-connections,Coffee Connections,,,,,,,,,,,,,,,,,

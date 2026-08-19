@@ -28,7 +28,7 @@ require_free_port "$PORT"
 rm -f "$SCRATCH" "$SCRATCH"-shm "$SCRATCH"-wal
 COSIGN_DB="$SCRATCH" npm run seed > /tmp/pc-seed.log 2>&1 || { cat /tmp/pc-seed.log; exit 1; }
 npm run build > /tmp/pc-build.log 2>&1 || { tail -20 /tmp/pc-build.log; exit 1; }
-COSIGN_DB="$SCRATCH" npm run serve:prod > /tmp/pc-server.log 2>&1 &
+COSIGN_DEV_AUTH=1 COSIGN_DB="$SCRATCH" npm run serve:prod > /tmp/pc-server.log 2>&1 &
 SERVER=$!
 trap 'stop_server "$SERVER" "$PORT"' EXIT
 wait_for_port "$PORT" || { tail -20 /tmp/pc-server.log; exit 1; }

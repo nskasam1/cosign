@@ -25,6 +25,15 @@ import * as logsRepo from "./repo/logsRepo.ts";
 import * as analytics from "./repo/analytics.ts";
 import * as notifications from "./repo/notifications.ts";
 import * as group from "./repo/group.ts";
+import * as creds from "./repo/credentials.ts";
+import {
+  b64u,
+  relyingPartyFromEnv,
+  verifyAssertion,
+  verifyRegistration,
+  ES256,
+  RS256,
+} from "./auth/webauthn.ts";
 import { MAX_PARTICIPANTS } from "../src/lib/group.ts";
 import { importSavedPlaces } from "./import/takeout.ts";
 import { renderSharePage, renderTombstone } from "./pages/shareList.ts";
@@ -86,6 +95,14 @@ app.onError((err, c) => {
   return c.json({ error: "server error" }, 500);
 });
 
+/**
+ * Is the credential-free user switcher available? Off in production unless the
+ * operator turns it on. `npm run dev` sets no NODE_ENV, so it is on there; the
+ * evidence scripts export COSIGN_DEV_AUTH=1 because the e2e suites use it.
+ */
+const DEV_AUTH =
+  process.env.COSIGN_DEV_AUTH === "1" || process.env.NODE_ENV !== "production";
+
 // ── auth: dev user-switcher over seeded users (signed cookie) ───────────────
 app.get("/api/me", (c) => {
   const uid = me(c);
@@ -93,9 +110,35 @@ app.get("/api/me", (c) => {
   return c.json({ user });
 });
 
-app.get("/api/auth/users", (c) => c.json({ users: social.listUsers(getDb()) }));
+// The roster the switcher offers. Same gate: a list of every account on the
+// server is not something a stranger gets to read.
+app.get("/api/auth/users", (c) =>
+  DEV_AUTH
+    ? c.json({ users: social.listUsers(getDb()), dev_auth: true })
+    : c.json({ users: [], dev_auth: false }),
+);
 
+/**
+ * The dev user-switcher, and the reason it is now behind a switch of its own.
+ *
+ * This route takes a user id and no credential at all and hands back that
+ * person's session. That is auth v1 exactly as the brief specifies it, and it
+ * is correct on a laptop demoing seeded accounts. On anything reachable from
+ * outside it is an open door with a doorbell: POST a user id, be that person.
+ *
+ * So it exists only when an operator has explicitly asked for it —
+ * `COSIGN_DEV_AUTH=1`, or any non-production NODE_ENV, which covers
+ * `npm run dev`. Every evidence script sets it, because the e2e suites sign in
+ * through this route and the alternative is a WebAuthn authenticator in CI.
+ * Passkeys, below, are the credential a real person uses and are always on.
+ */
 app.post("/api/auth/switch", async (c) => {
+  if (!DEV_AUTH) {
+    return c.json(
+      { error: "the user switcher is off — sign in with a passkey", dev_auth: false },
+      403,
+    );
+  }
   const { userId } = await c.req.json<{ userId: string }>();
   const user = social.userById(getDb(), userId);
   if (!user) return c.json({ error: "unknown user" }, 404);
@@ -128,6 +171,235 @@ app.post("/api/auth/logout", (c) => {
   c.header("Set-Cookie", clearSessionCookie());
   return c.json({ ok: true });
 });
+
+// ── passkeys: the product's real authentication ─────────────────────────────
+//
+// The ceremony is two round trips each way. The server issues a challenge and
+// records it; the browser has the authenticator sign it; the server verifies
+// and, only then, mints the session cookie the rest of the API already uses.
+// So passkeys sit *in front of* the existing session, and every route behind
+// `me(c)` is unchanged.
+const RP = relyingPartyFromEnv();
+
+/** Everything a `navigator.credentials.create()` call needs from us. */
+app.post("/api/auth/passkey/register/options", async (c) => {
+  const db = getDb();
+  const body = await c.req
+    .json<{ username?: string; display_name?: string }>()
+    .catch(() => ({}) as { username?: string; display_name?: string });
+  const existing = me(c);
+
+  // Two ways in: an existing session adding another device, or somebody
+  // signing up. There is no third — an anonymous caller cannot ask for options
+  // against a username that already exists, because that would let anybody
+  // start a registration ceremony against your account.
+  let user = existing ? social.userById(db, existing) : null;
+  if (!user) {
+    const username = body.username?.trim() ?? "";
+    const display = body.display_name?.trim() ?? "";
+    if (!/^[a-zA-Z0-9_.-]{2,24}$/.test(username)) return c.json({ error: "bad username" }, 400);
+    if (!display) return c.json({ error: "display name required" }, 400);
+    if (social.userByUsername(db, username)) return c.json({ error: "username taken" }, 409);
+    const schools = db.prepare("SELECT id FROM schools").all() as unknown as Array<{ id: string }>;
+    if (!schools.length) return c.json({ error: "no schools seeded" }, 500);
+    user = social.createUser(db, {
+      username,
+      display_name: display,
+      school_id: schools[0].id,
+    });
+  }
+
+  const challenge = creds.newChallenge(db, "register", user.id);
+  return c.json({
+    challenge,
+    rp: { id: RP.id, name: RP.name },
+    user: {
+      // The user handle is the account id, never the username: it is stored on
+      // the authenticator and shown in the platform's own passkey manager, and
+      // a handle that changes when somebody renames themselves is a handle
+      // that stops matching an account.
+      id: b64u.encode(Buffer.from(user.id, "utf-8")),
+      name: user.username,
+      displayName: user.display_name,
+    },
+    pubKeyCredParams: [
+      { type: "public-key", alg: ES256 },
+      { type: "public-key", alg: RS256 },
+    ],
+    // Refuse a second credential from an authenticator that already has one:
+    // the platform then says "you already have a passkey for this" instead of
+    // silently making a duplicate the person will never be able to tell apart.
+    excludeCredentials: creds
+      .credentialsFor(db, user.id)
+      .map((cr) => ({ type: "public-key", id: cr.credential_id })),
+    authenticatorSelection: {
+      residentKey: "preferred",
+      userVerification: "preferred",
+    },
+    attestation: "none",
+    timeout: 120_000,
+  });
+});
+
+app.post("/api/auth/passkey/register/verify", async (c) => {
+  const db = getDb();
+  const body = await c.req
+    .json<{
+      id?: string;
+      response?: { clientDataJSON?: string; attestationObject?: string };
+      label?: string;
+    }>()
+    .catch(() => ({}) as Record<string, never>);
+  const clientDataJSON = body.response?.clientDataJSON;
+  const attestationObject = body.response?.attestationObject;
+  if (!clientDataJSON || !attestationObject) return c.json({ error: "malformed response" }, 400);
+
+  // The challenge is read out of the client data and then TAKEN, so a replay
+  // of the same registration finds nothing waiting for it.
+  let challenge: string;
+  try {
+    challenge = JSON.parse(b64u.decode(clientDataJSON).toString("utf-8")).challenge as string;
+  } catch {
+    return c.json({ error: "malformed response" }, 400);
+  }
+  const taken = creds.takeChallenge(db, challenge, "register");
+  if (!taken.ok) return c.json({ error: taken.why }, 400);
+  if (!taken.userId) return c.json({ error: "challenge is not bound to an account" }, 400);
+
+  let result;
+  try {
+    result = verifyRegistration({
+      attestationObject,
+      clientDataJSON,
+      expectedChallenge: challenge,
+      rp: RP,
+    });
+  } catch (err) {
+    // The reason is logged for the operator and never returned: a verification
+    // failure is one bit to the caller, and the detail is a map of what this
+    // server checks.
+    console.warn(`passkey registration rejected: ${(err as Error).message}`);
+    return c.json({ error: "that passkey could not be registered" }, 400);
+  }
+
+  if (creds.credentialById(db, result.credentialId)) {
+    return c.json({ error: "that passkey is already registered" }, 409);
+  }
+
+  const label = (body.label ?? "").trim().slice(0, 40) || "This device";
+  creds.addCredential(db, {
+    userId: taken.userId,
+    credentialId: result.credentialId,
+    publicKey: result.publicKey,
+    alg: result.alg,
+    signCount: result.signCount,
+    label,
+  });
+
+  const user = social.userById(db, taken.userId);
+  c.header("Set-Cookie", makeSessionCookie(taken.userId));
+  return c.json({ user }, 201);
+});
+
+/** Sign-in options. Deliberately usernameless — see the comment. */
+app.post("/api/auth/passkey/authenticate/options", (c) => {
+  const db = getDb();
+  // `allowCredentials` is left EMPTY on purpose. Naming the credentials for a
+  // username would answer "does this person have an account here", to anybody
+  // who asks, about a product whose whole privacy model is friends-only. With
+  // an empty list the platform offers whichever passkeys it holds for this RP
+  // and we learn who it is from the credential that comes back.
+  const challenge = creds.newChallenge(db, "authenticate", null);
+  return c.json({
+    challenge,
+    rpId: RP.id,
+    userVerification: "preferred",
+    timeout: 120_000,
+  });
+});
+
+app.post("/api/auth/passkey/authenticate/verify", async (c) => {
+  const db = getDb();
+  const body = await c.req
+    .json<{
+      id?: string;
+      response?: {
+        clientDataJSON?: string;
+        authenticatorData?: string;
+        signature?: string;
+        userHandle?: string | null;
+      };
+    }>()
+    .catch(() => ({}) as Record<string, never>);
+  const r = body.response;
+  if (!body.id || !r?.clientDataJSON || !r.authenticatorData || !r.signature) {
+    return c.json({ error: "malformed response" }, 400);
+  }
+
+  let challenge: string;
+  try {
+    challenge = JSON.parse(b64u.decode(r.clientDataJSON).toString("utf-8")).challenge as string;
+  } catch {
+    return c.json({ error: "malformed response" }, 400);
+  }
+  const taken = creds.takeChallenge(db, challenge, "authenticate");
+  if (!taken.ok) return c.json({ error: taken.why }, 400);
+
+  const stored = creds.credentialById(db, body.id);
+  // Same message and same status as a failed signature, on purpose: "no such
+  // passkey" and "wrong signature" must not be distinguishable from outside.
+  const refuse = () => c.json({ error: "that passkey was not recognised" }, 401);
+  if (!stored) return refuse();
+
+  let result;
+  try {
+    result = verifyAssertion({
+      authenticatorData: r.authenticatorData,
+      clientDataJSON: r.clientDataJSON,
+      signature: r.signature,
+      storedPublicKey: stored.public_key,
+      storedSignCount: stored.sign_count,
+      expectedChallenge: challenge,
+      rp: RP,
+    });
+  } catch (err) {
+    console.warn(`passkey assertion rejected: ${(err as Error).message}`);
+    return refuse();
+  }
+
+  creds.touchCredential(db, stored.credential_id, result.signCount);
+  const user = social.userById(db, stored.user_id);
+  if (!user) return refuse();
+  c.header("Set-Cookie", makeSessionCookie(user.id));
+  return c.json({ user });
+});
+
+/** The passkeys on this account, for the screen that manages them. */
+app.get("/api/auth/passkeys", (c) => {
+  const uid = me(c);
+  if (!uid) return c.json({ error: "sign in first" }, 401);
+  const rows = creds.credentialsFor(getDb(), uid).map((cr) => ({
+    // Never the credential id: it is the handle an attacker would need to
+    // aim an assertion at a specific key, and this screen does not need it.
+    id: cr.id,
+    label: cr.label,
+    created_at: cr.created_at,
+    last_used_at: cr.last_used_at,
+  }));
+  return c.json({ passkeys: rows, dev_auth: DEV_AUTH });
+});
+
+app.delete("/api/auth/passkeys/:id", (c) => {
+  const uid = me(c);
+  if (!uid) return c.json({ error: "sign in first" }, 401);
+  const db = getDb();
+  const row = creds.credentialsFor(db, uid).find((cr) => cr.id === c.req.param("id"));
+  if (!row) return c.json({ error: "not your passkey" }, 404);
+  const out = creds.removeCredential(db, uid, row.credential_id);
+  if (!out.ok) return c.json({ error: out.why }, 409);
+  return c.json({ ok: true });
+});
+
 
 // ── meta ────────────────────────────────────────────────────────────────────
 app.get("/api/meta", (c) => {
