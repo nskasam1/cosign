@@ -2,6 +2,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Route, Routes } from "react-router-dom";
 import { AuthProvider } from "@/hooks/useAuth";
 import AppShell from "@/components/AppShell";
+import Crew from "@/pages/Crew";
 import RouteFocus from "@/components/RouteFocus";
 import RequireAuth from "@/components/RequireAuth";
 import Home from "./pages/Home";
@@ -46,6 +47,9 @@ const App = () => (
               a flow stops getting finished. */}
           <Route path="/" element={<RequireAuth><AppShell><Home /></AppShell></RequireAuth>} />
           <Route path="/search" element={<RequireAuth><AppShell><Search /></AppShell></RequireAuth>} />
+          {/* The hub the buried social layer finally gets. Same wrapper shape as
+              / and /search so AppShell reconciles rather than remounting. */}
+          <Route path="/crew" element={<RequireAuth><AppShell><Crew /></AppShell></RequireAuth>} />
           {/* The log and the head-to-head that follows it are two routes on
               purpose. The save enters /log/rank with `replace`, so the
               review step is off the stack: going back from the ranking

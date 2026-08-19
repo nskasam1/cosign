@@ -88,7 +88,38 @@ The Phase 2/5A Lighthouse gates run against `npm run prod` — **never**
 the local TypeScript; call `./node_modules/.bin/tsc` (or `.\node_modules\.bin\tsc.cmd`
 in PowerShell) to be sure.
 
-## Gotchas (verified on this machine, updated 2026-08-18 after Phase 9)
+## Gotchas (verified on this machine, updated 2026-08-19 after the revamp)
+
+- **Appending CSS by finding "the last closing brace" put the whole card layer
+  inside `@media (prefers-reduced-motion: reduce)`.** The rules were in the
+  bundle, `document.styleSheets` reported them present, the screenshots looked
+  unchanged — and the new design only applied to people who had asked for
+  reduced motion. The tell was measuring the running page: `.cs-tabbar`
+  computed `position: static` while the served CSS plainly said `sticky`, and
+  `[...sheet.cssRules].filter(r => r.selectorText === ".cs-tabbar")` came back
+  empty because the rule was nested in an at-rule. **When you insert into
+  `index.css`, anchor on a named marker, then assert the block sits AFTER the
+  reduced-motion query** — and check a computed style on the running app, not
+  the bundle.
+- **A colour literal in a test is a hand-written copy of a token.**
+  `profile.spec.ts` asserted `toContain("#E0633C")` on the profile map; when the
+  palette moved, the map correctly drew the new ember and the test failed
+  pointing at the map. `tokens.test.ts` keeps the token copies to exactly one
+  (`server/pages/tokenHex.ts`) and tests must import `HEX` rather than spell a
+  colour out.
+- **The shelf is five slots and four destinations.** `data-tab` is
+  `home|search|log|crew|you`; `log` is the centre FAB — an act, not a place, so
+  the brief's "at most four primary destinations" still holds. The FAB carries
+  no visible label, so its accessible name lives in `aria-label` and
+  `a11y-probe.mjs` fails the build without it. `data-shell`, `data-log-entry`
+  and `data-waiting` are unchanged and load-bearing.
+- **`/crew` is where the buried features live now.** Friends and requests, the
+  activity feed, collaborative lists, group sessions — and the Google Maps
+  import, which used to be mounted ONLY inside `/rank`'s empty state and so
+  disappeared permanently once anybody ranked a place. It is a permanent door
+  now; do not put a feature's only entry point inside an empty state.
+
+## Older gotchas (Phase 9)
 
 - **The stale-schema guard is a STARTUP check now, and it used to fire exactly
   once.** `getDb()` cached the connection before validating it, so the first

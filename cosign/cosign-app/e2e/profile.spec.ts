@@ -14,6 +14,7 @@ import { readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { EVIDENCE, expectNoRatingScale, expectTapTargets, settled, signInAsNewUser } from "./fixtures.ts";
+import { HEX } from "../server/pages/tokenHex.ts";
 
 const APP = join(dirname(fileURLToPath(import.meta.url)), "..");
 
@@ -68,7 +69,12 @@ test.describe("public profile", () => {
     // that survived into it would draw nothing at all — a mark that silently
     // disappears from a map is the worst failure this page has.
     expect(drawing).not.toContain("var(");
-    expect(drawing).toContain("#E0633C"); // the one ember line, resolved
+    // The one ember line, resolved. Read from the token copy rather than
+    // written out: a literal here is a fourth hand-written copy of a colour
+    // `tokens.test.ts` works hard to keep to one, and it went stale the moment
+    // the palette moved — it asserted #E0633C while the map was correctly
+    // drawing the new #F25B31.
+    expect(drawing).toContain(HEX.ember);
     await expect(page.locator("[data-finding]")).toContainText(/three closest to the Oval are Maya/i);
 
     // ── the top five, in order, with their positions ──

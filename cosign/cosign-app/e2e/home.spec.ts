@@ -495,16 +495,21 @@ test.describe("the shell", () => {
     await signIn(context, VIEWER);
     await page.goto("/");
     const tabs = page.locator("[data-shell] [data-tab]");
-    await expect(tabs).toHaveCount(4);
-    // Three of the four are small-capsed by CSS; Log is set in the display
-    // face in title case, which is how it is primary without an icon.
-    expect((await tabs.allInnerTexts()).map((t) => t.toLowerCase())).toEqual([
+    // FIVE slots, FOUR destinations. The centre is the compose FAB — an act,
+    // not a place — which is how the brief's "at most four primary
+    // destinations" still holds. Crew is the door the buried social layer
+    // (friends, groups, collaborative lists, the Maps import) finally has.
+    await expect(tabs).toHaveCount(5);
+    expect(await tabs.evaluateAll((els) => els.map((e) => e.getAttribute("data-tab")))).toEqual([
       "home",
       "search",
       "log",
+      "crew",
       "you",
     ]);
-    await expect(page.locator('[data-tab="log"]')).toHaveText("Log");
+    // The FAB carries no visible label, so its name is the accessible one.
+    // An icon-only control without a name is unusable and a11y-probe fails on it.
+    await expect(page.locator('[data-tab="log"]')).toHaveAttribute("aria-label", /log a visit/i);
     await expect(page.locator('[data-tab="home"]')).toHaveAttribute("aria-current", "page");
     await expectTapTargets(page, "the shell on home");
 

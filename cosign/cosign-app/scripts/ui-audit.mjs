@@ -80,6 +80,14 @@ const AUDIT = () => {
     return parse(getComputedStyle(document.body).backgroundColor) ?? { r: 0, g: 0, b: 0, a: 1 };
   };
 
+  /** Clipped to a 1px box and never painted — `.sr-only` and friends. */
+  const srOnly = (el) => {
+    const r = el.getBoundingClientRect();
+    if (r.width <= 1 || r.height <= 1) return true;
+    const cs = getComputedStyle(el);
+    return cs.clipPath === "inset(50%)" || cs.clip === "rect(0px, 0px, 0px, 0px)";
+  };
+
   const visible = (el) => {
     const r = el.getBoundingClientRect();
     const cs = getComputedStyle(el);
@@ -90,6 +98,12 @@ const AUDIT = () => {
   const contrast = [];
   for (const el of document.querySelectorAll("body *")) {
     if (!visible(el)) continue;
+    // Screen-reader-only text is clipped to a 1px box and never painted, so a
+    // contrast ratio for it is a number about nothing. The first version
+    // measured it and reported two "failures" per surface for the badge's
+    // `sr-only` companion — noise that would train somebody to ignore the
+    // report, which is worse than not checking.
+    if (srOnly(el)) continue;
     // Only leaves that own text, so a wrapper is not credited with its child's.
     const ownText = [...el.childNodes]
       .filter((n) => n.nodeType === 3 && n.textContent.trim())

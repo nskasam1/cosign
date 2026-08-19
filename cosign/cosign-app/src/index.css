@@ -516,6 +516,318 @@
     transition: none !important;
     scroll-behavior: auto !important;
   }
+
+}
+
+/* ══════════════════════════════════════════════════════════════════════
+   THE CARD LAYER (revamp step 2)
+
+   The old vocabulary was hairlines and nothing else, and that is precisely
+   what made every screen read as a document rather than a product. Cards
+   win everywhere now; hairlines survive only INSIDE a card, dividing its
+   content from its cosign row. Between cards, the gap and the elevation do
+   the work.
+   ══════════════════════════════════════════════════════════════════════ */
+
+/* The base. Everything below is a specialisation of it. */
+.cs-card {
+  position: relative;
+  background: hsl(var(--surface));
+  border: 1px solid hsl(var(--rule));
+  border-radius: var(--radius-lg);
+  box-shadow: var(--elev-1);
+  padding: var(--space-4);
+}
+
+/* PRESS, the third motion verb: the surface answers a finger inside
+   --duration-fast. Transform and opacity only, so nothing reflows. */
+a.cs-card,
+button.cs-card {
+  display: block;
+  width: 100%;
+  text-align: left;
+  transition:
+    background-color var(--duration-fast) var(--ease-out),
+    transform var(--duration-fast) var(--ease-out);
+}
+a.cs-card:active,
+button.cs-card:active {
+  background: hsl(var(--raise));
+  transform: scale(0.995);
+}
+
+/* The feed unit. A photograph leads; the rank chip sits on it; the facts
+   and the faces sit under it. */
+.cs-place-card {
+  padding: var(--space-3);
+}
+.cs-place-card .cs-media {
+  position: relative;
+  display: block;
+  aspect-ratio: 16 / 10;
+  overflow: hidden;
+  border-radius: var(--radius-md);
+  background: hsl(var(--raise));
+}
+.cs-place-card .cs-media img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+/* The ONE place a number appears beside a place, and it is a position in
+   an ordered list — never a score. `no-scales.test.ts` is the guard. */
+.cs-rank-chip {
+  position: absolute;
+  top: var(--space-2);
+  left: var(--space-2);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 26px;
+  height: 26px;
+  padding-inline: 6px;
+  border-radius: var(--radius-xs);
+  background: hsl(var(--ember));
+  color: hsl(var(--on-ember));
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: var(--text-xs);
+  font-variant-numeric: tabular-nums lining-nums;
+  box-shadow: 0 2px 8px hsl(20 40% 2% / 0.45);
+}
+
+/* The density workhorse: icon + value pairs, dot separated. Four to six of
+   these per card is most of what makes the app feel like it contains
+   something, and it replaces the paragraph that used to say the same thing
+   in forty words. */
+.cs-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 2px var(--space-2);
+  color: hsl(var(--muted));
+  font-size: var(--text-xs);
+  line-height: 1.5;
+}
+.cs-meta > * {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  white-space: nowrap;
+}
+.cs-meta > * + *::before {
+  content: "·";
+  margin-right: var(--space-2);
+  color: hsl(var(--rule-strong));
+}
+
+/* The social proof — and deliberately NOT an engagement row. It has the
+   visual density of one and none of its semantics: an avatar stack and a
+   sentence naming who cosigned. There is no like, no reply, no repost,
+   because cosigning IS ranking (hard rule 2) and a second way to endorse
+   would make the first one meaningless. */
+.cs-cosign-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  margin-top: var(--space-3);
+  padding-top: var(--space-3);
+  border-top: 1px solid hsl(var(--rule));
+  color: hsl(var(--line));
+  font-size: var(--text-xs);
+}
+
+.cs-avatar {
+  flex: none;
+  display: inline-grid;
+  place-items: center;
+  width: var(--avatar, 32px);
+  height: var(--avatar, 32px);
+  border-radius: var(--radius-full);
+  background: hsl(var(--surface));
+  box-shadow: 0 0 0 1.5px hsl(var(--bg));
+  object-fit: cover;
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: calc(var(--avatar, 32px) * 0.4);
+  color: hsl(var(--pal, var(--gold)));
+  overflow: hidden;
+}
+.cs-avatar-stack {
+  display: inline-flex;
+  flex: none;
+  /* Overlap, and let the FIRST avatar sit on top so the reading order and
+     the stacking order agree. */
+  direction: rtl;
+}
+.cs-avatar-stack > * {
+  margin-inline-start: -9px;
+  box-shadow: 0 0 0 2px hsl(var(--surface));
+}
+.cs-avatar-stack > :last-child {
+  margin-inline-start: 0;
+}
+
+/* ── the shell ────────────────────────────────────────────────────────
+   Four destinations and one act. The brief's "at most four primary
+   destinations" holds exactly: the FAB is an action, not a destination,
+   and it is the only reason the bar has five slots. */
+.cs-tabbar {
+  position: sticky;
+  bottom: 0;
+  z-index: 40;
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  align-items: center;
+  padding-bottom: env(safe-area-inset-bottom);
+  background: hsl(var(--sunk) / 0.86);
+  border-top: 1px solid hsl(var(--rule));
+  backdrop-filter: blur(14px) saturate(1.2);
+}
+.cs-tabitem {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  min-height: 62px;
+  color: hsl(var(--muted));
+  font-size: var(--text-2xs);
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  transition: color var(--duration-fast) var(--ease-out);
+}
+/* Never colour alone: the active tab changes colour AND weight AND gains
+   the 2px ember mark, so it survives a colourblind reader and a greyscale
+   screenshot. */
+.cs-tabitem[aria-current="page"] {
+  color: hsl(var(--ember-ink));
+  font-weight: 700;
+}
+.cs-tabitem[aria-current="page"]::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  width: 26px;
+  height: 2px;
+  border-radius: 0 0 2px 2px;
+  background: hsl(var(--ember));
+  transform-origin: center;
+  animation: cs-draw-x var(--duration) var(--ease-out) both;
+}
+.cs-tabitem {
+  position: relative;
+}
+
+.cs-fab {
+  display: inline-grid;
+  place-items: center;
+  width: 60px;
+  height: 60px;
+  margin-top: -14px;
+  justify-self: center;
+  border-radius: var(--radius-full);
+  background: hsl(var(--ember));
+  color: hsl(var(--on-ember));
+  box-shadow: var(--elev-fab);
+  transition:
+    transform var(--duration-fast) var(--ease-out),
+    box-shadow var(--duration-fast) var(--ease-out);
+}
+.cs-fab:active {
+  transform: scale(0.94);
+  box-shadow: 0 2px 8px hsl(20 40% 2% / 0.6);
+}
+
+/* ── Home's answer ────────────────────────────────────────────────────
+   An ember WASH, never a solid ember area — the accent is the order and
+   the act, and a large flat field of it would make it mean neither. */
+.cs-hero {
+  background: linear-gradient(
+    160deg,
+    hsl(var(--ember) / 0.16),
+    hsl(var(--surface)) 62%
+  );
+  border-color: hsl(var(--ember) / 0.3);
+  box-shadow: var(--elev-2);
+}
+
+.cs-section {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  min-height: 44px;
+}
+
+/* A horizontal snap rail. The edge padding is so the first card's shadow
+   is not clipped — a clipped shadow is what makes a carousel look cheap. */
+.cs-rail {
+  display: flex;
+  gap: var(--space-3);
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  padding: var(--space-2) var(--space-4);
+  margin-inline: calc(var(--space-4) * -1);
+  scrollbar-width: none;
+}
+.cs-rail::-webkit-scrollbar {
+  display: none;
+}
+.cs-rail > * {
+  flex: none;
+  width: 78vw;
+  max-width: 300px;
+  scroll-snap-align: start;
+}
+
+/* The functional facts, as a grid of tiles rather than a paragraph. */
+.cs-tile {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: var(--space-3);
+  border-radius: var(--radius-sm);
+  background: hsl(var(--raise));
+  color: hsl(var(--ink));
+  font-size: var(--text-sm);
+}
+
+/* Three per profile header. Sizes the person controls; none comparative,
+   none a follower count. */
+.cs-stat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+}
+.cs-stat b {
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: var(--text-2xl);
+  font-variant-numeric: tabular-nums lining-nums;
+  color: hsl(var(--ink));
+  line-height: 1;
+}
+
+/* STATIC skeletons. A shimmer is `animation: … infinite`, which
+   `motion.test.ts` fails the suite on — correctly, because reduced motion
+   here is implemented by zeroing duration tokens and nothing reaches an
+   infinite animation. */
+.cs-skel {
+  background: hsl(var(--raise));
+  border-radius: var(--radius-sm);
+}
+
+@keyframes cs-draw-x {
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: scaleX(1);
+  }
 }
 
 /* The Lovable-era kit that used to live here — .glass, .gradient-card,

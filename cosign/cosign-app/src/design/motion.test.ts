@@ -75,7 +75,20 @@ const LITERAL_TIME = /(?<![\w-])(?:\d*\.)?\d+\s*m?s(?![\w-])/;
 /** `none!important` and `none !important` are both `none`. */
 const bare = (value: string) => value.replace(/!\s*important/g, "").trim();
 
-function scan(name: string, css: string): Finding[] {
+/**
+ * Comments are not code, and this scanner used to read them as code.
+ *
+ * The fixture below covered a comment containing a duration — but not one
+ * containing a COLON, and the colon is what makes the declaration regex bite.
+ * A block comment reading `animation: … infinite`, written to explain why the
+ * skeletons are deliberately static, was reported as a real violation when the
+ * card layer landed. Same family as the `lastIndexOf("/*")` finding in
+ * CLAUDE.md: a source scanner has to strip what is not source first.
+ */
+const stripComments = (css: string) => css.replace(/\/\*[\s\S]*?\*\//g, " ");
+
+function scan(name: string, rawCss: string): Finding[] {
+  const css = stripComments(rawCss);
   const found: Finding[] = [];
   for (const [, prop, sub, raw] of css.matchAll(DECLARATION)) {
     const value = raw.trim();
@@ -135,6 +148,25 @@ describe("the scanner itself", () => {
     // a 2s in prose beside a clean declaration is not a finding
     const prose = "/* it used to be shimmer 2s linear infinite */\n.x{animation:a var(--duration-base) ease both}";
     expect(report(scan("f", prose))).toBe("");
+  });
+
+  it("ignores a comment that contains a whole fake declaration", () => {
+    // What the fixture above missed: prose with a COLON in it parses as a
+    // declaration. This is the exact comment that broke the suite when the
+    // card layer landed, explaining why the skeletons are static.
+    const commented = [
+      ".a{color:red}",
+      "/* A shimmer is `animation: 2s linear infinite`, which this test",
+      "   fails the suite on, correctly. */",
+      ".b{animation:x var(--duration-base) ease both}",
+    ].join("\n");
+    expect(report(scan("f", commented))).toBe("");
+  });
+
+  it("still bites on a real declaration that follows a comment", () => {
+    // Stripping comments must not strip the code after them.
+    const after = "/* explanation */\n.x{animation:spin var(--duration) linear infinite both}";
+    expect(report(scan("f", after))).toMatch(/infinite/);
   });
 });
 
