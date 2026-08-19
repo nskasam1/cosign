@@ -1,0 +1,11 @@
+# Every live external-service reference in tracked source (want: none)
+# pattern: supabase|googleapis|google.maps|VITE_|lovable|@vercel|fonts.g|cdn.|unpkg|jsdelivr|api_key|SERVICE_ROLE
+
+(no matches — clean)
+
+# .env files present (want: none)
+(none listed above = none)
+
+# secrets and database are ignored, never committed:
+cosign/cosign-app/server/data/.gitignore:2:*	cosign/cosign-app/server/data/cookie-secret.txt
+cosign/cosign-app/server/data/.gitignore:2:*	cosign/cosign-app/server/data/cosign.db

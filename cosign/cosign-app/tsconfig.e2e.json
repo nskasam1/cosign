@@ -1,0 +1,33 @@
+// The Playwright suite, which belonged to no project until now. `tsc -b`
+// reported success for five phases while e2e/home.spec.ts carried five real
+// TS2339 errors — its local wire type for /api/discover was missing `age.days`,
+// the field three of its freshness assertions sort and band on. Nothing but a
+// full run of the suite could have found that, and a suite that needs a server
+// and a scratch database is not a typecheck.
+//
+// Same options as tsconfig.server.json, with the two the repo is deliberately
+// loose about (see the root tsconfig.json) and the DOM lib, which the specs
+// need because every page.evaluate callback runs in the browser.
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "lib": ["ES2023", "DOM", "DOM.Iterable"],
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "allowImportingTsExtensions": true,
+    "isolatedModules": true,
+    "moduleDetection": "force",
+    "noEmit": true,
+    "strict": true,
+    "strictNullChecks": false,
+    "noImplicitAny": false,
+    "noUnusedLocals": false,
+    "noUnusedParameters": false,
+    "skipLibCheck": true,
+    "types": ["node"],
+    "paths": {
+      "@/*": ["./src/*"]
+    }
+  },
+  "include": ["e2e", "playwright.config.ts"]
+}

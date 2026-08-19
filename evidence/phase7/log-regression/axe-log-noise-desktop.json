@@ -1,0 +1,5 @@
+{
+  "url": "http://localhost:8791/log?step=noise",
+  "passes": 16,
+  "violations": []
+}

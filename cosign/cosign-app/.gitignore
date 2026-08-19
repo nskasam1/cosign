@@ -1,5 +1,6 @@
-# Logs
-logs
+# Logs. Anchored: a bare `logs` also matches seed/images/logs/, which would
+# silently drop 40 committed per-log seed images.
+/logs/
 *.log
 npm-debug.log*
 yarn-debug.log*
@@ -12,8 +13,16 @@ dist
 dist-ssr
 *.local
 
+# Playwright's scratch output. The evidence it produces is written to
+# evidence/<phase>/ and committed; this directory is traces and failure dumps.
+/test-results/
+/playwright-report/
+
 # Secrets — never commit real keys
 .env
+
+# Build metadata
+*.tsbuildinfo
 
 # Editor directories and files
 .vscode/*

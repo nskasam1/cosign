@@ -1,0 +1,57 @@
+# Phase 1 acceptance evidence — 2026-08-15T20:03:12Z
+# node v24.11.0, npm 11.6.1
+
+## npx tsc -b (project refs: app / node / server)
+exit=0
+
+## npm test
+  friendships=13 tokens=4 events=204
+  north-star quiet-week users seeded=4
+
+[90mstdout[2m | server/import/roundtrip.test.ts[2m > [22m[2mfull seed round trip[2m > [22m[2mexport matches the authored seed's core facts
+[22m[39mseeded C:\Users\Vineet Sista\AppData\Local\Temp\cosign-roundtrip-eHDGdN\three.db
+  shops=22 users=8 logs=95
+  comparisons=173 ranking_entries=74 lists=22
+  friendships=13 tokens=4 events=204
+  north-star quiet-week users seeded=4
+
+ [32m✓[39m server/import/roundtrip.test.ts [2m([22m[2m9 tests[22m[2m)[22m[33m 977[2mms[22m[39m
+   [33m[2m✓[22m[39m full seed round trip[2m > [22mseed → export → seed → export is a fixpoint [33m 565[2mms[22m[39m
+   [33m[2m✓[22m[39m full seed round trip[2m > [22mexport matches the authored seed's core facts [33m 380[2mms[22m[39m
+ [32m✓[39m src/test/example.test.ts [2m([22m[2m1 test[22m[2m)[22m[32m 7[2mms[22m[39m
+
+[2m Test Files [22m [1m[32m8 passed[39m[22m[90m (8)[39m
+[2m      Tests [22m [1m[32m49 passed[39m[22m[90m (49)[39m
+[2m   Start at [22m 16:03:27
+[2m   Duration [22m 5.37s[2m (transform 679ms, setup 2.97s, collect 1.76s, tests 1.21s, environment 2.71s, prepare 4.32s)[22m
+
+
+## npm run lint
+
+✖ 8 problems (0 errors, 8 warnings)
+
+
+## one-shot seed from a clean database (COSIGN_DB=$TMP/cosign-evidence.db)
+
+> cosign@0.0.0 seed
+> tsx server/db/seed.ts
+
+seeded C:/Users/Vineet Sista/AppData/Local/Temp/tmp.8ytYRFV3Pu/cosign-evidence.db
+  shops=22 users=8 logs=95
+  comparisons=173 ranking_entries=74 lists=22
+  friendships=13 tokens=4 events=204
+  north-star quiet-week users seeded=4
+exit=0
+database built at: /tmp/tmp.8ytYRFV3Pu/cosign-evidence.db (331776 bytes)
+
+## prod server: SSR share page, token revocation, no auth
+$ curl -s -o /dev/null -w '%{http_code} %{size_download}b %{time_total}s' localhost:8787/s/<active ranking token>
+200 12452b 0.018010s
+$ curl ... /s/<revoked token>   (expect 410 tombstone, not the list)
+410 478b
+$ curl ... /s/<profile-scoped token>  (expect 404 — wrong surface for this token)
+404
+$ curl ... /s/<unknown token>   (expect 404)
+404
+$ curl ... /api/me  (no cookie)
+{"user":null}

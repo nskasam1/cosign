@@ -3,6 +3,9 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <!-- The app name alone, on purpose: this document is every route, so the
+         only honest static title is the one that is true of all of them. Each
+         screen names itself at runtime through src/lib/title.ts. -->
     <title>Cosign</title>
     <meta name="description" content="Ranked recommendations from people you trust." />
 
@@ -20,7 +23,11 @@
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="apple-mobile-web-app-title" content="Cosign" />
-    <meta name="theme-color" content="#141618" />
+    <!-- The design system's ground (--bg in src/design/tokens.css), which the
+         SSR pages have carried since Phase 2. This said #141618 — the
+         pre-token palette — for four phases, so the phone's status bar sat a
+         visibly cooler grey against a warm page. tokens.test.ts guards it. -->
+    <meta name="theme-color" content="#120F0D" />
     <link rel="manifest" href="/manifest.json" />
   </head>
 

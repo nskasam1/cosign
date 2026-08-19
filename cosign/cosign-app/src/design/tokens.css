@@ -1,0 +1,234 @@
+/* ─────────────────────────────────────────────────────────────────────────
+   Cosign design tokens — the canonical file (Phase 2).
+
+   One source of truth for colour, type, space, radius and motion. Three
+   consumers, no second opinion allowed:
+     1. Tailwind (`tailwind.config.ts` reads these vars)  → the SPA
+     2. `src/index.css`                                    → the SPA
+     3. `server/pages/tokens.ts` inlines this file         → the SSR share
+        page and public profile, which ship no stylesheet request at all
+
+   Every colour is stored as a bare `H S% L%` triple, never as `hsl(...)`,
+   so both `hsl(var(--ink))` and Tailwind's `hsl(var(--ink) / 0.5)` opacity
+   syntax work off the same token. Rationale and the contrast table live in
+   `tokens.md`; `tokens.test.ts` fails the build if a documented pair drops
+   below its WCAG threshold.
+   ───────────────────────────────────────────────────────────────────────── */
+
+:root {
+  color-scheme: dark;
+
+  /* ── ground ───────────────────────────────────────────────────────────
+     Still warm espresso, and now one step DEEPER, because a card has to have
+     somewhere to rise from. The seeded photography is painted on #13–18 warm
+     grounds, so a cool grey ground would make every place float on a slab;
+     that is the one part of the old system worth keeping and it is kept. */
+  --sunk: 22 20% 4%;            /* #0D0A08  behind cards, the tab bar, scrims */
+  --bg: 22 16% 6%;              /* #120E0C  page ground */
+  --surface: 22 15% 10%;        /* #1D1815  THE CARD — the default reading ground */
+  --raise: 22 16% 14%;          /* #292322  pressed card, wells, inactive track */
+
+  /* ── ink ──────────────────────────────────────────────────────────────
+     Paper-warm, never pure white. Every ratio below is measured against
+     --surface, NOT --bg, because after the card retrofit almost no text sits
+     on the page ground any more. That re-derivation is the single most common
+     way a card system silently breaks contrast: the old --muted at 54% was
+     5.6:1 on --bg and would have been ~4.2:1 on a card. */
+  --ink: 34 45% 94%;            /* #F7EDE1  headlines, names     ~15:1 on surface */
+  --line: 32 26% 78%;           /* #D5C8B8  the honest line       10.7:1 */
+  --muted: 31 14% 60%;          /* #A79A8B  metadata, captions     6.3:1 */
+
+  /* ── rules ────────────────────────────────────────────────────────────
+     Hairlines survive, demoted. They divide WITHIN a card now; between cards
+     the gap and the elevation do the work. A hairline-only system is what the
+     app looked like when it read as a document. */
+  --rule: 22 14% 18%;           /* #352C28  card edge, in-card divider */
+  --rule-strong: 24 15% 26%;    /* #4D423B  section breaks, unselected chip */
+
+  /* ── accents ──────────────────────────────────────────────────────────
+     Ember has two jobs (the ORDER, and the ACT of writing) and gold has one
+     (the LABEL voice). That grammar is unchanged and is the other thing worth
+     keeping. What changes is chroma: ember goes hot, because the old #E0633C
+     on a card reads as brown. Neither is ever a background for a large area. */
+  --ember: 13 88% 57%;          /* #F25A31  rank, FAB, active tab   5.3:1 on surface */
+  --ember-ink: 16 90% 68%;      /* #F98C63  ember as running text   7.4:1 */
+  --on-ember: 14 85% 8%;        /* #26100A  the ONLY colour on an ember fill */
+  --gold: 41 62% 62%;           /* #DAB462  small-caps labels       8.9:1 */
+
+  /* ── place palettes ───────────────────────────────────────────────────
+     The six treatments `seed/images/generate.mjs` paints every photograph
+     with. A place's rank numeral and its no-photo plate take the same hue
+     its picture was made from, so the list has a colour rhythm drawn from
+     the places themselves rather than applied on top of them. */
+  --pal-warm: 39 45% 61%;       /* #c8a96e */
+  --pal-amber: 39 67% 55%;      /* #d9a441 */
+  --pal-rose: 12 42% 63%;       /* #c98a7a */
+  --pal-moss: 82 18% 52%;       /* #8a9a6e */
+  --pal-slate: 212 12% 55%;     /* #7d8a99 */
+  --pal-clay: 21 35% 53%;       /* #b07a5c */
+
+  /* Ground for the no-photo plate: its own accent mixed 6% into --surface.
+     Every pair clears 4.5:1, so the initials hold up as *normal* text and
+     the plate does not depend on being read as large text. */
+  --plate-warm: 30 23% 12%;     /* #261f18  accent on plate  7.2:1 */
+  --plate-amber: 32 28% 12%;    /* #271f16                   7.2:1 */
+  --plate-rose: 18 21% 12%;     /* #261d19                   5.8:1 */
+  --plate-moss: 33 19% 12%;     /* #231e18                   5.5:1 */
+  --plate-slate: 17 11% 12%;    /* #221d1b                   4.7:1 */
+  --plate-clay: 21 23% 12%;     /* #251c17                   4.6:1 */
+
+  --danger: 0 62% 58%;          /* #D45B5B  destructive only */
+
+  /* ── type ─────────────────────────────────────────────────────────────
+     The editorial serif WAS the look that got rejected — it is what made
+     every screen read as an essay about the product rather than as the
+     product. Inter is the other half of the same problem: it is the tell
+     every generated interface has.
+
+     Bricolage Grotesque for display: a grotesque with irregular joints that
+     reads as drawn by a person, heavy enough at 800 to carry rank numerals
+     as architecture. Instrument Sans for everything you actually read:
+     narrow, sharp terminals, excellent at 13-15px in a 390px column.
+
+     Two families, two VARIABLE files (71 kB) covering 400-800 and 400-700,
+     replacing three static cuts (53 kB). Both OFL, both self-hosted in
+     `public/fonts/` with their licences. No CDN, ever. */
+  --font-display: "Bricolage Grotesque", "Arial Black", system-ui, sans-serif;
+  --font-body: "Instrument Sans", "Helvetica Neue", Arial, sans-serif;
+
+  /* 1.22 ratio, rounded to whole px so hairlines stay crisp */
+  --text-2xs: 0.6875rem;        /* 11px  small-caps labels */
+  --text-xs: 0.8125rem;         /* 13px  metadata */
+  --text-sm: 0.9063rem;         /* 14.5px */
+  --text-base: 1rem;            /* 16px  body minimum on mobile */
+  --text-lg: 1.1875rem;         /* 19px  place names */
+  --text-xl: 1.4375rem;         /* 23px */
+  --text-2xl: 1.75rem;          /* 28px  rank numerals */
+  --text-3xl: 2.125rem;         /* 34px  page title */
+  --text-4xl: 2.75rem;          /* 44px  lead numeral, desktop title */
+
+  --leading-tight: 1.05;        /* display */
+  --leading-snug: 1.2;          /* place names */
+  --leading-body: 1.5;          /* the honest line */
+  --tracking-caps: 0.14em;      /* small-caps labels */
+  --tracking-display: -0.012em;
+
+  /* ── space ── 4 px rhythm ───────────────────────────────────────────── */
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-5: 1.25rem;
+  --space-6: 1.5rem;
+  --space-8: 2rem;
+  --space-10: 2.5rem;
+  --space-12: 3rem;
+  --space-16: 4rem;
+
+  --gutter: 1.125rem;           /* 18px page inset on mobile */
+  --measure: 34rem;             /* 544px reading column on desktop */
+  --tap: 2.75rem;               /* 44px minimum target */
+
+  /* ── radius ── restrained: this is print, not a card deck ───────────── */
+  /* The "no radius above 3px" rule is repealed. It was the single strongest
+     signal of the look the founder rejected — it is what made every surface a
+     document. Five values, and an inner radius is always outer minus padding. */
+  --radius-xs: 6px;             /* rank chip, small tiles, inputs */
+  --radius-sm: 10px;            /* inline thumbs, segmented track */
+  --radius-md: 14px;            /* media inside a card (card minus its inset) */
+  --radius-lg: 18px;            /* THE CARD */
+  --radius-xl: 22px;            /* bottom sheets, top corners only */
+  --radius-full: 999px;
+
+  /* ── elevation ────────────────────────────────────────────────────────
+     Dark-UI elevation is a 1px inset top highlight FIRST and a shadow second.
+     A shadow alone on a near-black ground is invisible; the highlight is the
+     thing that actually makes a card read as lifted. */
+  --elev-1: inset 0 1px 0 hsl(0 0% 100% / 0.045), 0 2px 8px hsl(20 40% 2% / 0.55);
+  --elev-2: inset 0 1px 0 hsl(0 0% 100% / 0.06), 0 10px 28px hsl(20 40% 2% / 0.6);
+  --elev-fab: 0 8px 22px hsl(var(--ember) / 0.3), 0 2px 6px hsl(20 40% 2% / 0.6);
+  --radius: 0.875rem;           /* shadcn primitives in the SPA */
+
+  /* ── motion ── one rhythm, and it stops when asked ────────────────────
+     Three durations and one interval, and every animation in the product
+     is built from them — `motion.test.ts` fails on a literal time value
+     anywhere in the CSS layer, which is how the five Lovable-era keyframes
+     in `tailwind.config.ts` (0.2s, 0.3s, 0.4s, and a `2s linear infinite`
+     shimmer no reduced-motion rule could reach) were finally found.
+
+     What each one is FOR, because a duration with no job drifts:
+       fast    the surface answering a finger — ground, ink, a margin mark
+       base    something that has just arrived settling onto the page
+       slow    a rule drawing itself across the column
+       stagger one place in a column after another, not all at once */
+  --ease-out: cubic-bezier(0.22, 0.61, 0.36, 1);
+  --ease-in: cubic-bezier(0.55, 0.06, 0.68, 0.19);
+  --duration-fast: 120ms;
+  --duration-base: 200ms;
+  --duration-slow: 320ms;
+  --stagger: 40ms;
+
+  /* ── shadcn/Tailwind compatibility ────────────────────────────────────
+     Aliases, not new values. Nothing below may introduce a colour that is
+     not already named above. */
+  --background: var(--bg);
+  --foreground: var(--ink);
+  --card: var(--surface);
+  --card-foreground: var(--ink);
+  --popover: var(--surface);
+  --popover-foreground: var(--ink);
+  --primary: var(--ember);
+  --primary-foreground: var(--bg);
+  --secondary: var(--gold);
+  --secondary-foreground: var(--bg);
+  --muted-foreground: var(--muted);
+  --accent: var(--raise);
+  --accent-foreground: var(--ink);
+  --destructive: var(--danger);
+  --destructive-foreground: var(--ink);
+  --border: var(--rule);
+  --input: var(--rule-strong);
+  --ring: var(--ember);
+
+  --sidebar-background: var(--surface);
+  --sidebar-foreground: var(--ink);
+  --sidebar-primary: var(--ember);
+  --sidebar-primary-foreground: var(--bg);
+  --sidebar-accent: var(--raise);
+  --sidebar-accent-foreground: var(--ink);
+  --sidebar-border: var(--rule);
+  --sidebar-ring: var(--ember);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --duration-fast: 0ms;
+    --duration-base: 0ms;
+    --duration-slow: 0ms;
+    --stagger: 0ms;
+  }
+}
+
+/* Self-hosted, latin subset, `swap` so text paints in the fallback rather
+   than waiting on the network — the share page's LCP budget is 1.0 s on
+   simulated Slow-4G and a blocked font would spend all of it. */
+@font-face {
+  font-family: "Bricolage Grotesque";
+  font-style: normal;
+  font-weight: 400 800;
+  font-display: swap;
+  src: url("/fonts/bricolage-grotesque-var.woff2") format("woff2");
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA,
+    U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193,
+    U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face {
+  font-family: "Instrument Sans";
+  font-style: normal;
+  font-weight: 400 700;
+  font-display: swap;
+  src: url("/fonts/instrument-sans-var.woff2") format("woff2");
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA,
+    U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193,
+    U+2212, U+2215, U+FEFF, U+FFFD;
+}

@@ -1,0 +1,215 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [-83.0091, 40.0053]
+      },
+      "properties": {
+        "google_maps_url": "http://maps.google.com/?cid=6565845670542078744",
+        "location": {
+          "address": "2044 N High St, Columbus, OH 43201, USA",
+          "country_code": "US",
+          "name": "Wheelhouse Coffee"
+        }
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [-83.0039, 39.993]
+      },
+      "properties": {
+        "google_maps_url": "http://maps.google.com/?cid=11418702033644516102",
+        "location": {
+          "address": "1685 N High St, Columbus, OH 43201, USA",
+          "country_code": "US",
+          "name": "Cricket & Crow"
+        }
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [-83.0072, 40.0065]
+      },
+      "properties": {
+        "google_maps_url": "http://maps.google.com/?cid=3082926038992457333",
+        "location": {
+          "address": "2240 N High St, Columbus, OH 43201, USA",
+          "country_code": "US",
+          "name": "Terrazzo"
+        }
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [-83.0098, 40.0073]
+      },
+      "properties": {
+        "google_maps_url": "http://maps.google.com/?cid=8623105419021423801",
+        "location": {
+          "address": "2318 N High St, Columbus, OH 43202, USA",
+          "country_code": "US",
+          "name": "Night Owl Coffee"
+        }
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [-82.9965, 39.9913]
+      },
+      "properties": {
+        "google_maps_url": "http://maps.google.com/?cid=1497221630119017283",
+        "location": {
+          "address": "1120 E Main St, Columbus, OH 43205, USA",
+          "country_code": "US",
+          "name": "Hackberry"
+        }
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [-83.0086, 40.0001]
+      },
+      "properties": {
+        "google_maps_url": "http://maps.google.com/?cid=15208442296721967505",
+        "location": {
+          "address": "1739 N High St, Columbus, OH 43210, USA",
+          "country_code": "US",
+          "name": "Oval Grounds"
+        }
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [-83.0015, 40.0039]
+      },
+      "properties": {
+        "google_maps_url": "http://maps.google.com/?cid=9364913377215922350",
+        "location": {
+          "address": "56 E Frambes Ave, Columbus, OH 43201, USA",
+          "country_code": "US",
+          "name": "Marginalia"
+        }
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [-83.0001, 40.0032]
+      },
+      "properties": {
+        "google_maps_url": "http://maps.google.com/?cid=4598109427730613856",
+        "location": {
+          "address": "24 E Norwich Ave, Columbus, OH 43201, USA",
+          "country_code": "US",
+          "name": "The All-Nighter"
+        }
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [-83.0042, 39.992]
+      },
+      "properties": {
+        "google_maps_url": "http://maps.google.com/?cid=2210574476531098833",
+        "location": {
+          "address": "907 N 4th St, Columbus, OH 43201, USA",
+          "country_code": "US",
+          "name": "Petal and Bean"
+        }
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [-82.9961, 39.9925]
+      },
+      "properties": {
+        "google_maps_url": "http://maps.google.com/?cid=7710390021184455213",
+        "location": {
+          "address": "1194 E Long St, Columbus, OH 43203, USA",
+          "country_code": "US",
+          "name": "the foundry"
+        }
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [-82.9996, 40.0094]
+      },
+      "properties": {
+        "google_maps_url": "http://maps.google.com/?cid=13350188064113507958",
+        "location": {
+          "address": "2601 Summit St, Columbus, OH 43202, USA",
+          "country_code": "US",
+          "name": "Batch & Crumb Bakery"
+        }
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [-83.0084, 40.0014]
+      },
+      "properties": {
+        "google_maps_url": "http://maps.google.com/?cid=5027714336801925470",
+        "location": {
+          "address": "1802 N High St, Columbus, OH 43201, USA",
+          "country_code": "US",
+          "name": "Juniper Bar & Kitchen"
+        }
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [-83.0062, 39.9968]
+      },
+      "properties": {
+        "google_maps_url": "http://maps.google.com/?cid=8890447211539962734",
+        "location": {
+          "address": "1465 Neil Ave, Columbus, OH 43201, USA",
+          "country_code": "US",
+          "name": "The Copper Finch Cafe"
+        }
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [-83.0048, 40.0122]
+      },
+      "properties": {
+        "google_maps_url": "http://maps.google.com/?cid=1743099506620488355",
+        "location": {
+          "address": "2724 Iuka Ave, Columbus, OH 43202, USA",
+          "country_code": "US",
+          "name": "Iuka Ridge Branch Library"
+        }
+      }
+    }
+  ]
+}

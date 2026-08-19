@@ -1,0 +1,173 @@
+{
+  "base": "http://localhost:8791",
+  "findings": [
+    {
+      "level": "WARN",
+      "route": "/",
+      "what": "no skip link"
+    },
+    {
+      "level": "ok",
+      "route": "/",
+      "what": "one main, one h1, no heading jump",
+      "detail": "12"
+    },
+    {
+      "level": "ok",
+      "route": "/",
+      "what": "27 focusable, all show a focus indicator"
+    },
+    {
+      "level": "ok",
+      "route": "/",
+      "what": "every interactive element has an accessible name"
+    },
+    {
+      "level": "WARN",
+      "route": "/",
+      "what": "no live region — async changes announce nothing"
+    },
+    {
+      "level": "WARN",
+      "route": "/home",
+      "what": "no skip link"
+    },
+    {
+      "level": "ok",
+      "route": "/home",
+      "what": "one main, one h1, no heading jump",
+      "detail": "1"
+    },
+    {
+      "level": "ok",
+      "route": "/home",
+      "what": "5 focusable, all show a focus indicator"
+    },
+    {
+      "level": "ok",
+      "route": "/home",
+      "what": "every interactive element has an accessible name"
+    },
+    {
+      "level": "WARN",
+      "route": "/home",
+      "what": "no live region — async changes announce nothing"
+    },
+    {
+      "level": "WARN",
+      "route": "/rank",
+      "what": "no skip link"
+    },
+    {
+      "level": "ok",
+      "route": "/rank",
+      "what": "one main, one h1, no heading jump",
+      "detail": "1"
+    },
+    {
+      "level": "ok",
+      "route": "/rank",
+      "what": "27 focusable, all show a focus indicator"
+    },
+    {
+      "level": "ok",
+      "route": "/rank",
+      "what": "every interactive element has an accessible name"
+    },
+    {
+      "level": "WARN",
+      "route": "/rank",
+      "what": "no live region — async changes announce nothing"
+    },
+    {
+      "level": "WARN",
+      "route": "/search",
+      "what": "no skip link"
+    },
+    {
+      "level": "ok",
+      "route": "/search",
+      "what": "one main, one h1, no heading jump",
+      "detail": "1"
+    },
+    {
+      "level": "ok",
+      "route": "/search",
+      "what": "33 focusable, all show a focus indicator"
+    },
+    {
+      "level": "ok",
+      "route": "/search",
+      "what": "every interactive element has an accessible name"
+    },
+    {
+      "level": "ok",
+      "route": "/search",
+      "what": "1 live region(s)"
+    },
+    {
+      "level": "WARN",
+      "route": "/maya",
+      "what": "no skip link"
+    },
+    {
+      "level": "ok",
+      "route": "/maya",
+      "what": "one main, one h1, no heading jump",
+      "detail": "1223233"
+    },
+    {
+      "level": "ok",
+      "route": "/maya",
+      "what": "32 focusable, all show a focus indicator"
+    },
+    {
+      "level": "ok",
+      "route": "/maya",
+      "what": "every interactive element has an accessible name"
+    },
+    {
+      "level": "WARN",
+      "route": "/maya",
+      "what": "no live region — async changes announce nothing"
+    },
+    {
+      "level": "WARN",
+      "route": "/log",
+      "what": "no skip link"
+    },
+    {
+      "level": "ok",
+      "route": "/log",
+      "what": "one main, one h1, no heading jump",
+      "detail": "1"
+    },
+    {
+      "level": "ok",
+      "route": "/log",
+      "what": "24 focusable, all show a focus indicator"
+    },
+    {
+      "level": "ok",
+      "route": "/log",
+      "what": "every interactive element has an accessible name"
+    },
+    {
+      "level": "ok",
+      "route": "/log",
+      "what": "1 live region(s)"
+    },
+    {
+      "level": "ok",
+      "route": "shelf",
+      "what": "route changed and focus moved to the new page",
+      "detail": "H1 \"What are you after?\""
+    },
+    {
+      "level": "ok",
+      "route": "/log",
+      "what": "step advanced and focus moved",
+      "detail": "onto the new question"
+    }
+  ]
+}

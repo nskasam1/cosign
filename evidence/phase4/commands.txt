@@ -1,0 +1,146 @@
+# Phase 4 acceptance evidence — 2026-08-16T03:52:17Z
+# node v24.11.0, npm 11.6.1
+# scratch database: /tmp/cosign-phase4.db (server/data/cosign.db untouched)
+# :8787 ships the committed calendar; :8788 the finals fixture below
+
+## ./node_modules/.bin/tsc -b (project refs: app / node / server)
+exit=0
+
+## npm test
+[2m Test Files [22m [1m[32m18 passed[39m[22m[90m (18)[39m
+[2m      Tests [22m [1m[32m241 passed[39m[22m[90m (241)[39m
+[2m   Start at [22m 23:52:30
+[2m   Duration [22m 10.98s[2m (transform 2.72s, setup 16.15s, collect 11.58s, tests 9.58s, environment 3.39s, prepare 12.42s)[22m
+
+
+## npm run lint
+
+✖ 8 problems (0 errors, 8 warnings)
+
+
+## no rating-scale input anywhere — still a mechanism, now over five more surfaces
+[2m Test Files [22m [1m[32m1 passed[39m[22m[90m (1)[39m
+[2m      Tests [22m [1m[32m5 passed[39m[22m[90m (5)[39m
+
+## the hero query is the brief's, and it follows the position it is handed
+   GET /api/discover  (the stub: the Oval) -> at 40.0007,-83.0114 | matches= 2 | hero=Night Owl Coffee (10 min, 18 outlets)
+   GET /api/discover?lat=39.9925&lng=-82.9964 -> at 39.9925,-82.9964 | matches= 2 | hero=The All-Nighter (15 min, 16 outlets)
+   GET /api/discover?lat=39.9812&lng=-83.0458 -> at 39.9812,-83.0458 | matches= 0 | hero=none — designed empty state
+
+## mocked finals week: the same build, the same database, a different calendar file
+$ cat $COSIGN_CALENDAR   # generated from today, so it never needs re-dating
+    {
+      "school": "osu",
+      "timezone": "America/New_York",
+      "terms": [
+        {
+          "slug": "2026-autumn",
+          "name": "Finals fixture",
+          "start": "2026-05-08",
+          "end": "2026-08-23",
+          "week_one_end": "2026-05-14",
+          "finals_start": "2026-08-14"
+        }
+      ]
+    }
+   http://localhost:8787    -> phase=break         mode=usual   matches= 2 hero=Night Owl Coffee [can stay, closes in 128m]
+   http://localhost:8788    -> phase=finals        mode=finals  matches= 2 hero=The All-Nighter [can stay, closes in 1448m]
+
+## friends outrank the crowd — the same database, four different viewers
+   logged out  |  0 of 22 move |  0 ranked by someone they know | top: Cricket & Crow, Marginalia, Lantern Lane Cafe
+   u_lena      | 19 of 22 move | 17 ranked by someone they know | top: Terrazzo, Night Owl Coffee, Tulip Tree Coffee
+   u_sam       | 22 of 22 move | 22 ranked by someone they know | top: Lantern Lane Cafe, Cricket & Crow, Hackberry Roasters
+   u_maya      | 11 of 22 move | 22 ranked by someone they know | top: Cricket & Crow, Marginalia, Lantern Lane Cafe
+
+## data age, straight from the seed timestamps
+   Cardinal & Vine         140d  not checked since March
+   Bexley Common           116d  not checked since April
+   Tulip Tree Coffee        98d  not checked since May
+   South Porch              77d  not checked since May
+   High Street Standard      3d  checked 3 days ago
+   Night Owl Coffee          2d  checked 2 days ago
+   Oval Grounds              1d  checked yesterday
+
+## the position is read once and stored nowhere
+$ GET /api/discover?lat=41.987654&lng=-87.123456, then sweep every table:
+   19 tables swept, 0 containing the coordinate
+
+## playwright
+$ COSIGN_EVIDENCE=phase4/share-regression npx playwright test share.spec.ts   # phase 2, clean seed
+      ✓  24 [desktop] › e2e\share.spec.ts:229:3 › open graph image › the share page points social previews at that image (288ms)
+    
+      24 passed (24.6s)
+$ COSIGN_EVIDENCE=phase4 COSIGN_FINALS_BASE=… npx playwright test home.spec.ts  # phase 4, clean seed
+      ✓  43 [desktop] › e2e\home.spec.ts:694:3 › the quality gates › prefers-reduced-motion removes all animation (892ms)
+      ✓  44 [desktop] › e2e\home.spec.ts:714:3 › the quality gates › the whole column, top to bottom, for the anti-slop review (1.4s)
+    
+      44 passed (1.1m)
+$ COSIGN_EVIDENCE=phase4/log-regression   npx playwright test log.spec.ts     # phase 3, runs last (it writes most)
+    
+      1 skipped
+      35 passed (1.7m)
+$ COSIGN_EVIDENCE_DIR=phase4/spa node scripts/boot-smoke.mjs
+    
+    ok    every request stayed on http://localhost:8787 (zero external services)
+    
+    all 11 routes booted clean
+
+## measured (this run)
+$ cat evidence/phase4/friend-vs-crowd-desktop.json
+    {
+      "viewer": "u_lena",
+      "moved": 20,
+      "of": 20
+    }
+$ cat evidence/phase4/friend-vs-crowd-mobile.json
+    {
+      "viewer": "u_lena",
+      "moved": 20,
+      "of": 20
+    }
+$ cat evidence/phase4/finals-desktop.json
+    {
+      "usual": {
+        "phase": "break",
+        "mode": "usual",
+        "hero": "s_night-owl",
+        "matches": 2
+      },
+      "finals": {
+        "phase": "finals",
+        "mode": "finals",
+        "hero": "s_all-nighter",
+        "matches": 2
+      }
+    }
+$ cat evidence/phase4/finals-mobile.json
+    {
+      "usual": {
+        "phase": "break",
+        "mode": "usual",
+        "hero": "s_night-owl",
+        "matches": 2
+      },
+      "finals": {
+        "phase": "finals",
+        "mode": "finals",
+        "hero": "s_all-nighter",
+        "matches": 2
+      }
+    }
+
+$ axe violations per surface (serious/critical):
+   axe-home-desktop.json        0 (22 passes)
+   axe-home-mobile.json         0 (22 passes)
+   axe-list-desktop.json        0 (18 passes)
+   axe-list-mobile.json         0 (18 passes)
+   axe-profile-desktop.json     0 (23 passes)
+   axe-profile-mobile.json      0 (23 passes)
+   axe-ranking-desktop.json     0 (22 passes)
+   axe-ranking-mobile.json      0 (22 passes)
+   axe-search-desktop.json      0 (27 passes)
+   axe-search-mobile.json       0 (27 passes)
+   axe-shop-desktop.json        0 (24 passes)
+   axe-shop-mobile.json         0 (25 passes)
+   axe-shop-reverify-desktop.json 0 (23 passes)
+   axe-shop-reverify-mobile.json 0 (24 passes)

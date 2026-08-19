@@ -1,5 +1,13 @@
 # Migration notes — Sip → Cosign
 
+> **Historical (superseded 2026-08-15). Do not treat anything below as current
+> architecture.** It describes the pre-rebuild app: Supabase, Vercel edge
+> functions, Google Places, and pairwise *Elo* ranking. Phase 1 removed all of
+> them — persistence is local SQLite behind `server/`, there are no external
+> services or keys, and ranking is binary-search insertion into an ordered list,
+> never Elo. Kept only as the record of what the Phase 0 audit found.
+> The current plan of record is `../../PLAN.md`.
+
 Sip was a solo coffee-logging PWA (Vite + React SPA, Supabase, Vercel edge functions
 for Google Places). Cosign is a campus place-recommendation and ranking app built
 around pairwise Elo comparisons and a public share link. This is not a rename — the

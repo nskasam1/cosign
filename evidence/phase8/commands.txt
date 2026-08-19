@@ -1,0 +1,56 @@
+# Phase 8 evidence — 2026-08-18T23:50:26Z
+# node v24.11.0, npm 11.6.1
+# The list handed to the founder, and how much of it was mine.
+
+## the five items that were mine
+
+### 1. the 90 e2e tests the clock had 'blocked'
+the probe read j.results||j.places||j.shops; the field is 'entries'.
+it printed 'campus is SHUT' at 18:44 with 17 of 22 places open.
+
+seeded places open right now: 14 of 22  (local time 19:42 EDT)
+share.spec.ts      passed=24 failed=0 flaky=0 skipped=0
+profile.spec.ts    passed=46 failed=0 flaky=0 skipped=0
+social.spec.ts     passed=46 failed=0 flaky=0 skipped=0
+home.spec.ts       passed=46 failed=0 flaky=0 skipped=2
+log.spec.ts        passed=35 failed=0 flaky=0 skipped=1
+e2e exit=0
+
+### 2. the restated perf criterion
+/s/  median 745 ms  perf 100  a11y 100
+      runs: 745 · 841 · 835 · 705 · 730
+      criterion=score+tripwire  passed=true  legacy 1.0s passed=true
+/p/  median 1280 ms  perf 100  a11y 100
+      runs: 1283 · 1205 · 1279 · 1280 · 1280
+      criterion=score+tripwire  passed=true  legacy 1.0s passed=false
+
+### 3. font subsetting, priced and rejected
+required codepoints: 331
+  young-serif-400.woff2      26.4 kB ->   23.0 kB  (-12.7%)
+  karla-400.woff2            12.8 kB ->   11.1 kB  (-13.7%)
+  karla-700.woff2            13.0 kB ->   11.2 kB  (-13.9%)
+  total                      52.2 kB ->   45.3 kB  (-6.9 kB)
+
+
+### 4. the academic calendar vs the registrar
+  2025-autumn    start 2025-08-26  finals 2025-12-12  end 2025-12-17
+  2026-spring    start 2026-01-12  finals 2026-04-29  end 2026-05-05
+  2026-summer    start 2026-05-11  finals 2026-08-03  end 2026-08-05
+  2026-autumn    start 2026-08-25  finals 2026-12-11  end 2026-12-16
+  2027-spring    start 2027-01-11  finals 2027-04-28  end 2027-05-04
+  corrected: 2025-autumn.finals_start 12-10->12-12, 2026-autumn.finals_start 12-09->12-11,
+             2026-summer.start 05-13->05-11, 2026-summer.end 08-06->08-05
+  source: registrar.osu.edu five-year view (2023-2028)
+
+### 5. accessibility beyond axe
+  0 FAIL · 10 warn · 32 checks
+  ok  27 focusable, all show a focus indicator
+  ok  5 focusable, all show a focus indicator
+  ok  27 focusable, all show a focus indicator
+  ok  33 focusable, all show a focus indicator
+  ok  32 focusable, all show a focus indicator
+  ok  24 focusable, all show a focus indicator
+  ok  route changed and focus moved to the new page — H1 "What are you after?"
+  ok  step advanced and focus moved — onto the new question
+  warn x6  no skip link
+  warn x4  no live region — async changes announce nothing

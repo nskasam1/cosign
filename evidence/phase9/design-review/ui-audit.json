@@ -1,0 +1,257 @@
+{
+  "base": "http://localhost:8791",
+  "findings": [
+    {
+      "level": "ok",
+      "route": "/",
+      "rule": "surface",
+      "what": "[data-switcher] — \"Places near campus, cosigned by the people y\""
+    },
+    {
+      "level": "ok",
+      "route": "/",
+      "rule": "contrast",
+      "what": "every text run meets its threshold"
+    },
+    {
+      "level": "ok",
+      "route": "/",
+      "rule": "tap-target",
+      "what": "10 targets, all >= 44x44"
+    },
+    {
+      "level": "ok",
+      "route": "/",
+      "rule": "tap-spacing",
+      "what": "no adjacent pair closer than 8px"
+    },
+    {
+      "level": "ok",
+      "route": "/",
+      "rule": "disabled",
+      "what": "disabled controls are visually distinct"
+    },
+    {
+      "level": "ok",
+      "route": "/",
+      "rule": "motion",
+      "what": "nothing runs longer than 500ms"
+    },
+    {
+      "level": "ok",
+      "route": "/onboarding",
+      "rule": "surface",
+      "what": "[data-onboarding] — \"Make your profile.\""
+    },
+    {
+      "level": "ok",
+      "route": "/onboarding",
+      "rule": "contrast",
+      "what": "every text run meets its threshold"
+    },
+    {
+      "level": "ok",
+      "route": "/onboarding",
+      "rule": "tap-target",
+      "what": "5 targets, all >= 44x44"
+    },
+    {
+      "level": "ok",
+      "route": "/onboarding",
+      "rule": "tap-spacing",
+      "what": "no adjacent pair closer than 8px"
+    },
+    {
+      "level": "ok",
+      "route": "/onboarding",
+      "rule": "disabled",
+      "what": "disabled controls are visually distinct"
+    },
+    {
+      "level": "ok",
+      "route": "/onboarding",
+      "rule": "motion",
+      "what": "nothing runs longer than 500ms"
+    },
+    {
+      "level": "ok",
+      "route": "/maya",
+      "rule": "surface",
+      "what": "[data-profile] [data-feed] — \"Maya Okafor\""
+    },
+    {
+      "level": "ok",
+      "route": "/maya",
+      "rule": "contrast",
+      "what": "every text run meets its threshold"
+    },
+    {
+      "level": "ok",
+      "route": "/maya",
+      "rule": "tap-target",
+      "what": "33 targets, all >= 44x44"
+    },
+    {
+      "level": "ok",
+      "route": "/maya",
+      "rule": "tap-spacing",
+      "what": "no adjacent pair closer than 8px"
+    },
+    {
+      "level": "ok",
+      "route": "/maya",
+      "rule": "disabled",
+      "what": "disabled controls are visually distinct"
+    },
+    {
+      "level": "ok",
+      "route": "/maya",
+      "rule": "motion",
+      "what": "nothing runs longer than 500ms"
+    },
+    {
+      "level": "ok",
+      "route": "/",
+      "rule": "surface",
+      "what": "[data-home] — \"Near me, open now, has outlets.\""
+    },
+    {
+      "level": "ok",
+      "route": "/",
+      "rule": "contrast",
+      "what": "every text run meets its threshold"
+    },
+    {
+      "level": "ok",
+      "route": "/",
+      "rule": "tap-target",
+      "what": "28 targets, all >= 44x44"
+    },
+    {
+      "level": "ok",
+      "route": "/",
+      "rule": "tap-spacing",
+      "what": "no adjacent pair closer than 8px"
+    },
+    {
+      "level": "ok",
+      "route": "/",
+      "rule": "disabled",
+      "what": "disabled controls are visually distinct"
+    },
+    {
+      "level": "ok",
+      "route": "/",
+      "rule": "motion",
+      "what": "nothing runs longer than 500ms"
+    },
+    {
+      "level": "ok",
+      "route": "/rank",
+      "rule": "surface",
+      "what": "[data-ranking] — \"In order.\""
+    },
+    {
+      "level": "ok",
+      "route": "/rank",
+      "rule": "contrast",
+      "what": "every text run meets its threshold"
+    },
+    {
+      "level": "ok",
+      "route": "/rank",
+      "rule": "tap-target",
+      "what": "27 targets, all >= 44x44"
+    },
+    {
+      "level": "ok",
+      "route": "/rank",
+      "rule": "tap-spacing",
+      "what": "no adjacent pair closer than 8px"
+    },
+    {
+      "level": "ok",
+      "route": "/rank",
+      "rule": "disabled",
+      "what": "disabled controls are visually distinct"
+    },
+    {
+      "level": "ok",
+      "route": "/rank",
+      "rule": "motion",
+      "what": "nothing runs longer than 500ms"
+    },
+    {
+      "level": "ok",
+      "route": "/log",
+      "rule": "surface",
+      "what": "[data-logflow] — \"Where'd you end up?\""
+    },
+    {
+      "level": "ok",
+      "route": "/log",
+      "rule": "contrast",
+      "what": "every text run meets its threshold"
+    },
+    {
+      "level": "ok",
+      "route": "/log",
+      "rule": "tap-target",
+      "what": "24 targets, all >= 44x44"
+    },
+    {
+      "level": "ok",
+      "route": "/log",
+      "rule": "tap-spacing",
+      "what": "no adjacent pair closer than 8px"
+    },
+    {
+      "level": "ok",
+      "route": "/log",
+      "rule": "disabled",
+      "what": "disabled controls are visually distinct"
+    },
+    {
+      "level": "ok",
+      "route": "/log",
+      "rule": "motion",
+      "what": "nothing runs longer than 500ms"
+    },
+    {
+      "level": "ok",
+      "route": "/search",
+      "rule": "surface",
+      "what": "[data-search] — \"What are you after?\""
+    },
+    {
+      "level": "ok",
+      "route": "/search",
+      "rule": "contrast",
+      "what": "every text run meets its threshold"
+    },
+    {
+      "level": "ok",
+      "route": "/search",
+      "rule": "tap-target",
+      "what": "33 targets, all >= 44x44"
+    },
+    {
+      "level": "ok",
+      "route": "/search",
+      "rule": "tap-spacing",
+      "what": "no adjacent pair closer than 8px"
+    },
+    {
+      "level": "ok",
+      "route": "/search",
+      "rule": "disabled",
+      "what": "disabled controls are visually distinct"
+    },
+    {
+      "level": "ok",
+      "route": "/search",
+      "rule": "motion",
+      "what": "nothing runs longer than 500ms"
+    }
+  ]
+}

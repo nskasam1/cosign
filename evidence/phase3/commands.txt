@@ -1,0 +1,109 @@
+# Phase 3 acceptance evidence — 2026-08-16T00:57:05Z
+# node v24.11.0, npm 11.6.1
+# scratch database: /tmp/cosign-phase3.db (server/data/cosign.db untouched)
+
+## ./node_modules/.bin/tsc -b (project refs: app / node / server)
+exit=0
+
+## npm test
+
+[2m Test Files [22m [1m[32m13 passed[39m[22m[90m (13)[39m
+[2m      Tests [22m [1m[32m136 passed[39m[22m[90m (136)[39m
+[2m   Start at [22m 20:57:26
+[2m   Duration [22m 10.22s[2m (transform 2.67s, setup 12.42s, collect 10.52s, tests 2.84s, environment 4.68s, prepare 7.61s)[22m
+
+
+## npm run lint
+
+✖ 8 problems (0 errors, 8 warnings)
+
+
+## no rating-scale input anywhere — the criterion, as a mechanism
+$ npx vitest run src/design/no-scales.test.ts
+[2m Test Files [22m [1m[32m1 passed[39m[22m[90m (1)[39m
+[2m      Tests [22m [1m[32m5 passed[39m[22m[90m (5)[39m
+$ the three scale-generating primitives are gone, deps and all:
+  ui/{progress,radio-group,chart}.tsx: 0
+  react-progress|react-radio-group|recharts in package.json: 0
+  input[type=range|number] / role=slider|progressbar|radiogroup in src+server,
+  excluding the guard itself and full-line comments (the one remaining
+  match is the JSDoc in StatementRow explaining why it refuses them):
+    src/components/log/StatementRow.tsx:19: * advances in one motion, and this product treats role="radiogroup" as the
+    live (non-comment) matches: 0
+
+## the flow writes nothing it was not told, and forges nothing
+$ POST /api/logs as u_noah, claiming to be u_maya and public:
+   stored user_id   u_noah (cookie said u_noah)
+   stored visibility friends (body asked for public)
+   stamped server-side: evening / break
+$ the enums are enforced by the route, not only by a CHECK constraint:
+   {"shop_id":"s_wheelhouse","intent_tag":"deep_work","noise":3}          -> 400 {"error":"bad noise"}
+   {"shop_id":"s_wheelhouse","intent_tag":"deep_work","crowd":"heaving"}  -> 400 {"error":"bad crowd"}
+   {"shop_id":"s_wheelhouse","intent_tag":"deep_work","photo":"../../etc/passwd"} -> 400 {"error":"bad photo"}
+   {"intent_tag":"deep_work"}                                             -> 404 {"error":"unknown shop"}
+
+## the seeded state this run starts from
+    users=8 rankings=7 logs=96 ranking_entries=74 comparisons=173
+
+## playwright
+$ COSIGN_EVIDENCE=phase3/share-regression npx playwright test share.spec.ts   # phase 2, clean seed
+      ✓  24 [desktop] › e2e\share.spec.ts:229:3 › open graph image › the share page points social previews at that image (645ms)
+    
+      24 passed (35.0s)
+$ COSIGN_EVIDENCE=phase3 npx playwright test log.spec.ts                      # phase 3, both viewports
+      -  36 [desktop] › e2e\log.spec.ts:503:3 › the ten second budget › a log is saved inside ten seconds on a throttled phone
+    
+      1 skipped
+      35 passed (2.0m)
+
+## what the run wrote — every account it created ranked through the flow
+    @tapsv3jvn6 · logs=1 · ranked=1 · rankings row=friends
+    @kbdv3jyvb · logs=0 · ranked=0 · rankings row=MISSING
+    @stampv3k1zi · logs=1 · ranked=1 · rankings row=friends
+    @h2hheadv3k5j4 · logs=1 · ranked=6 · rankings row=friends
+    @h2hmiddlev3k7wi · logs=1 · ranked=6 · rankings row=friends
+    @h2htailv3ka7m · logs=1 · ranked=6 · rankings row=friends
+    @emptyv3kcgr · logs=1 · ranked=1 · rankings row=friends
+    @timedv3ky4p · logs=3 · ranked=1 · rankings row=friends
+    @tapsv3lfrn · logs=1 · ranked=1 · rankings row=friends
+    @kbdv3ligm · logs=0 · ranked=0 · rankings row=MISSING
+    @stampv3ll1p · logs=1 · ranked=1 · rankings row=friends
+    @h2hheadv3loje · logs=1 · ranked=6 · rankings row=friends
+    @h2hmiddlev3lqkg · logs=1 · ranked=6 · rankings row=friends
+    @h2htailv3lt23 · logs=1 · ranked=6 · rankings row=friends
+    @emptyv3luz0 · logs=1 · ranked=1 · rankings row=friends
+    analytics ranking_inserted rows: 45
+
+## measured (this run)
+$ cat evidence/phase3/taps-mobile.json
+{
+  "required_taps": 6,
+  "cap": 8
+}
+$ cat evidence/phase3/timing.json
+{
+  "runs_ms": [
+    4569,
+    3566,
+    3589
+  ],
+  "median_ms": 3589,
+  "budget_ms": 10000,
+  "cpu_throttle": "4x",
+  "network": "slow-4g"
+}
+$ axe violations per surface (serious/critical):
+   axe-log-crowd-desktop.json         0 (18 passes)
+   axe-log-crowd-mobile.json          0 (18 passes)
+   axe-log-noise-desktop.json         0 (18 passes)
+   axe-log-noise-mobile.json          0 (18 passes)
+   axe-log-review-desktop.json        0 (18 passes)
+   axe-log-review-mobile.json         0 (18 passes)
+   axe-log-where-desktop.json         0 (20 passes)
+   axe-log-where-mobile.json          0 (20 passes)
+   axe-log-why-desktop.json           0 (18 passes)
+   axe-log-why-mobile.json            0 (18 passes)
+   axe-placeflow-compare-desktop.json 0 (20 passes)
+   axe-placeflow-compare-mobile.json  0 (20 passes)
+   axe-placeflow-done-desktop.json    0 (21 passes)
+   axe-placeflow-done-mobile.json     0 (21 passes)

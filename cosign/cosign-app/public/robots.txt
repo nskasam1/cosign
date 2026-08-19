@@ -1,14 +1,14 @@
-User-agent: Googlebot
-Allow: /
-
-User-agent: Bingbot
-Allow: /
-
-User-agent: Twitterbot
-Allow: /
-
-User-agent: facebookexternalhit
-Allow: /
-
+# Share links are unlisted and revocable (decision 12): they are meant to be
+# passed to a person, not indexed. Crawling them would make "revocable"
+# meaningless the moment a link is shared.
+#
+# /g/ is the same kind of address: a group session is reached by a 12-byte
+# token and answers without auth, so an indexed one is a table anybody can
+# read. The server also sets X-Robots-Tag on it, because a crawler that
+# ignores this file is exactly the crawler that matters here.
 User-agent: *
 Allow: /
+Disallow: /s/
+Disallow: /p/
+Disallow: /og/
+Disallow: /g/

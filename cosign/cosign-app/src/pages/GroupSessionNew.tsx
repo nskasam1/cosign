@@ -1,71 +1,162 @@
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
-import { Check } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
-import { useAuth } from "@/hooks/useAuth";
-import type { Shop } from "@/types/cosign";
+import { Link, useNavigate } from "react-router-dom";
+import { api } from "@/lib/api";
+import { track } from "@/lib/analytics";
+import { useTitle } from "@/lib/title";
+import { MAX_PARTICIPANTS } from "@/lib/group";
+import type { User } from "@/types/cosign";
+import Nothing from "@/components/Nothing";
 
-// Phase 4.1 — starting a group decision session. Candidate picking is
-// intentionally plain (tap 3–5 from the directory); the payoff is the
-// voting page (GroupSession.tsx) participants land on via the share link.
+/**
+ * Asking. The only thing this screen does is pick up to three people you have
+ * already agreed to know and make one link — which is the whole of what
+ * "a friend asked" means, and the only notification group mode ever sends.
+ */
 const GroupSessionNew = () => {
-  const { user } = useAuth();
   const navigate = useNavigate();
-  const [shops, setShops] = useState<Shop[]>([]);
-  const [picked, setPicked] = useState<Set<string>>(new Set());
-  const [creating, setCreating] = useState(false);
+  const [friends, setFriends] = useState<User[] | null>(null);
+  const [reachable, setReachable] = useState(true);
+  const [picked, setPicked] = useState<string[]>([]);
+  const [busy, setBusy] = useState(false);
+  const [failed, setFailed] = useState(false);
+  useTitle("Ask three people");
 
   useEffect(() => {
-    supabase.from("shops").select("*").then(({ data }) => setShops((data ?? []) as Shop[]));
+    api
+      .friends()
+      .then((v) => setFriends(v.accepted))
+      .catch(() => setReachable(false));
   }, []);
 
-  const toggle = (id: string) => {
-    setPicked((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else if (next.size < 5) next.add(id);
-      return next;
-    });
+  const cap = MAX_PARTICIPANTS - 1;
+
+  const toggle = (username: string) =>
+    setPicked((p) =>
+      p.includes(username) ? p.filter((u) => u !== username) : p.length >= cap ? p : [...p, username],
+    );
+
+  const ask = async () => {
+    if (busy) return;
+    setBusy(true);
+    setFailed(false);
+    try {
+      const { session } = await api.startGroup(picked);
+      track("friend_asked", { invited: picked.length });
+      navigate(`/g/${session.id}`, { replace: true });
+    } catch {
+      setFailed(true);
+      setBusy(false);
+    }
   };
 
-  const create = async () => {
-    if (!user || picked.size < 2) return;
-    setCreating(true);
-    const { data } = await supabase
-      .from("group_sessions")
-      .insert({ created_by: user.id, shop_candidates: Array.from(picked), quorum: 2 })
-      .select()
-      .single();
-    setCreating(false);
-    if (data) navigate(`/group/${data.id}`);
-  };
+  if (!reachable) {
+    return (
+      <main data-group-new data-state="unreachable" className="cs-wrap flex min-h-dvh flex-col justify-center pb-10">
+        <Nothing
+          kicker="Can't reach it"
+          standalone
+          title="Cosign can't reach your people right now."
+          body="This is this machine, not them. Nothing was sent, so there is nothing to undo."
+          action={
+            <Link to="/" className="cs-pill-ghost">
+              Back home
+            </Link>
+          }
+        />
+      </main>
+    );
+  }
+
+  if (friends === null) {
+    return (
+      <main data-group-new data-state="loading" className="cs-wrap flex min-h-dvh items-center justify-center">
+        <p className="cs-display text-muted">Looking.</p>
+      </main>
+    );
+  }
 
   return (
-    <div className="min-h-screen px-6 py-10 flex flex-col gap-4 max-w-sm mx-auto">
-      <h1 className="text-2xl font-black text-foreground">Start a group decision</h1>
-      <p className="text-sm text-muted-foreground">Pick 3–5 candidates, then share the link.</p>
-      <div className="flex flex-col gap-2 max-h-[55vh] overflow-y-auto">
-        {shops.map((shop) => (
-          <button
-            key={shop.id}
-            onClick={() => toggle(shop.id)}
-            className={`flex items-center justify-between rounded-2xl border p-3 text-left ${
-              picked.has(shop.id) ? "border-primary bg-primary/10" : "border-border bg-card"
-            }`}
-          >
-            <span className="text-sm font-semibold text-foreground">{shop.name}</span>
-            {picked.has(shop.id) && <Check className="w-4 h-4 text-primary" />}
-          </button>
-        ))}
+    <main data-group-new className="cs-wrap pb-16 pt-[max(var(--space-4),env(safe-area-inset-top))]">
+      <div className="flex items-baseline justify-between gap-4">
+        <Link to="/" className="cs-word cs-caps text-muted">
+          Leave
+        </Link>
+        <p className="cs-caps text-right text-gold">Cosign · a table for four</p>
       </div>
-      <button
-        onClick={create}
-        disabled={picked.size < 2 || creating}
-        className="mt-2 bg-primary text-primary-foreground rounded-2xl py-3 font-semibold disabled:opacity-50"
-      >
-        {creating ? "Creating…" : `Create with ${picked.size} candidates`}
-      </button>
-    </div>
+
+      <h1 className="cs-display mt-4 text-balance text-xl text-line">
+        One table that works for all of you.
+      </h1>
+      <div className="mt-4 h-px bg-ember" />
+      <p className="mt-5 text-sm text-line">
+        Everybody says what they can't do without, and what is left over is the answer. Nobody votes — a
+        vote is a rating with extra steps, and it hands the table to whoever brought the most friends.
+      </p>
+
+      {friends.length === 0 ? (
+        <div className="mt-8">
+          <Nothing
+            kicker="Nobody yet"
+            title="You haven't agreed to know anybody here."
+            body="A table is people you'd actually ask, so Cosign will only let you ask them. Open somebody's page and add them, and this screen fills up."
+            action={
+              <Link to="/search" className="cs-pill-ghost">
+                Find a place instead
+              </Link>
+            }
+          />
+        </div>
+      ) : (
+        <>
+          <section className="mt-8">
+            <h2 className="cs-caps text-gold">Who are you asking?</h2>
+            <p className="mt-2 text-xs text-muted">
+              Up to {cap}. Anybody you send the link to can answer, with or without an account — this is
+              just who gets told.
+            </p>
+            <div className="mt-3">
+              {friends.map((f) => {
+                const on = picked.includes(f.username);
+                return (
+                  <button
+                    key={f.id}
+                    type="button"
+                    data-invite={f.username}
+                    aria-pressed={on}
+                    aria-disabled={!on && picked.length >= cap}
+                    onClick={() => toggle(f.username)}
+                    className="cs-row py-4"
+                  >
+                    <span className="cs-display block text-lg text-ink">{f.display_name}</span>
+                    {f.taste_line && (
+                      <span className="mt-1 block text-xs text-muted">{f.taste_line}</span>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+            {picked.length >= cap && (
+              <p data-cap className="cs-caps mt-3 text-muted">
+                That's {cap} — a table is four people. Drop one first.
+              </p>
+            )}
+          </section>
+
+          <button type="button" data-ask disabled={busy} onClick={ask} className="cs-pill mt-8">
+            {busy ? "Asking…" : picked.length === 0 ? "Make the link" : `Ask ${picked.length}`}
+          </button>
+          {failed && (
+            <p data-said className="cs-caps mt-4 text-ember-ink">
+              That didn't send. Nobody was asked — tap it again.
+            </p>
+          )}
+          <p className="mt-4 text-xs text-muted">
+            They each get one line on their own page saying you asked. Cosign sends nothing else, ever — no
+            reminder, no second ask, nothing on a timer.
+          </p>
+        </>
+      )}
+    </main>
   );
 };
 

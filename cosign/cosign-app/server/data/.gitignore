@@ -1,0 +1,3 @@
+# machine-local: SQLite DB + cookie secret live here, never committed
+*
+!.gitignore

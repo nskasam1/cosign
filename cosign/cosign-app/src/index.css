@@ -1,34 +1,11 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,400;1,9..144,300&display=swap');
+/* The canonical design tokens (Phase 2). Colour, type, space, radius and
+   motion are decided in exactly one file; nothing below re-decides them.
+   The SSR share page inlines the same file via server/pages/tokens.ts. */
+@import "./design/tokens.css";
 
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
-
-/* ── Design tokens (original warm palette) ── */
-@layer base {
-  :root {
-    --background: 220 10% 8%;
-    --foreground: 35 22% 90%;
-    --card: 220 9% 12%;
-    --card-foreground: 35 22% 90%;
-    --popover: 220 9% 12%;
-    --popover-foreground: 35 22% 90%;
-    --primary: 27 46% 60%;
-    --primary-foreground: 220 10% 8%;
-    --secondary: 36 65% 55%;
-    --secondary-foreground: 220 10% 8%;
-    --muted: 220 7% 17%;
-    --muted-foreground: 25 8% 48%;
-    --accent: 220 7% 17%;
-    --accent-foreground: 35 22% 90%;
-    --destructive: 0 72% 51%;
-    --destructive-foreground: 35 22% 90%;
-    --border: 220 6% 18%;
-    --input: 220 6% 18%;
-    --ring: 27 46% 60%;
-    --radius: 0.875rem;
-  }
-}
 
 @layer base {
   * {
@@ -37,173 +14,829 @@
   body {
     @apply bg-background text-foreground font-sans antialiased;
     -webkit-tap-highlight-color: transparent;
-    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
   }
-  h1, h2, h3, h4, h5, h6 {
-    font-family: 'Inter', sans-serif;
+  /* The shelf is sticky at the bottom, so without this a tabbed-to row is
+     scrolled flush to the viewport edge and lands underneath it — with the
+     facts line and the freshness caveat, the bottom of the row, covered. */
+  html {
+    scroll-padding-bottom: 5rem;
+  }
+  h1, h2, h3 {
+    font-family: var(--font-display);
+    font-weight: 400;
+    letter-spacing: var(--tracking-display);
+    line-height: var(--leading-snug);
+  }
+  h4, h5, h6 {
+    font-weight: 600;
+    letter-spacing: -0.01em;
+  }
+  /* Small-caps labels are the editorial voice throughout the app. 700, not
+     600 — Karla ships here as 400 and 700 only, so 600 was synthesising. */
+  .label {
+    font-size: var(--text-2xs);
     font-weight: 700;
+    letter-spacing: var(--tracking-caps);
+    text-transform: uppercase;
+    color: hsl(var(--gold));
+  }
+  /* The share page has had both since Phase 2; the SPA had neither, which is
+     a keyboard-visibility failure axe reports as soon as a flow is tabbed. */
+  :focus-visible {
+    outline: 2px solid hsl(var(--ember));
+    outline-offset: 3px;
+  }
+  ::selection {
+    background: hsl(var(--ember) / 0.32);
+  }
+}
+
+/* ─────────────────────────────────────────────────────────────────────────
+   The log-flow vocabulary (Phase 3). Five shapes, no card among them: the
+   surface's structure is hairlines and the page margin, ported from the
+   share page rather than re-decided. Everything reads tokens.css.
+   ───────────────────────────────────────────────────────────────────────── */
+@layer components {
+  /* One reading column, the share page's exact measure and gutter. */
+  .cs-wrap {
+    width: 100%;
+    max-width: 37.25rem;
+    margin-inline: auto;
+    padding-inline: var(--gutter);
+  }
+
+  /* The small-caps voice. Colour is always set by a utility at the call
+     site, because this label does three different jobs in three colours. */
+  .cs-caps {
+    font-family: var(--font-body);
+    font-size: var(--text-2xs);
+    font-weight: 700;
+    line-height: 1.4;
+    letter-spacing: var(--tracking-caps);
+    text-transform: uppercase;
+  }
+
+  /* Display face at any size — questions, answers, place names, numerals. */
+  .cs-display {
+    font-family: var(--font-display);
+    font-weight: 400;
+    letter-spacing: var(--tracking-display);
+  }
+  .cs-figures {
+    font-variant-numeric: lining-nums tabular-nums;
+  }
+
+  /* An answer row: a hairline above, and a press state that bleeds through
+     the gutter so the whole edge-to-edge band reads as one target. */
+  .cs-row {
+    position: relative;
+    display: block;
+    width: 100%;
+    text-align: left;
+    margin-inline: calc(var(--gutter) * -1);
+    padding-inline: var(--gutter);
+    border-top: 1px solid hsl(var(--rule));
+    transition: background-color var(--duration-fast) var(--ease-out),
+      color var(--duration-fast) var(--ease-out);
+  }
+  .cs-row:first-child {
+    border-top: 0;
+  }
+  /* …but `:first-child` is about the row's WRAPPER, and half the columns in
+     this app wrap. `<ol><li><Link class="cs-row">` makes every row the first
+     child of its own list item, so every row matched the rule above and the
+     hairlines that ARE the structure of this design vanished from the whole
+     column — silently, because a missing hairline looks like a design choice.
+     It had taken all seven list-semantic columns in the product: the ranked
+     list on your profile and on /rank (22 rows each, no separators at all),
+     the collaborative list, both group-session columns, and both halves of
+     the Maps import. The share page was never affected, which is exactly why
+     nobody saw it: the same list, rendered by server/pages/shareList.ts as a
+     flat `<ol><li>`, has had its hairlines since Phase 2.
+
+     Three shapes exist in the tree and each gets its row back. A row still
+     loses its hairline only when it is the first row of the whole column —
+     including the second place in a tied pair, which shares a standing but
+     is still its own place and still earns its own line. */
+  li:not(:first-child) > .cs-row,
+  li:not(:first-child) > * > .cs-row,
+  li > :not(:first-child) > .cs-row {
+    border-top: 1px solid hsl(var(--rule));
+  }
+  .cs-row:active,
+  .cs-row[aria-pressed="true"] {
+    background: hsl(var(--surface));
+  }
+
+  /* The one selection mark in the product: a 2px ember rule in the page
+     margin. Same object as the save stamp, turned ninety degrees — so it
+     arrives the same way, turned ninety degrees too, drawing down from the
+     top edge in the time it takes the ground to change under it. */
+  .cs-row[aria-pressed="true"]::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 2px;
+    background: hsl(var(--ember));
+    transform-origin: top;
+    animation: cs-draw-down var(--duration-fast) var(--ease-out) both;
+  }
+
+  /* A column that arrived together, and settles that way: one row after the
+     next, 40 ms apart. It is sugar over `--i` and nothing more — the same
+     custom property PlaceRow sets by hand where a cascade has to carry
+     across two containers (Home's answer, then the rest of the matches).
+     One primitive, two ways to aim it.
+
+     Depth six, and the cap is the point: an uncapped step down a 22-place
+     column would hold the last row invisible for the better part of a second
+     to animate something nobody has scrolled to. Six rows is roughly a
+     390x844 screenful, so the cascade covers exactly what you can watch
+     arrive and everything past it is already at rest.
+
+     Not used on a column that FILTERS in place (Search): there the rows that
+     survive are the same DOM, and re-numbering `:nth-child` on every
+     keystroke would re-time an animation that already finished. Those rows
+     settle one at a time as they appear, which is the truer signal anyway —
+     this row is new, the rest were always here. */
+  .cs-column > * {
+    --i: 6;
+    animation: cs-settle var(--duration-base) var(--ease-out) both;
+    animation-delay: calc(var(--i) * var(--stagger));
+  }
+  .cs-column > :nth-child(1) { --i: 0; }
+  .cs-column > :nth-child(2) { --i: 1; }
+  .cs-column > :nth-child(3) { --i: 2; }
+  .cs-column > :nth-child(4) { --i: 3; }
+  .cs-column > :nth-child(5) { --i: 4; }
+  .cs-column > :nth-child(6) { --i: 5; }
+
+  /* A place's photograph, and the designed state for a place without one:
+     its initials in its own imagery hue, never a missing picture. */
+  .cs-shot {
+    border-radius: var(--radius-sm);
+    object-fit: cover;
+    background: hsl(var(--surface));
+  }
+  .cs-plate {
+    display: grid;
+    place-items: center;
+    border-radius: var(--radius-sm);
+    background: hsl(var(--plate));
+    border: 1px solid hsl(var(--pal) / 0.24);
+    color: hsl(var(--pal));
+    font-family: var(--font-display);
+    font-weight: 400;
     letter-spacing: -0.02em;
   }
-}
 
-/* ── Utility classes ── */
-@layer utilities {
-  .glass {
-    background: hsl(220 9% 12% / 0.88);
-    backdrop-filter: blur(20px) saturate(160%);
-    -webkit-backdrop-filter: blur(20px) saturate(160%);
+  /* The two pill shapes. Solid ember commits; the outline is everything
+     after the commit, where nothing is at stake any more. */
+  .cs-pill {
+    display: inline-flex;
+    align-items: center;
+    min-height: var(--tap);
+    padding-inline: var(--space-5);
+    border-radius: var(--radius-full);
+    background: hsl(var(--ember));
+    color: hsl(var(--bg));
+    font-family: var(--font-body);
+    font-size: var(--text-2xs);
+    font-weight: 700;
+    letter-spacing: var(--tracking-caps);
+    text-transform: uppercase;
+    transition: opacity var(--duration-fast) var(--ease-out),
+      transform var(--duration-fast) var(--ease-out);
   }
-  .glass-heavy {
-    background: hsl(220 10% 8% / 0.94);
-    backdrop-filter: blur(32px) saturate(180%);
-    -webkit-backdrop-filter: blur(32px) saturate(180%);
+  /* Seated, not scaled. A pill that grows under the thumb is a toy; a pill
+     that sinks one pixel into the page is a key being pressed, and 1px of
+     transform moves nothing around it. */
+  .cs-pill:active:not([disabled]),
+  .cs-pill-ghost:active,
+  .cs-chip:active {
+    transform: translateY(1px);
   }
-  .gradient-card {
-    background: linear-gradient(145deg, hsl(220 9% 14%) 0%, hsl(220 9% 11%) 100%);
-  }
-  .card-shine {
-    position: relative;
-    overflow: hidden;
-  }
-  .card-shine::before {
-    content: '';
-    position: absolute;
-    inset: 0;
-    background: linear-gradient(135deg, rgba(255,255,255,0.025) 0%, transparent 55%);
+  /* Disabled, for every pressable shape in the vocabulary and not just the
+     one that happened to need it first.
+
+     `.cs-pill` has had this since Phase 3; `.cs-pill-ghost` and `.cs-word`
+     never got it, and nothing noticed until a measured audit found Phase 9's
+     "Not now" rendering identically enabled and disabled. A word that looks
+     pressable and does nothing is the worst of the three states, because the
+     person keeps pressing it. `pointer-events: none` is what makes the
+     difference honest rather than decorative — the control stops answering as
+     well as stops looking available.
+
+     `src/design/disabled.test.ts` fails if a new pressable class arrives
+     without one. */
+  .cs-pill[disabled],
+  .cs-pill-ghost[disabled],
+  .cs-word[disabled],
+  .cs-chip[disabled] {
+    opacity: 0.45;
     pointer-events: none;
-    border-radius: inherit;
   }
-  .gradient-text {
-    background: linear-gradient(135deg, hsl(27 46% 70%) 0%, hsl(36 65% 60%) 100%);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
+  .cs-pill-ghost {
+    display: inline-flex;
+    align-items: center;
+    min-height: var(--tap);
+    padding-inline: var(--space-5);
+    border-radius: var(--radius-full);
+    border: 1px solid hsl(var(--ember));
+    color: hsl(var(--ember-ink));
+    font-family: var(--font-body);
+    font-size: var(--text-2xs);
+    font-weight: 700;
+    letter-spacing: var(--tracking-caps);
+    text-transform: uppercase;
+    transition: background-color var(--duration-fast) var(--ease-out),
+      color var(--duration-fast) var(--ease-out),
+      transform var(--duration-fast) var(--ease-out);
   }
-  .gradient-accent {
-    background: linear-gradient(135deg, hsl(27 46% 58%) 0%, hsl(36 65% 53%) 100%);
+  .cs-pill-ghost:hover {
+    background: hsl(var(--ember));
+    color: hsl(var(--bg));
   }
-  .gold-glow {
-    box-shadow: 0 0 24px hsl(27 46% 60% / 0.18), 0 0 48px hsl(36 65% 55% / 0.08);
+
+  /* A 44px word: BACK, LATER, CANCEL. Negative margin keeps the text
+     optically flush with the gutter while the target stays full size. */
+  .cs-word {
+    display: inline-flex;
+    align-items: center;
+    min-height: var(--tap);
+    margin-inline: -0.5rem;
+    padding-inline: 0.5rem;
   }
-  .accent-glow {
-    box-shadow: 0 0 30px hsl(27 46% 60% / 0.2), 0 0 60px hsl(36 65% 55% / 0.1);
+
+  /* A filter chip. Ported from the share page's chips (server/pages/
+     shareList.ts) rather than re-decided — Search is the same act of
+     narrowing a ranked column that the share page already does. */
+  .cs-chip {
+    display: inline-flex;
+    flex: none;
+    align-items: center;
+    min-height: var(--tap);
+    padding-inline: var(--space-4);
+    border: 1px solid hsl(var(--rule-strong));
+    border-radius: var(--radius-full);
+    background: hsl(var(--surface));
+    color: hsl(var(--line));
+    font-family: var(--font-body);
+    font-size: var(--text-xs);
+    white-space: nowrap;
+    transition: background-color var(--duration-fast) var(--ease-out),
+      border-color var(--duration-fast) var(--ease-out),
+      color var(--duration-fast) var(--ease-out),
+      transform var(--duration-fast) var(--ease-out);
   }
-  .nav-shadow {
-    box-shadow: 0 8px 32px rgba(0,0,0,0.55), 0 2px 8px rgba(0,0,0,0.35), inset 0 1px 0 rgba(255,255,255,0.04);
+  .cs-chip[aria-pressed="true"] {
+    background: hsl(var(--ember));
+    border-color: hsl(var(--ember));
+    color: hsl(var(--bg));
+    font-weight: 700;
+  }
+
+  /* ── the shelf (Phase 4) ────────────────────────────────────────────────
+     The one new object this phase ships: four words on a hairline. No
+     icons, no raised bar, no badge — there is nothing to badge, because
+     nothing in this product notifies you without a person behind it.
+
+     The active tab's mark is the same 2px ember rule that
+     .cs-row[aria-pressed] draws in the page margin and .cs-stamp draws
+     across the column after a save: one object, three surfaces, the same
+     meaning every time — this is the live one. */
+  .cs-shelf {
+    position: sticky;
+    bottom: 0;
+    z-index: 3;
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    align-items: center;
+    background: hsl(var(--bg));
+    border-top: 1px solid hsl(var(--rule-strong));
+    padding-top: var(--space-2);
+    padding-bottom: max(var(--space-2), env(safe-area-inset-bottom));
+    padding-inline: var(--space-2);
+  }
+  .cs-tab {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: var(--tap);
+    font-family: var(--font-body);
+    font-size: var(--text-2xs);
+    font-weight: 700;
+    letter-spacing: var(--tracking-caps);
+    text-transform: uppercase;
+    color: hsl(var(--muted));
+    transition: color var(--duration-fast) var(--ease-out);
+  }
+  .cs-tab[aria-current="page"] {
+    color: hsl(var(--ink));
+  }
+  /* The live tab's rule draws itself out from the middle each time it
+     becomes the live one — a pseudo-element's animation restarts when its
+     selector starts matching, so the mark travels with the destination
+     instead of blinking on somewhere else. Out from the CENTRE rather than
+     from the left, because unlike the stamp and the margin mark this rule
+     has no reading direction: it is a mark on a word, not across a column. */
+  .cs-tab[aria-current="page"]::before {
+    content: "";
+    position: absolute;
+    top: calc((var(--space-2) + 1px) * -1);
+    left: var(--space-4);
+    right: var(--space-4);
+    height: 2px;
+    background: hsl(var(--ember));
+    transform-origin: center;
+    animation: cs-draw var(--duration-base) var(--ease-out) both;
+  }
+  /* Log is the thumb-reach primary and has no icon to be primary with, so
+     it is primary by FACE, CASE and ENCLOSURE: the display serif in title
+     case between two hairlines, while its three neighbours are tracked
+     small caps. Those three signals are what make it primary; the ember
+     tint only confirms it.
+
+     Both ember objects appear in this bar, and they are different shapes
+     for different jobs: the 2px RULE is "the one you are on", the WORD is
+     "the one that writes" — the same voice as the log flow's SAVE IT, which
+     is the only other solid-ember thing in the product. A rule and a word
+     are not mistakable for one another; two words would have been.
+
+     It is deliberately not the solid ember pill. A filled lozenge sitting
+     in the bar on every screen forever would be the loudest object in the
+     app, permanently, for a destination rather than for an act. */
+  .cs-tab-log {
+    padding: 0;
+    border-inline: 1px solid hsl(var(--rule-strong));
+    font-family: var(--font-display);
+    font-size: var(--text-lg);
+    font-weight: 400;
+    letter-spacing: var(--tracking-display);
+    text-transform: none;
+    color: hsl(var(--ember-ink));
+  }
+  .cs-tab-log[aria-current="page"] {
+    color: hsl(var(--ember-ink));
+  }
+
+  /* ── two shapes for the surfaces where several people are in the room
+     (Phase 5B). Both are hairline structures, which is the only kind of
+     structure this product has: no card appeared here either.
+
+     The LEDGER is a column of counts that subtracts to an answer — "how
+     twenty-two became two" on the group page, "where this order comes from"
+     on a shared list. Every figure in it is a count of something a person
+     did or a place that exists, never a score, and it is a table of facts
+     rather than anything that could be drawn as a chart. */
+  .cs-ledger {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    align-items: baseline;
+    column-gap: var(--space-4);
+  }
+  .cs-ledger > * {
+    border-top: 1px solid hsl(var(--rule));
+    padding-block: var(--space-3);
+  }
+  .cs-ledger > :nth-child(-n + 2) {
+    border-top: 0;
+  }
+  .cs-ledger > :nth-child(even) {
+    font-variant-numeric: lining-nums tabular-nums;
+    text-align: right;
+    white-space: nowrap;
+  }
+
+  /* The BRACE joins the two entries that share one standing. It is
+     structural, not decorative: it says which rows the numeral covers, on
+     the one surface where a number deliberately does not increment. */
+  .cs-brace {
+    position: relative;
+    padding-left: var(--space-4);
+  }
+  .cs-brace::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: var(--space-3);
+    bottom: var(--space-3);
+    width: 0.5rem;
+    border: 1px solid hsl(var(--rule-strong));
+    border-right: 0;
+    border-radius: var(--radius-xs) 0 0 var(--radius-xs);
+  }
+
+  /* ── motion: three verbs, and there is deliberately no fourth ──────────
+     A product that looks like print has to decide what print does when it
+     moves, and the honest answer is that a printed page does not move at
+     all — ink does. So this layer animates CHANGE and never reading: no
+     surface in Cosign reveals itself as you scroll past it, because the
+     list is not arriving, you are. What moves is what just happened.
+
+       DRAW    a rule extends from its origin. The 2px ember mark is the
+               same object on three surfaces (the margin of a chosen row,
+               the live tab, the stamp across the column after a save), so
+               it enters the same way each time and means the same thing:
+               this is the live one.
+       SETTLE  something that has just arrived lands on the page — 6px and
+               a fade, optionally one place after another via `--i`.
+       PRESS   the surface answers a finger inside 120 ms: the ground goes
+               up a step, a pill seats 1px into the page, the margin mark
+               draws down. Transform and opacity only, so nothing reflows.
+
+     Scroll-driven reveals (`animation-timeline: view()`) were tried and
+     rejected twice over: they read as a landing page rather than as a
+     page, and their animations never finish, so `settled()` in
+     e2e/fixtures.ts would hang and a fullPage screenshot — which scrolls —
+     would commit half-faded rows as evidence. */
+
+  /* The save stamp: one ember hairline drawing itself across the column,
+     which then stays put above every comparison as proof the log is safe. */
+  .cs-stamp {
+    height: 1px;
+    background: hsl(var(--ember));
+  }
+  .cs-stamp,
+  .cs-draw {
+    transform-origin: left;
+    animation: cs-draw var(--duration-slow) var(--ease-out) both;
+  }
+  .cs-step {
+    animation: cs-step-in var(--duration-base) var(--ease-out) both;
+  }
+  /* The general arrival. `--i` is the row's place in the column and it is
+     capped at the call site: an unbounded stagger on a 22-place list would
+     hold the last row invisible for the better part of a second. */
+  .cs-settle {
+    animation: cs-settle var(--duration-base) var(--ease-out) both;
+    animation-delay: calc(var(--i, 0) * var(--stagger));
+  }
+  .cs-fade {
+    animation: cs-fade-in var(--duration-base) var(--ease-out) both;
   }
 }
 
-/* ── Scrollbar hiding ── */
-.no-scrollbar::-webkit-scrollbar { display: none; }
-.no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+@keyframes cs-draw {
+  from { transform: scaleX(0); }
+  to { transform: scaleX(1); }
+}
+@keyframes cs-draw-down {
+  from { transform: scaleY(0); }
+  to { transform: scaleY(1); }
+}
+@keyframes cs-step-in {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes cs-settle {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes cs-fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
 
-/* ── Custom range sliders ── */
-.slider-craft,
-.slider-feel {
-  -webkit-appearance: none;
-  appearance: none;
-  height: 8px;
-  border-radius: 9999px;
-  cursor: pointer;
-  outline: none;
-  border: none;
-  width: 100%;
+/* Every duration in this file is a token and tokens.css zeroes all four
+   under prefers-reduced-motion — but the SPA also mounts CSS it did not
+   write, and a named-class list only guards the classes somebody remembered
+   to name. The share page has carried the blanket rule since Phase 2; this
+   is the same rule, so the two public surfaces and the app stop for the same
+   people. `animation:none` renders the resting state, which is why every
+   keyframe above ends at rest rather than starting there. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  ::before,
+  ::after {
+    animation: none !important;
+    transition: none !important;
+    scroll-behavior: auto !important;
+  }
+
+}
+
+/* ══════════════════════════════════════════════════════════════════════
+   THE CARD LAYER (revamp step 2)
+
+   The old vocabulary was hairlines and nothing else, and that is precisely
+   what made every screen read as a document rather than a product. Cards
+   win everywhere now; hairlines survive only INSIDE a card, dividing its
+   content from its cosign row. Between cards, the gap and the elevation do
+   the work.
+   ══════════════════════════════════════════════════════════════════════ */
+
+/* The base. Everything below is a specialisation of it. */
+.cs-card {
+  position: relative;
+  background: hsl(var(--surface));
+  border: 1px solid hsl(var(--rule));
+  border-radius: var(--radius-lg);
+  box-shadow: var(--elev-1);
+  padding: var(--space-4);
+}
+
+/* PRESS, the third motion verb: the surface answers a finger inside
+   --duration-fast. Transform and opacity only, so nothing reflows. */
+a.cs-card,
+button.cs-card {
   display: block;
+  width: 100%;
+  text-align: left;
+  transition:
+    background-color var(--duration-fast) var(--ease-out),
+    transform var(--duration-fast) var(--ease-out);
+}
+a.cs-card:active,
+button.cs-card:active {
+  background: hsl(var(--raise));
+  transform: scale(0.995);
 }
 
-/* Taste slider — fills with warm gold */
-.slider-craft {
+/* The feed unit. A photograph leads; the rank chip sits on it; the facts
+   and the faces sit under it. */
+.cs-place-card {
+  padding: var(--space-3);
+}
+.cs-place-card .cs-media {
+  position: relative;
+  display: block;
+  aspect-ratio: 16 / 10;
+  overflow: hidden;
+  border-radius: var(--radius-md);
+  background: hsl(var(--raise));
+}
+.cs-place-card .cs-media img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+/* The ONE place a number appears beside a place, and it is a position in
+   an ordered list — never a score. `no-scales.test.ts` is the guard. */
+.cs-rank-chip {
+  position: absolute;
+  top: var(--space-2);
+  left: var(--space-2);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 26px;
+  height: 26px;
+  padding-inline: 6px;
+  border-radius: var(--radius-xs);
+  background: hsl(var(--ember));
+  color: hsl(var(--on-ember));
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: var(--text-xs);
+  font-variant-numeric: tabular-nums lining-nums;
+  box-shadow: 0 2px 8px hsl(20 40% 2% / 0.45);
+}
+
+/* The density workhorse: icon + value pairs, dot separated. Four to six of
+   these per card is most of what makes the app feel like it contains
+   something, and it replaces the paragraph that used to say the same thing
+   in forty words. */
+.cs-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 2px var(--space-2);
+  color: hsl(var(--muted));
+  font-size: var(--text-xs);
+  line-height: 1.5;
+}
+.cs-meta > * {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  white-space: nowrap;
+}
+.cs-meta > * + *::before {
+  content: "·";
+  margin-right: var(--space-2);
+  color: hsl(var(--rule-strong));
+}
+
+/* The social proof — and deliberately NOT an engagement row. It has the
+   visual density of one and none of its semantics: an avatar stack and a
+   sentence naming who cosigned. There is no like, no reply, no repost,
+   because cosigning IS ranking (hard rule 2) and a second way to endorse
+   would make the first one meaningless. */
+.cs-cosign-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  margin-top: var(--space-3);
+  padding-top: var(--space-3);
+  border-top: 1px solid hsl(var(--rule));
+  color: hsl(var(--line));
+  font-size: var(--text-xs);
+}
+
+.cs-avatar {
+  flex: none;
+  display: inline-grid;
+  place-items: center;
+  width: var(--avatar, 32px);
+  height: var(--avatar, 32px);
+  border-radius: var(--radius-full);
+  background: hsl(var(--surface));
+  box-shadow: 0 0 0 1.5px hsl(var(--bg));
+  object-fit: cover;
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: calc(var(--avatar, 32px) * 0.4);
+  color: hsl(var(--pal, var(--gold)));
+  overflow: hidden;
+}
+.cs-avatar-stack {
+  display: inline-flex;
+  flex: none;
+  /* Overlap, and let the FIRST avatar sit on top so the reading order and
+     the stacking order agree. */
+  direction: rtl;
+}
+.cs-avatar-stack > * {
+  margin-inline-start: -9px;
+  box-shadow: 0 0 0 2px hsl(var(--surface));
+}
+.cs-avatar-stack > :last-child {
+  margin-inline-start: 0;
+}
+
+/* ── the shell ────────────────────────────────────────────────────────
+   Four destinations and one act. The brief's "at most four primary
+   destinations" holds exactly: the FAB is an action, not a destination,
+   and it is the only reason the bar has five slots. */
+.cs-tabbar {
+  position: sticky;
+  bottom: 0;
+  z-index: 40;
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  align-items: center;
+  padding-bottom: env(safe-area-inset-bottom);
+  background: hsl(var(--sunk) / 0.86);
+  border-top: 1px solid hsl(var(--rule));
+  backdrop-filter: blur(14px) saturate(1.2);
+}
+.cs-tabitem {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  min-height: 62px;
+  color: hsl(var(--muted));
+  font-size: var(--text-2xs);
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  transition: color var(--duration-fast) var(--ease-out);
+}
+/* Never colour alone: the active tab changes colour AND weight AND gains
+   the 2px ember mark, so it survives a colourblind reader and a greyscale
+   screenshot. */
+.cs-tabitem[aria-current="page"] {
+  color: hsl(var(--ember-ink));
+  font-weight: 700;
+}
+.cs-tabitem[aria-current="page"]::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  width: 26px;
+  height: 2px;
+  border-radius: 0 0 2px 2px;
+  background: hsl(var(--ember));
+  transform-origin: center;
+  animation: cs-draw-x var(--duration) var(--ease-out) both;
+}
+.cs-tabitem {
+  position: relative;
+}
+
+.cs-fab {
+  display: inline-grid;
+  place-items: center;
+  width: 60px;
+  height: 60px;
+  margin-top: -14px;
+  justify-self: center;
+  border-radius: var(--radius-full);
+  background: hsl(var(--ember));
+  color: hsl(var(--on-ember));
+  box-shadow: var(--elev-fab);
+  transition:
+    transform var(--duration-fast) var(--ease-out),
+    box-shadow var(--duration-fast) var(--ease-out);
+}
+.cs-fab:active {
+  transform: scale(0.94);
+  box-shadow: 0 2px 8px hsl(20 40% 2% / 0.6);
+}
+
+/* ── Home's answer ────────────────────────────────────────────────────
+   An ember WASH, never a solid ember area — the accent is the order and
+   the act, and a large flat field of it would make it mean neither. */
+.cs-hero {
   background: linear-gradient(
-    to right,
-    hsl(27 46% 60%) 0%,
-    hsl(27 46% 60%) var(--v, 50%),
-    hsl(220 7% 18%) var(--v, 50%),
-    hsl(220 7% 18%) 100%
+    160deg,
+    hsl(var(--ember) / 0.16),
+    hsl(var(--surface)) 62%
   );
+  border-color: hsl(var(--ember) / 0.3);
+  box-shadow: var(--elev-2);
 }
 
-/* Vibe slider — fills with amber */
-.slider-feel {
-  background: linear-gradient(
-    to right,
-    hsl(36 65% 55%) 0%,
-    hsl(36 65% 55%) var(--v, 50%),
-    hsl(220 7% 18%) var(--v, 50%),
-    hsl(220 7% 18%) 100%
-  );
+.cs-section {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  min-height: 44px;
 }
 
-/* Webkit thumbs */
-.slider-craft::-webkit-slider-thumb {
-  -webkit-appearance: none;
-  width: 22px;
-  height: 22px;
-  border-radius: 50%;
-  background: hsl(27 46% 60%);
-  box-shadow: 0 0 0 3px hsl(220 10% 8%), 0 0 12px hsl(27 46% 60% / 0.55);
-  cursor: grab;
-  transition: box-shadow 0.15s;
+/* A horizontal snap rail. The edge padding is so the first card's shadow
+   is not clipped — a clipped shadow is what makes a carousel look cheap. */
+.cs-rail {
+  display: flex;
+  gap: var(--space-3);
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  padding: var(--space-2) var(--space-4);
+  margin-inline: calc(var(--space-4) * -1);
+  scrollbar-width: none;
 }
-.slider-craft:hover::-webkit-slider-thumb,
-.slider-craft:active::-webkit-slider-thumb {
-  box-shadow: 0 0 0 3px hsl(220 10% 8%), 0 0 22px hsl(27 46% 60% / 0.8);
-  cursor: grabbing;
+.cs-rail::-webkit-scrollbar {
+  display: none;
 }
-
-.slider-feel::-webkit-slider-thumb {
-  -webkit-appearance: none;
-  width: 22px;
-  height: 22px;
-  border-radius: 50%;
-  background: hsl(36 65% 55%);
-  box-shadow: 0 0 0 3px hsl(220 10% 8%), 0 0 12px hsl(36 65% 55% / 0.55);
-  cursor: grab;
-  transition: box-shadow 0.15s;
-}
-.slider-feel:hover::-webkit-slider-thumb,
-.slider-feel:active::-webkit-slider-thumb {
-  box-shadow: 0 0 0 3px hsl(220 10% 8%), 0 0 22px hsl(36 65% 55% / 0.8);
-  cursor: grabbing;
+.cs-rail > * {
+  flex: none;
+  width: 78vw;
+  max-width: 300px;
+  scroll-snap-align: start;
 }
 
-/* Firefox thumbs */
-.slider-craft::-moz-range-thumb {
-  width: 22px;
-  height: 22px;
-  border-radius: 50%;
-  background: hsl(27 46% 60%);
-  border: 3px solid hsl(220 10% 8%);
-  box-shadow: 0 0 12px hsl(27 46% 60% / 0.55);
-  cursor: grab;
+/* The functional facts, as a grid of tiles rather than a paragraph. */
+.cs-tile {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: var(--space-3);
+  border-radius: var(--radius-sm);
+  background: hsl(var(--raise));
+  color: hsl(var(--ink));
+  font-size: var(--text-sm);
 }
-.slider-feel::-moz-range-thumb {
-  width: 22px;
-  height: 22px;
-  border-radius: 50%;
-  background: hsl(36 65% 55%);
-  border: 3px solid hsl(220 10% 8%);
-  box-shadow: 0 0 12px hsl(36 65% 55% / 0.55);
-  cursor: grab;
+
+/* Three per profile header. Sizes the person controls; none comparative,
+   none a follower count. */
+.cs-stat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
 }
-.slider-craft::-moz-range-track {
-  height: 8px;
-  border-radius: 9999px;
-  background: linear-gradient(
-    to right,
-    hsl(27 46% 60%) 0%,
-    hsl(27 46% 60%) var(--v, 50%),
-    hsl(220 7% 18%) var(--v, 50%),
-    hsl(220 7% 18%) 100%
-  );
+.cs-stat b {
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: var(--text-2xl);
+  font-variant-numeric: tabular-nums lining-nums;
+  color: hsl(var(--ink));
+  line-height: 1;
 }
-.slider-feel::-moz-range-track {
-  height: 8px;
-  border-radius: 9999px;
-  background: linear-gradient(
-    to right,
-    hsl(36 65% 55%) 0%,
-    hsl(36 65% 55%) var(--v, 50%),
-    hsl(220 7% 18%) var(--v, 50%),
-    hsl(220 7% 18%) 100%
-  );
+
+/* STATIC skeletons. A shimmer is `animation: … infinite`, which
+   `motion.test.ts` fails the suite on — correctly, because reduced motion
+   here is implemented by zeroing duration tokens and nothing reaches an
+   infinite animation. */
+.cs-skel {
+  background: hsl(var(--raise));
+  border-radius: var(--radius-sm);
+}
+
+@keyframes cs-draw-x {
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: scaleX(1);
+  }
+}
+
+/* The Lovable-era kit that used to live here — .glass, .gradient-card,
+   .card-shine, .gradient-text, .gradient-accent, .gold-glow, .accent-glow,
+   .nav-shadow — is gone. Every one of them was a gradient, a glow or a glass
+   panel: exactly the stock look the brief's anti-slop rule names, and none
+   of them survived Phase 2's design decisions. Only the scrollbar hider,
+   which is structural, remains. */
+@layer utilities {
+  .no-scrollbar::-webkit-scrollbar { display: none; }
+  .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
 }

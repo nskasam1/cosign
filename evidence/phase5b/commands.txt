@@ -1,0 +1,138 @@
+# Phase 5B acceptance evidence — 2026-08-16T22:49:08Z
+# node v24.11.0, npm 11.6.1
+# scratch database: /tmp/cosign-phase5b.db (server/data/cosign.db untouched)
+
+## ./node_modules/.bin/tsc -b (project refs: app / node / server)
+exit=0
+
+## npm test
+[2m Test Files [22m [1m[32m28 passed[39m[22m[90m (28)[39m
+[2m      Tests [22m [1m[32m437 passed[39m[22m[90m (437)[39m
+[2m   Start at [22m 18:49:35
+[2m   Duration [22m 21.00s[2m (transform 4.66s, setup 41.17s, collect 36.72s, tests 19.69s, environment 4.26s, prepare 26.00s)[22m
+
+
+## npm run lint
+
+✖ 6 problems (0 errors, 6 warnings)
+
+
+## the two source audits, over every .ts/.tsx/.css/.sql under src/ and server/
+[2m Test Files [22m [1m[32m2 passed[39m[22m[90m (2)[39m
+[2m      Tests [22m [1m[32m18 passed[39m[22m[90m (18)[39m
+
+## npm run seed — notifications are DERIVED, never authored
+   seeded C:/Users/Vineet Sista/AppData/Local/Temp/cosign-phase5b.db
+     shops=22 users=8 logs=95
+     group_sessions=1 group_needs=2 notifications=31 (all derived from action records)
+     north-star quiet-week users seeded=4
+   (there is no seed/notifications.json — see server/db/seed.ts)
+
+## acceptance 1: group intersection-best for four seeded users
+   four people, Wednesday 19:30. state=complete invited=4
+   constraints: open_now(open now) asked by 4, outlets(3 outlets) asked by 3, wifi(wifi) asked by 2, noise(no louder than conversational) asked by 2, table(a table for 4) asked by 0
+   -> Lantern Lane Cafe      on 2 of the four lists | worst: June has it 4 | never been: Dev, Theo
+      Grandview Social       on 4 of the four lists | worst: Dev has it 10 | never been: —
+      The Foundry            on 3 of the four lists | worst: Maya has it 13 | never been: June
+      Wheelhouse Coffee      on 3 of the four lists | worst: Theo has it 6 | never been: June
+      Night Owl Coffee       on 3 of the four lists | worst: Maya has it 21 | never been: June
+      South Porch            on 2 of the four lists | worst: June has it 9 | never been: Dev, Theo
+   11 ruled out (open_now 8, outlets 5, table 4, noise 1, wifi 1)
+   5 would fit but nobody has logged how loud they get at this hour
+   NOBODY VOTED: group_needs has no vote column and no tally exists — see src/lib/group.ts
+
+## acceptance 2: a collaborative list with two or more contributors re-ranks
+   our ranking of campus coffee — Maya (22 ranked), Dev (10 ranked), June (10 ranked)
+     before: Lantern Lane Cafe > The Foundry > Terrazzo > Hackberry Roasters > Marginalia > Cricket & Crow
+     after:  1. Lantern Lane Cafe  2. Cricket & Crow  3. Marginalia  3. Hackberry Roasters  5. Terrazzo  6. The Foundry
+     disagreement: Lantern Lane Cafe / Terrazzo — Maya one way, June the other
+     disagreement: Marginalia / Hackberry Roasters — Dev one way, Maya the other
+     moved 4; 1 line(s) told to the owner, 0 to Dev — the one who did it
+     a second re-rank moves nothing: refused, and nobody was told
+   still open when we are — Dev (10 ranked), Theo (8 ranked)
+     before: Night Owl Coffee > The Foundry > The All-Nighter > High Street Standard > Copper Kettle > Wheelhouse Coffee
+     after:  1. The All-Nighter  2. Night Owl Coffee  2. The Foundry  4. Wheelhouse Coffee  4. High Street Standard
+     on the list, not in the order: Copper Kettle
+     disagreement: Night Owl Coffee / The Foundry — Theo one way, Dev the other
+     disagreement: Night Owl Coffee / Wheelhouse Coffee — Theo one way, Dev the other
+     moved 6; 1 line(s) told to the owner, 0 to Theo — the one who did it
+     a second re-rank moves nothing: refused, and nobody was told
+
+## acceptance 3: the feed, human actions only
+   Maya Okafor:          7 lines, 1 waiting on them  [list_reranked friend_request friend_accepted]
+   Dev Raghunathan:      8 lines, 1 waiting on them  [list_reranked group_invite list_editor_added friend_request friend_accepted]
+   June Park:            8 lines, 0 waiting on them  [list_reranked group_invite list_editor_added friend_accepted friend_request]
+   Theo Marsh:           8 lines, 1 waiting on them  [group_invite list_editor_added friend_request friend_accepted]
+   Lena Voss:            2 lines, 0 waiting on them  [friend_accepted friend_request]
+   37 notifications, 0 pointing at a record that does not exist
+   types in the database: friend_accepted, friend_request, group_invite, list_editor_added, list_reranked
+   self-notifications: 0
+
+## acceptance 4: the north star, on the seeded events
+   week of 2026-07-27:  0 returned without logging
+   week of 2026-08-03:  4 returned without logging  (Dev, Lena, Maya, Sam)
+   week of 2026-08-10:  0 returned without logging
+   predicate: app_open on >= 2 distinct days in the week AND zero log_created that week
+
+## acceptance 5: integrity — friends-only, no coordinates, no rank for sale
+$ friends-only is what the columns say, not what the client asks for:
+   POST /api/lists {visibility:"public"} -> stored friends
+   POST /api/logs  {visibility:"public", user_id:"u_maya"} -> stored friends, owned by u_lena
+$ every route that takes a position, then a sweep of every table:
+   20 tables swept, 0 containing the coordinate
+   135 columns, 0 that could hold a payment or a promotion
+
+## playwright
+$ COSIGN_EVIDENCE=phase5b                   npx playwright test social.spec.ts   # phase 5B
+      ✓  46 [desktop] › e2e\social.spec.ts:666:3 › accessibility › no page in this phase scrolls sideways (584ms)
+    
+      46 passed (1.1m)
+$ COSIGN_EVIDENCE=phase5b/share-regression   npx playwright test share.spec.ts    # phase 2
+      ✓  24 [desktop] › e2e\share.spec.ts:222:3 › open graph image › the share page points social previews at that image (554ms)
+    
+      24 passed (24.2s)
+$ COSIGN_EVIDENCE=phase5b/profile-regression npx playwright test profile.spec.ts  # phase 5A
+      ✓  46 [desktop] › e2e\profile.spec.ts:412:3 › google takeout import › is also offered where a ranking is empty (739ms)
+    
+      46 passed (34.3s)
+$ COSIGN_EVIDENCE=phase5b/home-regression    npx playwright test home.spec.ts     # phase 4
+    
+      2 skipped
+      42 passed (1.2m)
+$ COSIGN_EVIDENCE=phase5b/log-regression     npx playwright test log.spec.ts      # phase 3, last (it writes most)
+    
+      1 skipped
+      35 passed (1.9m)
+$ COSIGN_EVIDENCE_DIR=phase5b/spa node scripts/boot-smoke.mjs
+    ok    auth  /shop/there-is-no-such-place/x  (175 chars)
+    
+    ok    every request stayed on http://localhost:8787 (zero external services)
+    
+    ok    9 distinct <title> across 13 routes:
+          /                                      Cosign
+          /onboarding                            Start your list — Cosign
+          /onboarding                            Start your list — Cosign
+          /                                      Cosign
+          /search                                Search — Cosign
+          /maya                                  Maya Okafor — Cosign
+          /shop/oval-grounds                     Oval Grounds — Cosign
+          /shop/oval-grounds                     Oval Grounds — Cosign
+          /lists/l_our-campus-ranking            our ranking of campus coffee — Cosign
+          /rank                                  Your list — Cosign
+          /group/new                             Ask three people — Cosign
+          /g/g_notatable0000                     Nothing at this address — Cosign
+          /shop/there-is-no-such-place/x         Nothing at this address — Cosign
+    
+    all 13 routes booted clean
+
+$ axe violations per surface (serious/critical):
+   axe-feed-desktop.json              0 (23 passes)
+   axe-feed-mobile.json               0 (23 passes)
+   axe-group-answer-desktop.json      0 (24 passes)
+   axe-group-answer-mobile.json       0 (24 passes)
+   axe-group-join-desktop.json        0 (23 passes)
+   axe-group-join-mobile.json         0 (23 passes)
+   axe-group-new-desktop.json         0 (20 passes)
+   axe-group-new-mobile.json          0 (20 passes)
+   axe-list-desktop.json              0 (25 passes)
+   axe-list-mobile.json               0 (25 passes)

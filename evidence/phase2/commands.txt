@@ -1,0 +1,99 @@
+# Phase 2 acceptance evidence — 2026-08-15T21:28:23Z
+# node v24.11.0, npm 11.6.1
+
+## npx tsc -b (project refs: app / node / server)
+exit=0
+
+## npm test
+   [33m[2m✓[22m[39m full seed round trip[2m > [22mseed → export → seed → export is a fixpoint [33m 756[2mms[22m[39m
+ [32m✓[39m src/test/example.test.ts [2m([22m[2m1 test[22m[2m)[22m[32m 10[2mms[22m[39m
+
+[2m Test Files [22m [1m[32m9 passed[39m[22m[90m (9)[39m
+[2m      Tests [22m [1m[32m81 passed[39m[22m[90m (81)[39m
+[2m   Start at [22m 17:28:37
+[2m   Duration [22m 6.19s[2m (transform 1.15s, setup 6.88s, collect 3.30s, tests 1.37s, environment 2.95s, prepare 6.14s)[22m
+
+
+## npm run lint
+  61:14  warning  Fast refresh only works when a file only exports components. Use a new file to share constants or functions between components  react-refresh/only-export-components
+
+✖ 8 problems (0 errors, 8 warnings)
+
+
+## design tokens are one file, consumed by three surfaces
+$ wc -c src/design/tokens.css
+10266
+$ grep -c 'var(--' tailwind.config.ts    # Tailwind reads the tokens
+61
+$ head -4 src/index.css                  # the SPA imports them
+/* The canonical design tokens (Phase 2). Colour, type, space, radius and
+   motion are decided in exactly one file; nothing below re-decides them.
+   The SSR share page inlines the same file via server/pages/tokens.ts. */
+@import "./design/tokens.css";
+$ grep -n 'tokensCss()' server/pages/*.ts   # the SSR pages inline them
+server/pages/shareList.ts:224:<style>${tokensCss()}${PAGE_CSS.replace(/\n\s*/g, "")}</style>
+server/pages/shareList.ts:276:<style>${tokensCss()}body{margin:0;min-height:100dvh;display:grid;place-items:center;background:hsl(var(--bg));color:hsl(var(--ink));font:400 var(--text-base)/var(--leading-body) var(--font-body)}main{max-width:24rem;padding:var(--space-6);text-align:center}p.k{font:700 var(--text-2xs)/1 var(--font-body);letter-spacing:var(--tracking-caps);text-transform:uppercase;color:hsl(var(--gold));margin:0 0 var(--space-4)}h1{font:400 var(--text-2xl)/1.15 var(--font-display);letter-spacing:var(--tracking-display);margin:0 0 var(--space-3)}p{color:hsl(var(--muted));margin:0;font-size:var(--text-sm)}</style>
+server/pages/tokens.ts:15:export function tokensCss(): string {
+
+## self-hosted fonts (no CDN, OFL licences committed)
+public/fonts:
+-rw-r--r-- 1 Vineet Sista 197121  4486 Aug 15 16:44 OFL-Karla.txt
+-rw-r--r-- 1 Vineet Sista 197121  4396 Aug 15 16:32 OFL-YoungSerif.txt
+-rw-r--r-- 1 Vineet Sista 197121 13140 Aug 15 16:13 karla-400.woff2
+-rw-r--r-- 1 Vineet Sista 197121 13304 Aug 15 16:13 karla-700.woff2
+-rw-r--r-- 1 Vineet Sista 197121 26992 Aug 15 16:13 young-serif-400.woff2
+server/assets/fonts:
+-rw-r--r-- 1 Vineet Sista 197121 17332 Aug 15 16:13 karla-400.woff
+-rw-r--r-- 1 Vineet Sista 197121 17340 Aug 15 16:13 karla-700.woff
+-rw-r--r-- 1 Vineet Sista 197121 22240 Aug 15 16:13 young-serif-400.woff
+$ total woff2 shipped to the browser:
+53436	total
+
+## share page: SSR, logged out, no bundle, no stylesheet request
+$ curl -s -o /dev/null -w '%{http_code} %{size_download}b %{time_total}s' /s/$TOKEN
+200 34800b 0.016321s
+$ same request with gzip (what a browser actually gets):
+transferred 7932b
+$ script/link tags in the response (want: 0 src, 0 stylesheet):
+  script[src]:     0
+  link[stylesheet]:0
+$ decision-2 elements present in the HTML (markup only; the filter
+  script is stripped first so its selectors are not counted twice):
+  data-author      1
+  data-entry       22
+  data-chip=       9
+  data-chip-all    1
+  data-cta         1
+  data-nophoto     3
+  data-cosign=     22
+
+## token revocation and scope
+$ curl /s/$REVOKED     (expect 410 tombstone, never the list)
+410
+$ curl /og/s/$REVOKED  (expect 410 — the picture is revoked too)
+410
+$ shop names leaked by the tombstone (want: 0)
+0
+$ curl /s/$PROFILE     (profile-scoped token is not a list surface: expect 404)
+404
+$ curl /s/nope         (expect 404)
+404
+
+## open graph image
+$ curl -sI /og/s/$TOKEN
+status 200  image/png  50296b  0.017971s
+
+## friends-only default still holds (cosigners on a public page)
+$ rankings by visibility:
+    {"visibility":"friends","n":4}
+    {"visibility":"public","n":3}
+$ every cosign line rendered on the public page — only people whose
+  own ranking is public are named; the rest are counted, never named:
+      4  Cosigned by June Park
+      2  Cosigned by 2 other lists
+      2  Cosigned by 1 other list
+      2  Cosigned by Theo Marsh, Lena Voss and 3 more
+      2  Cosigned by June Park and 1 more
+      1  Only on Maya’s list so far
+      1  Cosigned by June Park and 2 more
+      1  Cosigned by June Park, Lena Voss and 2 more

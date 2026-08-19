@@ -1,0 +1,58 @@
+# Carried-forward gap fixes — 2026-08-16T08:33:56Z
+# node v24.11.0, npm 11.6.1
+# scratch database; server/data/cosign.db untouched
+
+## ./node_modules/.bin/tsc -b
+exit=0
+
+## npm test
+[2m      Tests [22m [1m[32m242 passed[39m[22m[90m (242)[39m
+[2m   Start at [22m 04:34:32
+[2m   Duration [22m 12.79s[2m (transform 3.17s, setup 16.65s, collect 14.60s, tests 9.78s, environment 3.92s, prepare 14.04s)[22m
+
+
+## npm run lint
+✖ 8 problems (0 errors, 8 warnings)
+
+
+## every route names itself (node scripts/boot-smoke.mjs, against npm run prod on a scratch DB)
+ok    auth  /group/new  (240 chars)
+ok    auth  /shop/there-is-no-such-place/x  (175 chars)
+
+ok    every request stayed on http://localhost:8787 (zero external services)
+
+ok    9 distinct <title> across 12 routes:
+      /                                      Cosign
+      /onboarding                            Start your list — Cosign
+      /onboarding                            Start your list — Cosign
+      /                                      Cosign
+      /search                                Search — Cosign
+      /maya                                  Maya Okafor — Cosign
+      /shop/oval-grounds                     Oval Grounds — Cosign
+      /shop/oval-grounds                     Oval Grounds — Cosign
+      /lists/l_our-campus-ranking            our ranking of campus coffee — Cosign
+      /rank                                  Your list — Cosign
+      /group/new                             Group mode — Cosign
+      /shop/there-is-no-such-place/x         Nothing at this address — Cosign
+
+all 12 routes booted clean
+
+## the browser chrome is the token ground, and a test says so
+$ grep theme-color index.html; grep _color public/manifest.json
+        <meta name="theme-color" content="#14100E" />
+      "background_color": "#14100E",
+      "theme_color": "#14100E",
+    [2m Test Files [22m [1m[32m1 passed[39m[22m[90m (1)[39m
+    [2m      Tests [22m [1m[32m33 passed[39m[22m[90m (33)[39m
+
+## the dead no-photo asset is gone, and nothing referenced it
+$ git log --oneline -1 -- cosign/cosign-app/public/placeholder.svg; grep -rn placeholder.svg src server e2e scripts index.html
+    (no references — the file was already unreferenced when it was deleted)
+
+## the only animate-* outside the generated shadcn primitives, which reduced-motion could not reach
+$ grep -rn 'animate-' src --include=*.tsx --include=*.css | grep -v src/components/ui/
+    src/components/RequireAuth.tsx:9:  // `animate-spin`, which is Tailwind's own `spin 1s linear infinite` and so
+
+## the phase 2 share suite, re-run as a regression against the clean seed
+
+  24 passed (29.0s)
