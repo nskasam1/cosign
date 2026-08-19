@@ -90,6 +90,20 @@ in PowerShell) to be sure.
 
 ## Gotchas (verified on this machine, updated 2026-08-18 after Phase 9)
 
+- **The stale-schema guard is a STARTUP check now, and it used to fire exactly
+  once.** `getDb()` cached the connection before validating it, so the first
+  request after a schema change threw and every request after it got the cached
+  handle back unchecked — `/api/meta` returned 500, then 200 on the retry. And
+  because `getDb()` is lazy, nothing was checked until something touched the
+  database, so the process printed `cosign server (prod) on
+  http://localhost:8787` and looked healthy while holding a database it could
+  not use. Both fixed: the check runs before the handle is published, and
+  `assertSchemaAtStartup()` runs it in `serve()` so a stale database exits 1
+  with the missing table and the exact `COSIGN_DB=… npm run seed` that rebuilds
+  *that* file. `server/db/schemaGuard.test.ts` holds it. **Re-seed after every
+  schema change — Phase 9 added `credentials` and `webauthn_challenges`.**
+
+
 - **`\uXXXX` in JSX *text* is six characters, not an escape.** In a string
   literal (`"That\u2019s me"`) JavaScript resolves it; between tags nothing
   does. One reached the front door under `.cs-caps`, which uppercases, so it

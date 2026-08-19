@@ -13,7 +13,7 @@ import { randomUUID } from "node:crypto";
 import { readFileSync, existsSync, mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { pathToFileURL } from "node:url";
-import { getDb, APP_ROOT, DATA_DIR } from "./db/db.ts";
+import { getDb, assertSchemaAtStartup, APP_ROOT, DATA_DIR } from "./db/db.ts";
 import { COOKIE_NAME, clearSessionCookie, makeSessionCookie, verifySession } from "./auth/cookie.ts";
 import * as social from "./repo/social.ts";
 import * as shops from "./repo/shops.ts";
@@ -1207,6 +1207,18 @@ if (PROD) {
 if (process.argv[1] && pathToFileURL(process.argv[1]).href === import.meta.url) {
   if (!existsSync(join(APP_ROOT, "server", "data", "cosign.db")) && !process.env.COSIGN_DB) {
     console.error("No database found — run `npm run seed` first.");
+    process.exit(1);
+  }
+
+  // The file existing is not the same as the file being current. Open it now
+  // and check its tables against schema.sql, so a database built before the
+  // last migration stops the process here — with the command that fixes it —
+  // instead of letting it print a healthy startup line and 500 later on
+  // whichever route happens to touch the new table.
+  try {
+    assertSchemaAtStartup();
+  } catch (err) {
+    console.error((err as Error).message);
     process.exit(1);
   }
 

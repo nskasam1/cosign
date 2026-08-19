@@ -21,7 +21,26 @@ export function openDb(path: string = DB_PATH): DatabaseSync {
   return db;
 }
 
-/** Shared connection for the server process. */
+/**
+ * Shared connection for the server process.
+ *
+ * The schema check runs BEFORE the handle is cached, and that ordering is the
+ * whole guard. It used to be:
+ *
+ *     _db = openDb();
+ *     assertSchemaCurrent(_db);   // throws
+ *
+ * — which cached the connection and then threw, so the *first* request after a
+ * schema change 500'd and every request after it got the cached handle back
+ * with no check at all. The guard fired once and then silently stopped
+ * guarding, which is a worse state than not having it: the server answers
+ * almost everything and 500s only on the routes that touch the new tables,
+ * which is exactly the confusing failure Phase 6 wrote it to prevent. Observed
+ * on 2026-08-18 with a database predating Phase 9's `credentials` table —
+ * `/api/meta` returned 500, then 200 on the retry.
+ *
+ * Open into a local, close it if the check fails, and only then publish it.
+ */
 export function getDb(): DatabaseSync {
   if (!_db) {
     if (!existsSync(DB_PATH) && !process.env.COSIGN_DB) {
@@ -29,10 +48,33 @@ export function getDb(): DatabaseSync {
         `No database at ${DB_PATH} — run \`npm run seed\` first.`,
       );
     }
-    _db = openDb();
-    assertSchemaCurrent(_db);
+    const db = openDb();
+    try {
+      assertSchemaCurrent(db);
+    } catch (err) {
+      // Leave nothing half-open behind a thrown check — the next call has to
+      // do the whole thing again and fail the same way.
+      try {
+        db.close();
+      } catch {
+        /* already closed, or never opened cleanly; the throw below is the point */
+      }
+      throw err;
+    }
+    _db = db;
   }
   return _db;
+}
+
+/**
+ * Fail at startup rather than on the first request that happens to need a new
+ * table. `getDb()` is lazy, so without this the process prints
+ * `cosign server (prod) on http://localhost:8787` and looks completely healthy
+ * while holding a database it cannot use. CLAUDE.md has claimed since Phase 6
+ * that the schema is checked "on startup"; this is what makes that true.
+ */
+export function assertSchemaAtStartup(): void {
+  getDb();
 }
 
 /**
