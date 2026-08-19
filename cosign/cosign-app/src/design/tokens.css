@@ -19,32 +19,41 @@
   color-scheme: dark;
 
   /* ── ground ───────────────────────────────────────────────────────────
-     A warm near-black in the same family as the seeded imagery (its six
-     palettes all sit on #13–18 warm grounds), so photographs dissolve into
-     the page instead of floating on a blue-grey slab. */
-  --bg: 20 18% 7%;              /* #14100E  espresso ground */
-  --surface: 20 19% 9%;         /* #1C1613  one step up: plates, chips */
-  --raise: 20 20% 12%;          /* #241C18  two steps up: pressed, wells */
+     Still warm espresso, and now one step DEEPER, because a card has to have
+     somewhere to rise from. The seeded photography is painted on #13–18 warm
+     grounds, so a cool grey ground would make every place float on a slab;
+     that is the one part of the old system worth keeping and it is kept. */
+  --sunk: 22 20% 4%;            /* #0D0A08  behind cards, the tab bar, scrims */
+  --bg: 22 16% 6%;              /* #120E0C  page ground */
+  --surface: 22 15% 10%;        /* #1D1815  THE CARD — the default reading ground */
+  --raise: 22 16% 14%;          /* #292322  pressed card, wells, inactive track */
 
   /* ── ink ──────────────────────────────────────────────────────────────
-     Paper-warm, never pure white — pure white on warm black reads as a
-     screen; this reads as stock. */
-  --ink: 34 49% 91%;            /* #F3E9DC  headlines, names      15.8:1 */
-  --line: 32 28% 73%;           /* #CDBBA6  the honest line       10.1:1 */
-  --muted: 31 15% 54%;          /* #9A8977  metadata, captions     5.6:1 */
+     Paper-warm, never pure white. Every ratio below is measured against
+     --surface, NOT --bg, because after the card retrofit almost no text sits
+     on the page ground any more. That re-derivation is the single most common
+     way a card system silently breaks contrast: the old --muted at 54% was
+     5.6:1 on --bg and would have been ~4.2:1 on a card. */
+  --ink: 34 45% 94%;            /* #F7EDE1  headlines, names     ~15:1 on surface */
+  --line: 32 26% 78%;           /* #D5C8B8  the honest line       10.7:1 */
+  --muted: 31 14% 60%;          /* #A79A8B  metadata, captions     6.3:1 */
 
   /* ── rules ────────────────────────────────────────────────────────────
-     Hairlines carry the editorial structure. Decorative only — never text. */
-  --rule: 23 16% 15%;           /* #2E2621  between entries */
-  --rule-strong: 24 17% 23%;    /* #453931  section breaks, chip borders */
+     Hairlines survive, demoted. They divide WITHIN a card now; between cards
+     the gap and the elevation do the work. A hairline-only system is what the
+     app looked like when it read as a document. */
+  --rule: 22 14% 18%;           /* #352C28  card edge, in-card divider */
+  --rule-strong: 24 15% 26%;    /* #4D423B  section breaks, unselected chip */
 
   /* ── accents ──────────────────────────────────────────────────────────
-     Ember is the ranking signal (numerals, active chip). Deliberately not
-     the reflexive coffee-gold: gold is the *label* voice, ember is the
-     *order* voice, and the two never do each other's job. */
-  --ember: 14 73% 56%;          /* #E0633C  rank, active state     5.4:1 */
-  --ember-ink: 17 82% 66%;      /* #F08A63  ember as body text     7.7:1 */
-  --gold: 39 45% 61%;           /* #C8A96E  small-caps labels      8.4:1 */
+     Ember has two jobs (the ORDER, and the ACT of writing) and gold has one
+     (the LABEL voice). That grammar is unchanged and is the other thing worth
+     keeping. What changes is chroma: ember goes hot, because the old #E0633C
+     on a card reads as brown. Neither is ever a background for a large area. */
+  --ember: 13 88% 57%;          /* #F25A31  rank, FAB, active tab   5.3:1 on surface */
+  --ember-ink: 16 90% 68%;      /* #F98C63  ember as running text   7.4:1 */
+  --on-ember: 14 85% 8%;        /* #26100A  the ONLY colour on an ember fill */
+  --gold: 41 62% 62%;           /* #DAB462  small-caps labels       8.9:1 */
 
   /* ── place palettes ───────────────────────────────────────────────────
      The six treatments `seed/images/generate.mjs` paints every photograph
@@ -71,15 +80,21 @@
   --danger: 0 62% 58%;          /* #D45B5B  destructive only */
 
   /* ── type ─────────────────────────────────────────────────────────────
-     Young Serif for display: a warm single-weight slab that reads
-     letterpressed rather than branded, with lining figures heavy enough to
-     carry the rank numerals as architecture. Karla for everything you
-     actually read: a slightly condensed grotesque with flared stems and an
-     odd, human 'a' — it fits a 390 px column and sounds like a person
-     rather than a product. Two families, three files (53 kB), both OFL,
-     both self-hosted in `public/fonts/`. No CDN, ever. */
-  --font-display: "Young Serif", "Iowan Old Style", Georgia, serif;
-  --font-body: Karla, "Helvetica Neue", Arial, sans-serif;
+     The editorial serif WAS the look that got rejected — it is what made
+     every screen read as an essay about the product rather than as the
+     product. Inter is the other half of the same problem: it is the tell
+     every generated interface has.
+
+     Bricolage Grotesque for display: a grotesque with irregular joints that
+     reads as drawn by a person, heavy enough at 800 to carry rank numerals
+     as architecture. Instrument Sans for everything you actually read:
+     narrow, sharp terminals, excellent at 13-15px in a 390px column.
+
+     Two families, two VARIABLE files (71 kB) covering 400-800 and 400-700,
+     replacing three static cuts (53 kB). Both OFL, both self-hosted in
+     `public/fonts/` with their licences. No CDN, ever. */
+  --font-display: "Bricolage Grotesque", "Arial Black", system-ui, sans-serif;
+  --font-body: "Instrument Sans", "Helvetica Neue", Arial, sans-serif;
 
   /* 1.22 ratio, rounded to whole px so hairlines stay crisp */
   --text-2xs: 0.6875rem;        /* 11px  small-caps labels */
@@ -115,10 +130,23 @@
   --tap: 2.75rem;               /* 44px minimum target */
 
   /* ── radius ── restrained: this is print, not a card deck ───────────── */
-  --radius-xs: 2px;
-  --radius-sm: 3px;
-  --radius-md: 6px;
+  /* The "no radius above 3px" rule is repealed. It was the single strongest
+     signal of the look the founder rejected — it is what made every surface a
+     document. Five values, and an inner radius is always outer minus padding. */
+  --radius-xs: 6px;             /* rank chip, small tiles, inputs */
+  --radius-sm: 10px;            /* inline thumbs, segmented track */
+  --radius-md: 14px;            /* media inside a card (card minus its inset) */
+  --radius-lg: 18px;            /* THE CARD */
+  --radius-xl: 22px;            /* bottom sheets, top corners only */
   --radius-full: 999px;
+
+  /* ── elevation ────────────────────────────────────────────────────────
+     Dark-UI elevation is a 1px inset top highlight FIRST and a shadow second.
+     A shadow alone on a near-black ground is invisible; the highlight is the
+     thing that actually makes a card read as lifted. */
+  --elev-1: inset 0 1px 0 hsl(0 0% 100% / 0.045), 0 2px 8px hsl(20 40% 2% / 0.55);
+  --elev-2: inset 0 1px 0 hsl(0 0% 100% / 0.06), 0 10px 28px hsl(20 40% 2% / 0.6);
+  --elev-fab: 0 8px 22px hsl(var(--ember) / 0.3), 0 2px 6px hsl(20 40% 2% / 0.6);
   --radius: 0.875rem;           /* shadcn primitives in the SPA */
 
   /* ── motion ── one rhythm, and it stops when asked ────────────────────
@@ -185,31 +213,21 @@
    than waiting on the network — the share page's LCP budget is 1.0 s on
    simulated Slow-4G and a blocked font would spend all of it. */
 @font-face {
-  font-family: "Young Serif";
+  font-family: "Bricolage Grotesque";
   font-style: normal;
-  font-weight: 400;
+  font-weight: 400 800;
   font-display: swap;
-  src: url("/fonts/young-serif-400.woff2") format("woff2");
+  src: url("/fonts/bricolage-grotesque-var.woff2") format("woff2");
   unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA,
     U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193,
     U+2212, U+2215, U+FEFF, U+FFFD;
 }
 @font-face {
-  font-family: Karla;
+  font-family: "Instrument Sans";
   font-style: normal;
-  font-weight: 400;
+  font-weight: 400 700;
   font-display: swap;
-  src: url("/fonts/karla-400.woff2") format("woff2");
-  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA,
-    U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193,
-    U+2212, U+2215, U+FEFF, U+FFFD;
-}
-@font-face {
-  font-family: Karla;
-  font-style: normal;
-  font-weight: 700;
-  font-display: swap;
-  src: url("/fonts/karla-700.woff2") format("woff2");
+  src: url("/fonts/instrument-sans-var.woff2") format("woff2");
   unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA,
     U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193,
     U+2212, U+2215, U+FEFF, U+FFFD;

@@ -15,15 +15,15 @@
 // stops being one.
 
 export const HEX = {
-  bg: "#14100E",
-  surface: "#1C1613",
-  ink: "#F3E9DC",
-  line: "#CDBBA6",
-  muted: "#9A8977",
-  rule: "#2E2621",
-  ruleStrong: "#453931",
-  ember: "#E0633C",
-  gold: "#C8A96E",
+  bg: "#120F0D",
+  surface: "#1D1816",
+  ink: "#F7F1E9",
+  line: "#D5C8B8",
+  muted: "#A7998B",
+  rule: "#342C27",
+  ruleStrong: "#4C4038",
+  ember: "#F25B31",
+  gold: "#DAB462",
 } as const;
 
 /** The six imagery treatments (seed/images/generate.mjs, src/lib/palette.ts). */

@@ -356,7 +356,7 @@ ${
 <!-- Unlisted means unlisted (decision 12). A search engine that has indexed
      this URL would outlive any revocation. -->
 <meta name="robots" content="noindex, nofollow">
-<meta name="theme-color" content="#14100E">
+<meta name="theme-color" content="#120F0D">
 <link rel="icon" href="/favicon.ico" sizes="any">
 <link rel="apple-touch-icon" href="/apple-touch-icon.png">
 <meta property="og:type" content="profile">

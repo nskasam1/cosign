@@ -289,7 +289,7 @@ ${data.entries.map((x) => entryHtml(x, a.firstName)).join("\n")}
 <!-- Unlisted means unlisted. A share link is the per-list opt-in (decision
      12); a search engine indexing it would outlive any revocation. -->
 <meta name="robots" content="noindex, nofollow">
-<meta name="theme-color" content="#14100E">
+<meta name="theme-color" content="#120F0D">
 <link rel="icon" href="/favicon.ico" sizes="any">
 <link rel="apple-touch-icon" href="/apple-touch-icon.png">
 <meta property="og:type" content="profile">
@@ -342,7 +342,7 @@ export function renderTombstone(kind: "list" | "profile" = "list"): string {
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>This link isn’t shared anymore — Cosign</title>
 <meta name="robots" content="noindex, nofollow">
-<meta name="theme-color" content="#14100E">
+<meta name="theme-color" content="#120F0D">
 <style>${tokensCss()}body{margin:0;min-height:100dvh;display:grid;place-items:center;background:hsl(var(--bg));color:hsl(var(--ink));font:400 var(--text-base)/var(--leading-body) var(--font-body)}main{max-width:24rem;padding:var(--space-6);text-align:center}p.k{font:700 var(--text-2xs)/1 var(--font-body);letter-spacing:var(--tracking-caps);text-transform:uppercase;color:hsl(var(--gold));margin:0 0 var(--space-4)}h1{font:400 var(--text-2xl)/1.15 var(--font-display);letter-spacing:var(--tracking-display);margin:0 0 var(--space-3)}p{color:hsl(var(--muted));margin:0;font-size:var(--text-sm)}</style>
 </head>
 <body><main>

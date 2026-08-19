@@ -206,7 +206,9 @@ describe("fonts", () => {
   const faces = [...css.matchAll(/url\("(\/fonts\/[^"]+)"\)/g)].map((m) => m[1]);
 
   it("declares exactly the committed faces", () => {
-    expect(faces.length).toBe(3);
+    // Two variable faces replaced three static ones in the revamp: Bricolage
+    // Grotesque 400-800 and Instrument Sans 400-700. Fewer files, more weights.
+    expect(faces.length).toBe(2);
   });
 
   it.each(faces)("%s is committed to public/", (path) => {
@@ -214,6 +216,12 @@ describe("fonts", () => {
   });
 
   it("ships the .woff duplicates the OG renderer needs", () => {
+    // satori cannot parse woff2, so the OG card still needs static .woff cuts.
+    // These are STILL the old faces: the OG image has not been ported to the
+    // new type yet, and shipping a card in one typeface while the page it
+    // links to is in another is worse than shipping the old card. Ported in
+    // the SSR step of the build order — until then this asserts what is true,
+    // not what is intended.
     for (const f of ["young-serif-400.woff", "karla-400.woff", "karla-700.woff"]) {
       expect(existsSync(join(APP, "server", "assets", "fonts", f)), f).toBe(true);
     }
@@ -222,14 +230,18 @@ describe("fonts", () => {
   it("never names a family it does not ship", () => {
     // The whole point of self-hosting: no CDN, and no font stack that quietly
     // relies on a face only some machines have.
-    expect(css).toMatch(/--font-display:\s*"Young Serif"/);
-    expect(css).toMatch(/--font-body:\s*Karla\b/);
+    expect(css).toMatch(/--font-display:\s*"Bricolage Grotesque"/);
+    expect(css).toMatch(/--font-body:\s*"Instrument Sans"/);
+    // The rejected pair must be gone from the token file entirely, not merely
+    // demoted down a fallback stack where it would still be what most machines
+    // actually rendered.
+    expect(css).not.toMatch(/Young Serif|\bKarla\b/);
     expect(css).not.toMatch(/fonts\.googleapis|fonts\.gstatic|@import url\(http/);
   });
 
   it("uses font-display: swap on every face", () => {
     const declarations = css.match(/@font-face\s*\{[^}]*\}/g) ?? [];
-    expect(declarations.length).toBe(3);
+    expect(declarations.length).toBe(2);
     for (const d of declarations) expect(d).toMatch(/font-display:\s*swap/);
   });
 });
